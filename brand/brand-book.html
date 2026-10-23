@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goldcom Brand Book</title>
+<meta name="description" content="Goldcom visual identity and brand guidelines v1.0: logo, colour, typography, graphic language, UI, imagery, layouts, voice and claims.">
+<link rel="icon" href="logo/goldcom-symbol.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --amber:#CD864B; --gold:#DBA761; --ink:#000000; --spark:#F2D46B;
+    --espresso:#3B2A1C; --bronze-deep:#62422A; --bronze:#8A5A2B; --bullion:#C8943D; --sand:#E8CC73;
+    --onyx:#151513; --charcoal:#1D1D1F; --graphite:#2D2E2B; --slate:#3D3E3A; --stone:#9A968C; --stone-dark:#6B675F;
+    --mist:#E9E1CF; --cream:#FFF8EA; --white:#FFFFFF;
+    --gain:#3DBE84; --loss:#F0605D; --gain-l:#1E7F52; --loss-l:#C2362F; --info:#3AA8E8;
+    --g-bullion:linear-gradient(180deg,#62422A 0%,#8A6B41 38%,#D0B366 74%,#EDD175 100%);
+    --g-leaf:linear-gradient(135deg,#F2D46B 0%,#DBA761 55%,#CD864B 100%);
+    --g-onyx:radial-gradient(120% 80% at 50% 0%,#2D2E2B 0%,#151513 60%);
+    --latin:"Inter","SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+    --arabic:"IBM Plex Sans Arabic","Noto Sans Arabic","Segoe UI",Tahoma,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",Menlo,monospace;
+    --ease:cubic-bezier(0.2,0,0,1);
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--cream); color:var(--charcoal); font:16px/1.5 var(--latin); -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  .ar { font-family:var(--arabic); letter-spacing:0 !important; text-transform:none !important; }
+  .mono { font-family:var(--mono); }
+  .tnum { font-variant-numeric:tabular-nums lining-nums; }
+  .wrap { max-width:1200px; margin:0 auto; padding:0 24px; }
+
+  /* Top nav */
+  .nav { position:sticky; top:0; z-index:20; background:rgba(21,21,19,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--slate); }
+  .nav .wrap { display:flex; align-items:center; gap:24px; height:56px; }
+  .nav img { height:24px; width:auto; }
+  .nav ul { list-style:none; display:flex; gap:4px; margin:0 0 0 auto; padding:0; overflow-x:auto; scrollbar-width:none; }
+  .nav a { color:var(--stone); text-decoration:none; font-size:13px; font-weight:500; padding:6px 10px; border-radius:999px; white-space:nowrap; transition:color .2s var(--ease), background .2s var(--ease); }
+  .nav a:hover { color:var(--white); background:var(--graphite); }
+
+  /* Sections */
+  section { padding:96px 0; }
+  section.dark { background:var(--onyx); color:var(--white); }
+  section.white { background:var(--white); }
+  .eyebrow { display:flex; align-items:center; gap:10px; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--bronze); margin:0 0 16px; }
+  .dark .eyebrow { color:var(--gold); }
+  .eyebrow .gem { width:9px; height:9px; background:currentColor; transform:rotate(45deg); }
+  h1,h2,h3,h4 { margin:0; letter-spacing:-.01em; }
+  h2 { font-size:40px; line-height:48px; font-weight:700; letter-spacing:-.015em; }
+  h2 .ar, .cover h1 .ar, .promise .ar { text-align:left; }
+  h2 .ar { display:block; font-size:28px; line-height:44px; font-weight:600; color:var(--stone-dark); margin-top:4px; }
+  .dark h2 .ar { color:var(--stone); }
+  h3 { font-size:24px; line-height:32px; font-weight:600; }
+  h4 { font-size:16px; line-height:24px; font-weight:600; }
+  .lead { font-size:18px; line-height:28px; color:var(--stone-dark); max-width:720px; margin:16px 0 0; }
+  .dark .lead { color:var(--stone); }
+  .sub { font-size:14px; line-height:20px; color:var(--stone-dark); }
+  .dark .sub { color:var(--stone); }
+  .head { margin-bottom:56px; }
+  .block { margin-top:64px; }
+  .block > h3 { margin-bottom:8px; }
+  .block > .sub { margin:0 0 24px; max-width:720px; }
+  .grid { display:grid; gap:24px; }
+  .g2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .g3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .g4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .g5 { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .card { background:var(--white); border:1px solid var(--mist); border-radius:16px; padding:24px; }
+  .dark .card { background:var(--graphite); border-color:var(--slate); }
+  .rule { height:1px; background:var(--mist); border:0; margin:0; }
+  .tag { display:inline-flex; align-items:center; height:24px; padding:0 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .do, .dont { position:relative; }
+  .verdict { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-top:12px; }
+  .verdict i { width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-style:normal; color:#fff; font-size:11px; }
+  .verdict.ok i { background:var(--gain-l); } .verdict.ok { color:var(--gain-l); }
+  .verdict.no i { background:var(--loss-l); } .verdict.no { color:var(--loss-l); }
+  .dark .verdict.ok { color:var(--gain); } .dark .verdict.no { color:var(--loss); }
+
+  /* Cover */
+  .cover { position:relative; min-height:calc(100vh - 56px); display:flex; align-items:center; background:var(--g-onyx); color:var(--white); overflow:hidden; padding:96px 0; }
+  .cover::before { content:""; position:absolute; inset:0; background:url("patterns/facet-pattern-on-dark.svg") repeat; background-size:120px 140px; mask-image:linear-gradient(180deg,#000 0%,transparent 75%); -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 75%); }
+  .cover .wrap { position:relative; display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; width:100%; }
+  .cover .logo { width:min(420px,80%); }
+  .cover h1 { font-size:64px; line-height:68px; font-weight:700; letter-spacing:-.025em; margin:48px 0 8px; }
+  .cover h1 .ar { display:block; font-size:44px; line-height:64px; font-weight:700; color:var(--gold); margin-top:8px; }
+  .cover p { color:var(--stone); font-size:18px; line-height:28px; max-width:520px; margin:16px 0 0; }
+  .cover .meta { display:flex; gap:24px; margin-top:40px; font-size:13px; color:var(--stone); }
+  .cover .meta b { display:block; color:var(--white); font-weight:600; font-size:14px; }
+  .cover .symbol-hero { justify-self:center; width:min(360px,80%); filter:drop-shadow(0 30px 60px rgba(0,0,0,.5)); }
+
+  /* Brand core */
+  .promise { font-size:56px; line-height:64px; font-weight:700; letter-spacing:-.02em; margin:0; }
+  .promise .ar { display:block; font-size:44px; line-height:64px; color:var(--bronze); margin-top:8px; }
+  .pillar { position:relative; padding:24px; border-radius:16px; background:var(--white); border:1px solid var(--mist); }
+  .pillar .n { font:600 12px/16px var(--latin); color:var(--bronze); letter-spacing:.08em; }
+  .pillar h4 { margin:12px 0 4px; font-size:18px; }
+  .pillar .ar { font-size:15px; color:var(--stone-dark); }
+  .pillar p { margin:8px 0 0; font-size:14px; line-height:20px; color:var(--stone-dark); }
+  .persona { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--mist); border-radius:16px; overflow:hidden; background:var(--white); }
+  .persona div { padding:14px 20px; border-bottom:1px solid var(--mist); font-size:14px; }
+  .persona div:nth-child(odd) { font-weight:600; border-right:1px solid var(--mist); }
+  .persona div:nth-child(even) { color:var(--stone-dark); }
+  .persona .h { background:var(--cream); font-size:12px !important; font-weight:600 !important; letter-spacing:.08em; text-transform:uppercase; color:var(--bronze) !important; }
+  .persona div:nth-last-child(-n+2) { border-bottom:0; }
+
+  /* Logo */
+  .logo-tile { border-radius:16px; display:flex; align-items:center; justify-content:center; padding:48px; min-height:260px; position:relative; overflow:hidden; }
+  .logo-tile img { width:100%; max-width:360px; }
+  .logo-tile .cap { position:absolute; left:16px; bottom:12px; font-size:12px; font-weight:500; }
+  .t-cream { background:var(--cream); border:1px solid var(--mist); } .t-cream .cap { color:var(--stone-dark); }
+  .t-white { background:var(--white); border:1px solid var(--mist); } .t-white .cap { color:var(--stone-dark); }
+  .t-onyx { background:var(--onyx); } .t-onyx .cap { color:var(--stone); }
+  .t-bronze { background:var(--bronze-deep); } .t-bronze .cap { color:#E9D9C4; }
+  .t-sand { background:var(--sand); } .t-sand .cap { color:var(--espresso); }
+  .t-bullion { background:var(--g-bullion); } .t-bullion .cap { color:var(--espresso); }
+  .clear { position:relative; display:inline-block; padding:var(--x); outline:1px dashed var(--bullion); outline-offset:0; background:repeating-linear-gradient(45deg,rgba(200,148,61,.07) 0 6px,transparent 6px 12px); }
+  .clear .inner { background:var(--white); }
+  .clear img { width:var(--w); }
+  .clear .x { position:absolute; width:var(--x); height:var(--x); display:grid; place-items:center; font:600 12px var(--latin); color:var(--bronze); }
+  .clear .x::before { content:""; position:absolute; width:46%; height:46%; background:var(--gold); transform:rotate(45deg); opacity:.85; }
+  .clear .x span { position:relative; color:var(--espresso); font-size:11px; }
+  .clear .x.tl { left:0; top:0; } .clear .x.tr { right:0; top:0; } .clear .x.bl { left:0; bottom:0; } .clear .x.br { right:0; bottom:0; }
+  .minsize { display:flex; align-items:flex-end; gap:40px; flex-wrap:wrap; }
+  .minsize figure { margin:0; }
+  .minsize figcaption { font-size:13px; margin-top:12px; color:var(--stone-dark); }
+  .minsize figcaption b { color:var(--charcoal); display:block; }
+  .misuse { background:var(--white); border:1px solid var(--mist); border-radius:16px; overflow:hidden; }
+  .misuse .stage { height:150px; display:flex; align-items:center; justify-content:center; padding:20px; background:var(--cream); position:relative; overflow:hidden; }
+  .misuse .stage::after { content:""; position:absolute; inset:0; background:linear-gradient(to top right,transparent calc(50% - 1px),rgba(194,54,47,.55) 50%,transparent calc(50% + 1px)); }
+  .misuse img { width:170px; }
+  .misuse p { margin:0; padding:12px 16px; font-size:13px; line-height:18px; color:var(--stone-dark); }
+  .misuse p b { color:var(--loss-l); display:block; font-size:13px; }
+  .anatomy { display:grid; grid-template-columns:1.2fr 1fr; gap:48px; align-items:center; }
+  .anatomy ol { margin:0; padding:0; list-style:none; counter-reset:a; }
+  .anatomy li { counter-increment:a; display:grid; grid-template-columns:32px 1fr; gap:12px; padding:14px 0; border-bottom:1px solid var(--mist); font-size:14px; color:var(--stone-dark); }
+  .anatomy li::before { content:counter(a); width:24px; height:24px; border-radius:50%; background:var(--charcoal); color:var(--spark); display:grid; place-items:center; font-size:12px; font-weight:600; }
+  .anatomy li b { color:var(--charcoal); display:block; font-size:15px; }
+  .sw-inline { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:middle; margin-right:4px; }
+
+  /* Colour */
+  .swatch { border-radius:16px; overflow:hidden; border:1px solid var(--mist); background:var(--white); }
+  .swatch .chip { height:150px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; }
+  .swatch .chip span { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+  .swatch .info { padding:14px 16px 16px; font-size:13px; line-height:20px; color:var(--stone-dark); }
+  .swatch .info b { color:var(--charcoal); font-size:16px; display:block; }
+  .swatch .info .mono { font-size:12px; color:var(--charcoal); }
+  .swatch.big .chip { height:220px; }
+  .mini { border-radius:12px; overflow:hidden; border:1px solid var(--mist); background:var(--white); }
+  .mini .chip { height:72px; }
+  .mini .info { padding:10px 12px; font-size:12px; line-height:16px; color:var(--stone-dark); }
+  .mini .info b { display:block; color:var(--charcoal); font-size:13px; }
+  .ratio { display:flex; height:56px; border-radius:12px; overflow:hidden; border:1px solid var(--mist); }
+  .ratio div { display:flex; align-items:center; padding:0 14px; font-size:12px; font-weight:600; }
+  .pair { border-radius:12px; padding:18px; min-height:112px; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--mist); }
+  .pair .t { font-size:20px; font-weight:700; }
+  .pair .r { font-size:12px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+  .grad { height:160px; border-radius:16px; padding:16px; display:flex; align-items:flex-end; font-size:13px; font-weight:600; }
+
+  /* Type */
+  .specimen { border-radius:16px; padding:40px; background:var(--white); border:1px solid var(--mist); }
+  .specimen .big { font-size:112px; line-height:1; font-weight:700; letter-spacing:-.03em; }
+  .specimen.ar .big { line-height:1.35; margin-top:4px; }
+  .specimen .chars { font-size:22px; line-height:36px; color:var(--stone-dark); margin-top:24px; word-break:break-all; }
+  .specimen .weights { display:flex; gap:24px; margin-top:24px; flex-wrap:wrap; font-size:18px; }
+  .scale-row { display:grid; grid-template-columns:140px 1fr 1fr; gap:24px; align-items:baseline; padding:16px 0; border-bottom:1px solid var(--mist); }
+  .scale-row .lbl { font-size:12px; color:var(--stone-dark); line-height:16px; }
+  .scale-row .lbl b { display:block; color:var(--charcoal); font-size:14px; }
+  .scale-row .ar { text-align:right; direction:rtl; }
+  .fmt { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .fmt .card { padding:20px; }
+  .fmt .k { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--bronze); }
+  .fmt .v { font-size:24px; font-weight:700; margin-top:8px; }
+  .fmt .v.ar { direction:rtl; text-align:right; }
+
+  /* Graphic language */
+  .grid45 { height:280px; border-radius:16px; background:
+      repeating-linear-gradient(45deg,rgba(242,212,107,.10) 0 1px,transparent 1px 28px),
+      repeating-linear-gradient(-45deg,rgba(242,212,107,.10) 0 1px,transparent 1px 28px), var(--charcoal);
+      display:flex; align-items:center; justify-content:center; }
+  .grid45 img { width:150px; }
+  .pattern-tile { height:280px; border-radius:16px; background-size:120px 140px; }
+  .facet { position:relative; background:var(--graphite); color:var(--white); padding:24px; border-radius:16px;
+      clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%); }
+  .facet.light { background:var(--white); color:var(--charcoal); border:0; box-shadow:0 8px 32px rgba(59,42,28,.12); }
+  .gem-i { display:inline-block; width:10px; height:10px; background:var(--g-leaf); transform:rotate(45deg); }
+  .icons { display:grid; grid-template-columns:repeat(8,1fr); gap:12px; }
+  .icons div { aspect-ratio:1; background:var(--graphite); border-radius:12px; display:grid; place-items:center; color:var(--white); }
+  .icons div.on { color:var(--spark); box-shadow:inset 0 0 0 1px rgba(242,212,107,.5); }
+  .icons svg { width:24px; height:24px; }
+
+  /* Phone */
+  .phones { display:flex; gap:48px; justify-content:center; flex-wrap:wrap; }
+  .phone { width:300px; height:624px; border-radius:46px; background:#0b0b0a; padding:10px; box-shadow:0 0 0 1px #3a3a37, 0 40px 80px rgba(0,0,0,.55); flex:none; }
+  .screen { width:100%; height:100%; border-radius:37px; background:var(--onyx); overflow:hidden; position:relative; color:var(--white); font-size:12px; display:flex; flex-direction:column; }
+  .status { height:34px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-size:11px; font-weight:600; color:var(--white); flex:none; }
+  .status .isl { width:76px; height:20px; background:#000; border-radius:12px; }
+  .apphead { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 12px; }
+  .apphead .hi { font-size:11px; color:var(--stone); }
+  .apphead .name { font-size:15px; font-weight:700; }
+  .iconbtn { width:34px; height:34px; border-radius:10px; background:var(--graphite); display:grid; place-items:center; color:var(--white); }
+  .iconbtn svg { width:18px; height:18px; }
+  .pcard { margin:0 12px; background:var(--charcoal); border-radius:16px; padding:14px; box-shadow:0 1px 0 rgba(255,255,255,.05) inset; }
+  .pcard .lbl { font-size:11px; color:var(--stone); display:flex; justify-content:space-between; }
+  .pcard .val { font-size:26px; line-height:32px; font-weight:700; margin-top:4px; letter-spacing:-.01em; }
+  .pcard .val small { font-size:13px; font-weight:600; color:var(--stone); margin-inline-start:4px; }
+  .chg { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .chg.up { color:var(--gain); background:rgba(61,190,132,.14); }
+  .chg.down { color:var(--loss); background:rgba(240,96,93,.14); }
+  .seg { display:flex; background:var(--graphite); border-radius:999px; padding:3px; margin-top:12px; }
+  .seg span { flex:1; text-align:center; font-size:10.5px; font-weight:600; padding:5px 0; border-radius:999px; color:var(--stone); }
+  .seg span.on { background:var(--spark); color:var(--ink); }
+  .chart { margin-top:8px; }
+  .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:12px; }
+  .actions div { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:10.5px; color:var(--stone); }
+  .actions .ic { width:44px; height:44px; border-radius:12px; background:var(--graphite); display:grid; place-items:center; color:var(--gold); }
+  .actions .ic svg { width:20px; height:20px; }
+  .holding { margin:0 12px; background:var(--graphite); border-radius:16px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
+  .holding .mini-bar { width:30px; height:42px; }
+  .holding .t { flex:1; } .holding .t b { display:block; font-size:12.5px; } .holding .t span { font-size:10.5px; color:var(--stone); }
+  .holding .p { text-align:end; font-weight:700; font-size:12.5px; }
+  .tabbar { margin-top:auto; height:64px; background:var(--charcoal); display:grid; grid-template-columns:repeat(5,1fr); align-items:center; position:relative; border-top:1px solid #262624; flex:none; }
+  .tabbar div { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9.5px; color:var(--stone); }
+  .tabbar div.on { color:var(--spark); }
+  .tabbar svg { width:18px; height:18px; }
+  .fab { width:52px; height:52px; border-radius:50%; background:var(--spark); display:grid; place-items:center; margin-top:-30px; box-shadow:0 0 0 5px var(--onyx), 0 0 0 10px rgba(242,212,107,.12), 0 8px 24px rgba(242,212,107,.3); }
+  .fab i { width:16px; height:16px; background:var(--ink); transform:rotate(45deg); display:block; }
+  .browse { padding:0 12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .pc { background:var(--charcoal); border-radius:14px; padding:8px; position:relative; }
+  .pc .img { aspect-ratio:1; border-radius:10px; background:radial-gradient(80% 70% at 50% 35%,#4a4033 0%,#262521 75%); display:grid; place-items:center; position:relative; }
+  .pc .wt { z-index:1; position:absolute; top:6px; inset-inline-end:6px; background:var(--info); color:#fff; font-size:9px; font-weight:600; border-radius:999px; padding:2px 7px; }
+  .pc .nm { font-size:11px; font-weight:600; margin-top:8px; }
+  .pc .pu { font-size:9.5px; color:var(--stone); }
+  .pc .row { display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
+  .pc .pr { font-size:12px; font-weight:700; }
+  .pc .go { width:24px; height:24px; border-radius:50%; background:rgba(242,212,107,.16); color:var(--spark); display:grid; place-items:center; }
+  .pc .go svg { width:12px; height:12px; }
+  .filters { display:flex; gap:6px; padding:0 12px 10px; }
+  .filters span { height:26px; display:inline-flex; align-items:center; padding:0 10px; border-radius:8px; background:var(--graphite); font-size:10.5px; color:var(--stone); }
+  .filters span.on { color:var(--spark); box-shadow:inset 0 0 0 1px var(--spark); }
+  .illus { position:absolute; bottom:72px; inset-inline-start:12px; font-size:8.5px; color:var(--stone); opacity:.8; }
+
+  /* Gold bar (CSS illustration) */
+  .bar { width:58%; aspect-ratio:.62; border-radius:6px; background:var(--g-leaf); position:relative; box-shadow:0 10px 20px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.35), inset 0 -6px 12px rgba(98,66,42,.35);
+         display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(59,42,28,.78); font:700 9px/1.25 var(--latin); text-align:center; letter-spacing:.06em; }
+  .bar::before { content:""; position:absolute; inset:7%; border:1px solid rgba(98,66,42,.35); border-radius:4px; }
+  .bar b { font-size:15px; letter-spacing:0; }
+  .bar.lg { width:120px; font-size:11px; } .bar.lg b { font-size:26px; }
+
+  /* Components sheet */
+  .btn { height:48px; padding:0 22px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:8px; font:600 15px var(--latin); border:0; cursor:pointer; }
+  .btn.p-dark { background:var(--spark); color:var(--ink); }
+  .btn.p-light { background:var(--charcoal); color:var(--spark); }
+  .btn.sec-dark { background:transparent; color:var(--white); box-shadow:inset 0 0 0 1px var(--slate); }
+  .btn.dis { background:var(--slate); color:var(--stone); }
+  #ui .card { background:var(--onyx); border-color:var(--slate); }
+  .comp-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .input { height:48px; border-radius:8px; background:var(--graphite); box-shadow:inset 0 0 0 1px var(--slate); display:flex; align-items:center; padding:0 14px; color:var(--stone); font-size:14px; width:100%; }
+  .input.focus { box-shadow:inset 0 0 0 1px var(--slate), 0 0 0 2px var(--spark); color:var(--white); }
+
+  /* Layout templates */
+  .templates { display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
+  .tpl { flex:none; }
+  .tpl figcaption { margin-top:12px; font-size:13px; color:var(--stone-dark); }
+  .tpl figcaption b { display:block; color:var(--charcoal); }
+  .appstore { width:240px; height:520px; border-radius:18px; background:var(--g-bullion); position:relative; overflow:hidden; box-shadow:0 20px 40px rgba(59,42,28,.25); }
+  .appstore::before { content:""; position:absolute; inset:0 0 40% 0; background:url("patterns/facet-pattern-on-gold.svg"); background-size:60px 70px; }
+  .appstore .lg { position:absolute; top:22px; left:22px; width:62px; }
+  .appstore .mini-phone { position:absolute; left:50%; top:108px; width:132px; height:262px; margin-left:-66px; border-radius:24px; background:#0b0b0a; padding:5px; transform:rotate(-8deg); box-shadow:0 24px 40px rgba(0,0,0,.45); }
+  .appstore .mini-phone > div { width:100%; height:100%; border-radius:20px; background:var(--onyx); padding:20px 10px; display:flex; flex-direction:column; gap:8px; }
+  .mp-card { background:var(--charcoal); border-radius:10px; padding:8px; }
+  .mp-card .l { height:5px; width:50%; background:var(--slate); border-radius:3px; }
+  .mp-card .v { height:10px; width:70%; background:var(--white); border-radius:3px; margin-top:6px; }
+  .appstore .hl { position:absolute; left:0; right:0; bottom:30px; text-align:center; color:var(--espresso); font:700 26px/40px var(--arabic); direction:rtl; }
+  .social { width:300px; height:375px; border-radius:14px; background:var(--g-onyx); position:relative; overflow:hidden; color:var(--white); padding:28px 26px; direction:rtl; box-shadow:0 20px 40px rgba(0,0,0,.25); }
+  .social .sym { position:absolute; top:24px; right:26px; width:26px; }
+  .social .hero { position:absolute; left:26px; top:30px; }
+  .social .hero .bar { width:70px; }
+  .social .txt { position:absolute; right:26px; bottom:70px; left:26px; }
+  .social h4 { font:700 30px/44px var(--arabic); }
+  .social p { margin:2px 0 14px; font:400 13px/22px var(--arabic); color:var(--stone); }
+  .social .cta { display:inline-flex; height:34px; padding:0 16px; border-radius:10px; background:var(--spark); color:var(--ink); align-items:center; font:600 13px var(--arabic); }
+  .social .disc { position:absolute; bottom:16px; right:26px; left:26px; font:400 8.5px/13px var(--arabic); color:var(--stone); }
+  .story { width:211px; height:375px; border-radius:14px; background:var(--g-bullion); position:relative; overflow:hidden; direction:rtl; box-shadow:0 20px 40px rgba(59,42,28,.25); }
+  .story .lg { position:absolute; top:28px; left:50%; width:58px; margin-left:-29px; }
+  .story .gift { position:absolute; top:112px; left:50%; width:130px; margin-left:-65px; background:var(--cream); color:var(--espresso); padding:16px 14px; border-radius:10px; clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%); box-shadow:0 14px 30px rgba(59,42,28,.3); text-align:center; }
+  .story .gift .gem-i { width:14px; height:14px; margin:4px auto 10px; display:block; }
+  .story .gift b { font:700 22px/28px var(--latin); display:block; }
+  .story .gift span { font:500 10px/16px var(--arabic); color:var(--stone-dark); }
+  .story .hl { position:absolute; bottom:56px; left:16px; right:16px; text-align:center; font:700 20px/32px var(--arabic); color:var(--espresso); }
+  .email { width:300px; background:var(--cream); border-radius:14px; padding:18px; border:1px solid var(--mist); }
+  .email .card { padding:20px; border-radius:12px; }
+  .email .card img { width:96px; }
+  .email h4 { margin:18px 0 6px; font-size:18px; line-height:24px; }
+  .email p { font-size:12.5px; line-height:19px; color:var(--stone-dark); margin:0 0 14px; }
+  .email .btn { height:38px; font-size:13px; padding:0 16px; border-radius:10px; }
+  .email .foot { font-size:9px; line-height:13px; color:var(--stone-dark); margin-top:12px; }
+  .bizcards { display:flex; flex-direction:column; gap:16px; }
+  .biz { width:270px; height:175px; border-radius:10px; position:relative; overflow:hidden; box-shadow:0 14px 30px rgba(59,42,28,.18); }
+  .biz.front { background:var(--g-onyx); display:grid; place-items:center; }
+  .biz.front img { width:92px; }
+  .biz.back { background:var(--cream); padding:22px; border:1px solid var(--mist); }
+  .biz.back b { font-size:15px; display:block; }
+  .biz.back .r { font-size:11px; color:var(--bronze); font-weight:600; }
+  .biz.back .c { margin-top:26px; font-size:10.5px; line-height:17px; color:var(--stone-dark); }
+  .biz.back img { position:absolute; right:18px; bottom:18px; width:34px; opacity:.9; }
+
+  /* Voice */
+  .vs { display:grid; grid-template-columns:1fr 1fr; gap:0; border-radius:16px; overflow:hidden; border:1px solid var(--mist); background:var(--white); }
+  .vs > div { padding:18px 22px; border-bottom:1px solid var(--mist); font-size:15px; line-height:22px; }
+  .vs > div:nth-child(odd) { border-right:1px solid var(--mist); }
+  .vs .h { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--cream); }
+  .vs .h.ok { color:var(--gain-l); } .vs .h.no { color:var(--loss-l); }
+  .vs .no-t { color:var(--stone-dark); text-decoration:line-through; text-decoration-color:rgba(194,54,47,.5); }
+  .vs > div:nth-last-child(-n+2) { border-bottom:0; }
+  .lines { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .line { background:var(--charcoal); color:var(--white); border-radius:16px; padding:24px; min-height:150px; display:flex; flex-direction:column; justify-content:space-between; }
+  .line .ar { font-size:24px; line-height:36px; font-weight:700; color:var(--spark); direction:rtl; text-align:right; }
+  .line .en { font-size:15px; color:var(--stone); margin-top:12px; }
+  .tones { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .tones .card { padding:20px; }
+  .tones .k { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--bronze); }
+  .tones p { margin:10px 0 0; font-size:14px; line-height:21px; }
+
+  /* Claims */
+  .claims { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .claims .card { padding:0; overflow:hidden; background:var(--graphite); border-color:var(--slate); }
+  .claims .top { padding:18px 20px; display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; }
+  .claims .dot { width:10px; height:10px; border-radius:50%; }
+  .claims ul { margin:0; padding:4px 20px 20px; list-style:none; }
+  .claims li { padding:9px 0; border-top:1px solid var(--slate); font-size:13.5px; line-height:19px; color:#D9D5CC; }
+  .disc-box { margin-top:24px; border-radius:16px; padding:24px; background:var(--charcoal); border:1px solid var(--slate); display:grid; grid-template-columns:1fr 1fr; gap:32px; font-size:14px; line-height:22px; color:#D9D5CC; }
+  .disc-box .ar { direction:rtl; text-align:right; font-size:15px; line-height:26px; }
+
+  /* Checklist */
+  .check { columns:2; column-gap:48px; margin:0; padding:0; list-style:none; }
+  .check li { break-inside:avoid; padding:12px 0 12px 32px; border-bottom:1px solid var(--mist); position:relative; font-size:14px; line-height:21px; }
+  .check li::before { content:""; position:absolute; left:4px; top:15px; width:14px; height:14px; border-radius:4px; box-shadow:inset 0 0 0 1.5px var(--bronze); }
+
+  footer { background:var(--onyx); color:var(--stone); padding:48px 0; font-size:13px; }
+  footer .wrap { display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; }
+  footer img { height:32px; width:auto; }
+
+  @media (max-width:1000px) {
+    .g4,.g5 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .g3,.lines,.claims,.tones,.fmt { grid-template-columns:repeat(2,1fr); }
+    .cover .wrap,.anatomy { grid-template-columns:1fr; }
+    .icons { grid-template-columns:repeat(4,1fr); }
+  }
+  @media (max-width:640px) {
+    section { padding:64px 0; }
+    .wrap { padding:0 16px; }
+    h2 { font-size:30px; line-height:38px; }
+    .promise { font-size:38px; line-height:46px; } .promise .ar { font-size:30px; line-height:46px; }
+    .cover h1 { font-size:44px; line-height:50px; }
+    .g2,.g3,.g4,.lines,.claims,.tones,.fmt,.disc-box { grid-template-columns:1fr; }
+    .g5 { grid-template-columns:repeat(2,1fr); }
+    .scale-row { grid-template-columns:1fr; gap:4px; }
+    .scale-row .ar { text-align:left; direction:rtl; }
+    .check { columns:1; }
+    .vs { grid-template-columns:1fr; } .vs > div:nth-child(odd) { border-right:0; }
+    .specimen .big { font-size:72px; }
+    .clear { --w:240px !important; --x:20px !important; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
+  @media print {
+    .nav { display:none; }
+    section, .cover { break-before:page; min-height:2030px; }
+    #checklist { min-height:auto; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1 11H5L4 9Z"/><path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16Z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H7"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8.5h14V12"/><path d="M12 8v12.5"/><path d="M12 8c-1.5-3.5-5.5-4-5.5-1.5S10 8 12 8Zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 8 12 8Z"/></symbol>
+    <symbol id="i-sell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="m6 11 6-6 6 6"/></symbol>
+    <symbol id="i-buy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15"/><path d="m6 13 6 6 6-6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 1 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M8 12h8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M16 12.5h4.5"/><path d="M6 6l9-2.5L16 6"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav" aria-label="Sections">
+  <div class="wrap">
+    <img src="logo/goldcom-logo-horizontal-reversed.svg" alt="Goldcom">
+    <ul>
+      <li><a href="#core">Brand</a></li>
+      <li><a href="#logo">Logo</a></li>
+      <li><a href="#colour">Colour</a></li>
+      <li><a href="#type">Type</a></li>
+      <li><a href="#graphics">Graphics</a></li>
+      <li><a href="#ui">UI</a></li>
+      <li><a href="#imagery">Imagery</a></li>
+      <li><a href="#layouts">Layouts</a></li>
+      <li><a href="#voice">Voice</a></li>
+      <li><a href="#claims">Claims</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- COVER -->
+<header class="cover">
+  <div class="wrap">
+    <div>
+      <img class="logo" src="logo/goldcom-logo-horizontal-reversed.svg" alt="Goldcom">
+      <h1>Brand Guidelines<span class="ar" lang="ar" dir="rtl">دليل الهوية البصرية</span></h1>
+      <p>The visual identity, voice and rules that keep every Goldcom touchpoint consistent, whether it is made by a designer, a developer or an AI agent.</p>
+      <div class="meta">
+        <div><b>Version 1.0</b>23 Oct 2026</div>
+        <div><b>Market</b>Sultanate of Oman</div>
+        <div><b>Languages</b>العربية · English</div>
+      </div>
+    </div>
+    <img class="symbol-hero" src="logo/goldcom-symbol.svg" alt="">
+  </div>
+</header>
+
+<!-- 01 CORE -->
+<section id="core">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>01 · Brand core</p>
+      <p class="promise">Real gold. In your hands, from your phone.<span class="ar" lang="ar" dir="rtl">ذهب حقيقي، بين يديك من جوالك.</span></p>
+      <p class="lead">Goldcom is an Omani platform for owning real, physical gold from your phone. Start from one gram, see live indicative prices, then hold, track, gift, sell or collect, in Arabic or English.</p>
+    </div>
+
+    <div class="grid g5">
+      <div class="pillar"><div class="n">01</div><h4>Real gold</h4><div class="ar" lang="ar">ذهب حقيقي</div><p>Physical, certified bars and coins, not a number on a screen.</p></div>
+      <div class="pillar"><div class="n">02</div><h4>Accessible</h4><div class="ar" lang="ar">في متناول الجميع</div><p>Start from one gram, in your language, on your phone.</p></div>
+      <div class="pillar"><div class="n">03</div><h4>Clear</h4><div class="ar" lang="ar">وضوح تام</div><p>Live indicative prices. Fees shown before you pay.</p></div>
+      <div class="pillar"><div class="n">04</div><h4>Trusted &amp; local</h4><div class="ar" lang="ar">ثقة محلية</div><p>Omani platform. Sharia advisory by Eltizam. Secure accounts.</p></div>
+      <div class="pillar"><div class="n">05</div><h4>Meaningful</h4><div class="ar" lang="ar">قيمة تدوم</div><p>Gold as a gift and a family tradition, made simple.</p></div>
+    </div>
+
+    <div class="block grid g2" style="align-items:start">
+      <div>
+        <h3>Personality</h3>
+        <p class="sub" style="margin:8px 0 24px">We sound like a knowledgeable Omani friend who works in gold: precise about numbers, calm about markets, warm about family occasions.</p>
+        <div class="persona">
+          <div class="h">We are</div><div class="h">We are not</div>
+          <div>Trustworthy</div><div>Hype-driven, "get rich"</div>
+          <div>Calm</div><div>Anxious, urgent, pushy</div>
+          <div>Clear</div><div>Jargon-heavy, vague</div>
+          <div>Warm</div><div>Cold, purely transactional</div>
+          <div>Local</div><div>Generic, Western-default</div>
+          <div>Modern</div><div>Old jewellery-shop clichés</div>
+        </div>
+      </div>
+      <div>
+        <h3>Who we speak to</h3>
+        <p class="sub" style="margin:8px 0 24px">Four audiences. Pick one per piece of communication.</p>
+        <div class="grid g2" style="gap:16px">
+          <div class="card"><h4>First-gram saver</h4><p class="sub" style="margin:6px 0 0">"You can start small and own real gold."</p></div>
+          <div class="card"><h4>Self-directed buyer</h4><p class="sub" style="margin:6px 0 0">"Transparent live prices and clear exit options."</p></div>
+          <div class="card"><h4>Family gifter</h4><p class="sub" style="margin:6px 0 0">"A meaningful gift, sent in seconds."</p></div>
+          <div class="card"><h4>Gift recipient</h4><p class="sub" style="margin:6px 0 0">"This is real gold, and it's yours."</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 LOGO -->
+<section id="logo" class="white">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>02 · Logo</p>
+      <h2>The bilingual lockup<span class="ar" lang="ar" dir="rtl">الشعار ثنائي اللغة</span></h2>
+      <p class="lead">An Arabic and Latin wordmark paired with an angular, gem-like "G" drawn entirely on a 45° grid. Always use the master files in <code>brand/logo/</code>. Never redraw or retype it.</p>
+    </div>
+
+    <div class="anatomy">
+      <div class="logo-tile t-cream" style="min-height:340px"><img src="logo/goldcom-logo-horizontal.svg" alt="Goldcom primary logo" style="max-width:520px"></div>
+      <ol>
+        <li><div><b>Arabic wordmark · جولدكم</b>Sits above the Latin. Arabic first, as the brand is.</div></li>
+        <li><div><b>Latin wordmark · Goldcom</b>"Gold" bold, "com" light. The contrast is part of the mark.</div></li>
+        <li><div><b>Roof facet</b><span class="sw-inline" style="background:var(--amber)"></span>Amber #CD864B: protection and custody.</div></li>
+        <li><div><b>G facet</b><span class="sw-inline" style="background:var(--gold)"></span>Gold #DBA761: Goldcom, folded like a bar.</div></li>
+        <li><div><b>The gem</b>Detached diamond: the customer's own gold, held safely. It also defines the unit X.</div></li>
+      </ol>
+    </div>
+
+    <div class="block">
+      <h3>Versions and backgrounds</h3>
+      <p class="sub">Choose the version by background. Two-tone on neutrals, mono on gold.</p>
+      <div class="grid g3">
+        <div class="logo-tile t-white"><img src="logo/goldcom-logo-horizontal.svg" alt=""><span class="cap">Primary · White / Cream</span></div>
+        <div class="logo-tile t-onyx"><img src="logo/goldcom-logo-horizontal-reversed.svg" alt=""><span class="cap">Reversed · Onyx / Charcoal</span></div>
+        <div class="logo-tile t-bronze"><img src="logo/goldcom-logo-horizontal-mono-white.svg" alt=""><span class="cap">Mono white · Bronze Deep / photos</span></div>
+        <div class="logo-tile t-sand"><img src="logo/goldcom-logo-horizontal-mono-black.svg" alt=""><span class="cap">Mono black · Sand / Spark</span></div>
+        <div class="logo-tile t-cream"><img src="logo/goldcom-logo-stacked.svg" alt="" style="max-width:170px"><span class="cap">Stacked · narrow spaces</span></div>
+        <div class="logo-tile t-onyx" style="gap:32px">
+          <img src="logo/goldcom-symbol.svg" alt="" style="width:88px">
+          <img src="logo/goldcom-app-icon.svg" alt="" style="width:110px;border-radius:26px;box-shadow:0 0 0 1px var(--slate)">
+          <span class="cap">Symbol · App icon</span></div>
+      </div>
+    </div>
+
+    <div class="block grid g2" style="align-items:center">
+      <div>
+        <h3>Clear space</h3>
+        <p class="sub" style="margin:8px 0 24px">X = the width of the detached gem. Keep at least 1X empty on every side. The gap between wordmark and symbol is fixed.</p>
+        <div class="clear" style="--w:440px; --x:37px;">
+          <div class="inner"><img src="logo/goldcom-logo-horizontal.svg" alt=""></div>
+          <div class="x tl"><span>X</span></div><div class="x tr"><span>X</span></div><div class="x bl"><span>X</span></div><div class="x br"><span>X</span></div>
+        </div>
+      </div>
+      <div>
+        <h3>Minimum size</h3>
+        <p class="sub" style="margin:8px 0 24px">Below the horizontal minimum, switch to the symbol.</p>
+        <div class="minsize">
+          <figure><img src="logo/goldcom-logo-horizontal.svg" alt="" style="width:120px"><figcaption><b>Horizontal</b>120 px · 30 mm</figcaption></figure>
+          <figure><img src="logo/goldcom-logo-stacked.svg" alt="" style="width:72px"><figcaption><b>Stacked</b>72 px · 18 mm</figcaption></figure>
+          <figure><img src="logo/goldcom-symbol.svg" alt="" style="height:20px;width:auto"><figcaption><b>Symbol</b>20 px · 6 mm</figcaption></figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Never do this</h3>
+      <p class="sub">Any modification breaks recognition and trust. The logo is never mirrored for RTL layouts.</p>
+      <div class="grid g4">
+        <div class="misuse"><div class="stage"><img src="logo/goldcom-logo-horizontal.svg" alt="" style="transform:scaleX(1.35)"></div><p><b>Stretch or squash</b>Keep the original proportions.</p></div>
+        <div class="misuse"><div class="stage"><img src="logo/goldcom-logo-horizontal.svg" alt="" style="transform:rotate(-14deg)"></div><p><b>Rotate or tilt</b>Always horizontal.</p></div>
+        <div class="misuse"><div class="stage"><img src="logo/goldcom-logo-horizontal.svg" alt="" style="filter:hue-rotate(170deg) saturate(1.8)"></div><p><b>Recolour</b>Only Amber and Gold facets.</p></div>
+        <div class="misuse"><div class="stage"><img src="logo/goldcom-logo-horizontal.svg" alt="" style="filter:drop-shadow(4px 6px 3px rgba(0,0,0,.55)) drop-shadow(0 0 10px #F2D46B)"></div><p><b>Add effects</b>No shadows, glows, bevels or foil in digital.</p></div>
+        <div class="misuse"><div class="stage"><img src="logo/goldcom-logo-horizontal.svg" alt="" style="transform:scaleX(-1)"></div><p><b>Mirror for RTL</b>The logo never flips.</p></div>
+        <div class="misuse"><div class="stage" style="background:var(--g-bullion)"><img src="logo/goldcom-logo-horizontal.svg" alt=""></div><p><b>Low-contrast gold</b>Use mono black or white on gold.</p></div>
+        <div class="misuse"><div class="stage"><div style="display:flex;align-items:center;gap:10px"><span style="font:700 34px var(--latin);letter-spacing:-.02em">GoldCom</span><img src="logo/goldcom-symbol.svg" alt="" style="width:34px"></div></div><p><b>Retype the wordmark</b>Never rebuild it with a font.</p></div>
+        <div class="misuse"><div class="stage">
+          <svg viewBox="0 0 427 540" style="height:96px"><path fill="#DBA761" d="M0 213.5L213.5 0L427 213.5L335 213.5L213.5 92L92 213.5Z"/><path fill="#CD864B" d="M0 213.5L92 213.5L213.5 335L249.5 299L167.5 217L213.5 171L341 298.5L213.5 426Z"/><path fill="#CD864B" d="M213.5 455L270.5 512L213.5 569L156.5 512Z" transform="translate(40 -40)"/></svg>
+        </div><p><b>Swap facets or move the gem</b>Geometry is fixed.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 COLOUR -->
+<section id="colour">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>03 · Colour</p>
+      <h2>Warm gold on deep onyx<span class="ar" lang="ar" dir="rtl">ذهب دافئ على أسود عميق</span></h2>
+      <p class="lead">Two logo golds give the brand its identity, Spark gives it action, and Onyx and Cream give it calm. Gold is a highlight, not a flood.</p>
+    </div>
+
+    <h3>Core palette</h3>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="swatch big"><div class="chip" style="background:var(--amber);color:var(--ink)"><span>Logo · roof</span></div><div class="info"><b>Amber</b><span class="mono">#CD864B</span> · RGB 205 134 75<br>Identity accent. Never body text.</div></div>
+      <div class="swatch big"><div class="chip" style="background:var(--gold);color:var(--ink)"><span>Logo · G &amp; gem</span></div><div class="info"><b>Gold</b><span class="mono">#DBA761</span> · RGB 219 167 97<br>Highlights on dark, chart lines.</div></div>
+      <div class="swatch big"><div class="chip" style="background:var(--spark);color:var(--ink)"><span>Action</span></div><div class="info"><b>Spark</b><span class="mono">#F2D46B</span> · RGB 242 212 107<br>Main action on dark. ≤ 5% of a screen. Ink text.</div></div>
+      <div class="swatch big"><div class="chip" style="background:var(--onyx);color:var(--stone)"><span>App background</span></div><div class="info"><b>Onyx</b><span class="mono">#151513</span> · RGB 21 21 19<br>The product's canvas.</div></div>
+      <div class="swatch big"><div class="chip" style="background:var(--ink);color:var(--stone)"><span>Logo · wordmark</span></div><div class="info"><b>Ink</b><span class="mono">#000000</span> · RGB 0 0 0<br>Wordmark, text on Spark.</div></div>
+      <div class="swatch big"><div class="chip" style="background:var(--cream);color:var(--bronze);box-shadow:inset 0 -1px 0 var(--mist)"><span>Light canvas</span></div><div class="info"><b>Cream</b><span class="mono">#FFF8EA</span> · RGB 255 248 234<br>Web, print, email backgrounds.</div></div>
+    </div>
+
+    <div class="block">
+      <h3>Extended palette</h3>
+      <p class="sub">Gold family for depth, neutrals for structure, semantic colours for function only.</p>
+      <div class="grid g5" style="gap:12px">
+        <div class="mini"><div class="chip" style="background:#3B2A1C"></div><div class="info"><b>Espresso</b>#3B2A1C · headlines on Sand</div></div>
+        <div class="mini"><div class="chip" style="background:#62422A"></div><div class="info"><b>Bronze Deep</b>#62422A · gradient start</div></div>
+        <div class="mini"><div class="chip" style="background:#8A5A2B"></div><div class="info"><b>Bronze</b>#8A5A2B · text and links on light</div></div>
+        <div class="mini"><div class="chip" style="background:#C8943D"></div><div class="info"><b>Bullion</b>#C8943D · web accent, rules</div></div>
+        <div class="mini"><div class="chip" style="background:#E8CC73"></div><div class="info"><b>Sand</b>#E8CC73 · gradient end</div></div>
+        <div class="mini"><div class="chip" style="background:#1D1D1F"></div><div class="info"><b>Charcoal</b>#1D1D1F · surfaces, text on light</div></div>
+        <div class="mini"><div class="chip" style="background:#2D2E2B"></div><div class="info"><b>Graphite</b>#2D2E2B · cards on dark</div></div>
+        <div class="mini"><div class="chip" style="background:#3D3E3A"></div><div class="info"><b>Slate</b>#3D3E3A · borders on dark</div></div>
+        <div class="mini"><div class="chip" style="background:#9A968C"></div><div class="info"><b>Stone</b>#9A968C · secondary text, dark</div></div>
+        <div class="mini"><div class="chip" style="background:#6B675F"></div><div class="info"><b>Stone Dark</b>#6B675F · secondary text, light</div></div>
+        <div class="mini"><div class="chip" style="background:#E9E1CF"></div><div class="info"><b>Mist</b>#E9E1CF · borders on light</div></div>
+        <div class="mini"><div class="chip" style="background:#FFFFFF;box-shadow:inset 0 -1px 0 var(--mist)"></div><div class="info"><b>White</b>#FFFFFF · text on dark, cards</div></div>
+        <div class="mini"><div class="chip" style="background:linear-gradient(90deg,#3DBE84 50%,#1E7F52 50%)"></div><div class="info"><b>Gain</b>#3DBE84 dark · #1E7F52 light</div></div>
+        <div class="mini"><div class="chip" style="background:linear-gradient(90deg,#F0605D 50%,#C2362F 50%)"></div><div class="info"><b>Loss</b>#F0605D dark · #C2362F light</div></div>
+        <div class="mini"><div class="chip" style="background:#3AA8E8"></div><div class="info"><b>Info</b>#3AA8E8 · tags only</div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Gradients</h3>
+      <p class="sub">Bullion always runs dark at the top to light at the bottom. Gold Leaf is for small accents only, never text blocks or the logo.</p>
+      <div class="grid g3">
+        <div class="grad" style="background:var(--g-bullion);color:var(--espresso)">Bullion · signature campaign background</div>
+        <div class="grad" style="background:var(--g-leaf);color:var(--espresso)">Gold Leaf · badges, gems, card edges</div>
+        <div class="grad" style="background:var(--g-onyx);color:var(--stone)">Onyx Glow · dark hero and app</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Proportions</h3>
+      <p class="sub">How much of each colour, by context.</p>
+      <div style="display:grid;gap:12px">
+        <div><div class="sub" style="margin-bottom:6px">Product UI (dark)</div><div class="ratio"><div style="flex:70;background:var(--onyx);color:var(--stone)">Onyx · Charcoal · Graphite 70%</div><div style="flex:20;background:#fff;color:var(--charcoal)">Text 20%</div><div style="flex:5;background:var(--gold)"></div><div style="flex:5;background:var(--spark);color:var(--ink)">5%</div></div></div>
+        <div><div class="sub" style="margin-bottom:6px">Campaign creative</div><div class="ratio"><div style="flex:60;background:var(--g-bullion);color:#fff">Bullion gradient 60%</div><div style="flex:30;background:var(--onyx);color:var(--stone)">Device 30%</div><div style="flex:10;background:var(--espresso);color:var(--sand)">Type</div></div></div>
+        <div><div class="sub" style="margin-bottom:6px">Web, print, email (light)</div><div class="ratio"><div style="flex:70;background:var(--cream);color:var(--stone-dark)">Cream · White 70%</div><div style="flex:20;background:var(--charcoal);color:#fff">Charcoal 20%</div><div style="flex:10;background:var(--bronze);color:#fff">Accent</div></div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Contrast pairings</h3>
+      <p class="sub">WCAG 2.1 contrast. Only pairings marked as passing may carry text.</p>
+      <div class="grid g4" style="gap:12px">
+        <div class="pair" style="background:var(--onyx);color:var(--spark)"><span class="t">Aa Spark</span><span class="r"><span>on Onyx</span><span>12.5 ✓</span></span></div>
+        <div class="pair" style="background:var(--spark);color:var(--ink)"><span class="t">Aa Ink</span><span class="r"><span>on Spark</span><span>14.4 ✓</span></span></div>
+        <div class="pair" style="background:var(--onyx);color:var(--gold)"><span class="t">Aa Gold</span><span class="r"><span>on Onyx</span><span>8.5 ✓</span></span></div>
+        <div class="pair" style="background:var(--graphite);color:var(--stone)"><span class="t">Aa Stone</span><span class="r"><span>on Graphite</span><span>4.6 ✓</span></span></div>
+        <div class="pair" style="background:var(--cream);color:var(--charcoal)"><span class="t">Aa Charcoal</span><span class="r"><span>on Cream</span><span>15.9 ✓</span></span></div>
+        <div class="pair" style="background:var(--cream);color:var(--bronze)"><span class="t">Aa Bronze</span><span class="r"><span>on Cream</span><span>5.6 ✓</span></span></div>
+        <div class="pair" style="background:var(--sand);color:var(--espresso)"><span class="t">Aa Espresso</span><span class="r"><span>on Sand</span><span>8.7 ✓</span></span></div>
+        <div class="pair" style="background:var(--bronze-deep);color:#fff"><span class="t">Aa White</span><span class="r"><span>on Bronze Deep</span><span>9.0 ✓</span></span></div>
+        <div class="pair" style="background:var(--cream);color:var(--bullion)"><span class="t">Aa Bullion</span><span class="r" style="color:var(--loss-l)"><span>on Cream</span><span>2.6 ✕ never</span></span></div>
+        <div class="pair" style="background:#fff;color:var(--gold)"><span class="t">Aa Gold</span><span class="r" style="color:var(--loss-l)"><span>on White</span><span>2.2 ✕ never</span></span></div>
+        <div class="pair" style="background:var(--amber);color:#fff"><span class="t">Aa White</span><span class="r"><span>on Amber</span><span>2.9 ✕ never</span></span></div>
+        <div class="pair" style="background:var(--cream);color:var(--spark)"><span class="t">Aa Spark</span><span class="r" style="color:var(--loss-l)"><span>on Cream</span><span>1.3 ✕ never</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 TYPE -->
+<section id="type" class="white">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>04 · Typography</p>
+      <h2>Clean, bilingual, exact<span class="ar" lang="ar" dir="rtl">خطوط واضحة بلغتين</span></h2>
+      <p class="lead">Inter for Latin and IBM Plex Sans Arabic for Arabic. Both are free, open and highly legible. The logo carries the character, and the type stays out of its way.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="specimen">
+        <div class="sub">Latin · Inter</div>
+        <div class="big">Aa</div>
+        <div class="chars">ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 OMR %</div>
+        <div class="weights"><span style="font-weight:400">Regular</span><span style="font-weight:500">Medium</span><span style="font-weight:600">SemiBold</span><span style="font-weight:700">Bold</span></div>
+      </div>
+      <div class="specimen ar" dir="rtl" lang="ar">
+        <div class="sub">العربية · IBM Plex Sans Arabic</div>
+        <div class="big" style="letter-spacing:0">أب</div>
+        <div class="chars" style="word-break:normal">ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي · ذهب حقيقي من جوالك</div>
+        <div class="weights"><span style="font-weight:400">عادي</span><span style="font-weight:500">متوسط</span><span style="font-weight:600">شبه عريض</span><span style="font-weight:700">عريض</span></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Type scale</h3>
+      <p class="sub">Latin size/line-height in px. Arabic uses the same size with roughly 15% taller line-height.</p>
+      <div>
+        <div class="scale-row"><div class="lbl"><b>Display</b>56/64 · 700</div><div style="font:700 56px/64px var(--latin);letter-spacing:-.02em">Real gold</div><div class="ar" lang="ar" style="font-weight:700;font-size:56px;line-height:72px">ذهب حقيقي</div></div>
+        <div class="scale-row"><div class="lbl"><b>H1</b>40/48 · 700</div><div style="font:700 40px/48px var(--latin);letter-spacing:-.015em">Start from one gram</div><div class="ar" lang="ar" style="font-weight:700;font-size:40px;line-height:56px">ابدأ من جرام واحد</div></div>
+        <div class="scale-row"><div class="lbl"><b>H2</b>32/40 · 700</div><div style="font:700 32px/40px var(--latin)">Your gold, in your hands</div><div class="ar" lang="ar" style="font-weight:700;font-size:32px;line-height:48px">ذهبك، بين يديك</div></div>
+        <div class="scale-row"><div class="lbl"><b>H3</b>24/32 · 600</div><div style="font:600 24px/32px var(--latin)">Gift real gold</div><div class="ar" lang="ar" style="font-weight:600;font-size:24px;line-height:36px">أهدِ ذهبًا حقيقيًا</div></div>
+        <div class="scale-row"><div class="lbl"><b>Body</b>16/24 · 400</div><div style="font-size:16px;line-height:24px">See the live indicative price, lock it at checkout and own a certified bar.</div><div class="ar" lang="ar" style="font-size:16px;line-height:28px">شاهد السعر المباشر، وثبّته عند الشراء، وامتلك سبيكة معتمدة.</div></div>
+        <div class="scale-row"><div class="lbl"><b>Caption</b>12/16 · 500</div><div style="font:500 12px/16px var(--latin);color:var(--stone-dark)">Indicative price · 14:05 GST</div><div class="ar" lang="ar" style="font-weight:500;font-size:12px;line-height:20px;color:var(--stone-dark)">سعر استرشادي · 14:05 بتوقيت عُمان</div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Numbers and formats</h3>
+      <p class="sub">Western digits 0–9 in both languages, always tabular. OMR always shows 3 decimals (baisa).</p>
+      <div class="fmt">
+        <div class="card"><div class="k">Currency</div><div class="v tnum">OMR 58.458</div><div class="v ar tnum" style="font-size:20px">58.458 ر.ع.</div></div>
+        <div class="card"><div class="k">Weight</div><div class="v tnum">2.5 g</div><div class="v ar tnum" style="font-size:20px">2.5 جرام</div></div>
+        <div class="card"><div class="k">Change</div><div class="v tnum" style="color:var(--gain-l)">+1.24%</div><div class="v tnum" style="font-size:20px;color:var(--loss-l)">−0.86%</div></div>
+        <div class="card"><div class="k">Serial</div><div class="v mono" style="font-size:18px;font-weight:500">GC-24K-000123</div><div class="sub" style="margin-top:6px">JetBrains Mono, 4% tracking</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 GRAPHICS -->
+<section id="graphics" class="dark">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>05 · Graphic language</p>
+      <h2>Everything at 45°<span class="ar" lang="ar" dir="rtl">كل شيء بزاوية 45°</span></h2>
+      <p class="lead">Every drawn element comes from the symbol's geometry: straight lines at 45° and 90° only. No blobs, swooshes or waves.</p>
+    </div>
+    <div class="grid g3">
+      <div><div class="grid45"><img src="logo/goldcom-symbol.svg" alt=""></div><h4 style="margin-top:16px">The 45° grid</h4><p class="sub" style="margin:4px 0 0">Dividers, frames, arrows and chamfers follow the symbol.</p></div>
+      <div><div class="pattern-tile" style="background:url('patterns/facet-pattern-on-dark.svg') var(--charcoal);background-size:120px 140px"></div><h4 style="margin-top:16px">Facet pattern</h4><p class="sub" style="margin:4px 0 0">Symbol tile at ≤ 10% opacity. One surface per layout, never behind body text.</p></div>
+      <div><div class="pattern-tile" style="background:url('patterns/facet-pattern-on-gold.svg'), var(--g-bullion);background-size:120px 140px, auto"></div><h4 style="margin-top:16px">Pattern on Bullion</h4><p class="sub" style="margin:4px 0 0">Espresso at 7% for campaign backgrounds behind devices.</p></div>
+    </div>
+
+    <div class="block grid g3">
+      <div>
+        <div class="facet"><div class="sub">Facet corner</div><div style="font-size:22px;font-weight:700;margin-top:8px">5 g Gold bar</div><div class="tnum" style="color:var(--gold);font-weight:700;font-size:28px;margin-top:6px">OMR 156.020</div><div class="sub" style="margin-top:6px">Illustrative price</div></div>
+        <p class="sub" style="margin-top:12px">A 12–16 px chamfer on one corner. Feature cards, price tags, certificates. Once per view.</p>
+      </div>
+      <div>
+        <div class="card" style="padding:24px">
+          <div style="display:flex;flex-direction:column;gap:14px;font-size:15px">
+            <div style="display:flex;align-items:center;gap:12px"><span class="gem-i"></span>Certified 24K bars and coins</div>
+            <div style="display:flex;align-items:center;gap:12px"><span class="gem-i"></span>Start from one gram</div>
+            <div style="display:flex;align-items:center;gap:12px"><span class="gem-i"></span>Gift gold in seconds</div>
+          </div>
+        </div>
+        <p class="sub" style="margin-top:12px">The gem: a bullet, a verified mark, the FAB icon and the loader. Always solid, at 45°.</p>
+      </div>
+      <div>
+        <div class="icons" style="grid-template-columns:repeat(4,1fr)">
+          <div><svg><use href="#i-home"/></svg></div><div class="on"><svg><use href="#i-chart"/></svg></div><div><svg><use href="#i-gift"/></svg></div><div><svg><use href="#i-wallet"/></svg></div>
+          <div><svg><use href="#i-shield"/></svg></div><div><svg><use href="#i-scan"/></svg></div><div><svg><use href="#i-pin"/></svg></div><div><svg><use href="#i-cart"/></svg></div>
+        </div>
+        <p class="sub" style="margin-top:12px">Line icons: 24 px grid, 1.75 px stroke, rounded. Active state in Spark. No emoji in UI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 UI -->
+<section id="ui" class="dark" style="background:var(--charcoal)">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>06 · Product UI</p>
+      <h2>Dark, calm, one gold action<span class="ar" lang="ar" dir="rtl">واجهة داكنة، وإجراء ذهبي واحد</span></h2>
+      <p class="lead">The app is dark by default. Surfaces step from Onyx to Charcoal to Graphite. Spark marks the one thing to do next. Arabic screens mirror completely, but charts and numbers do not.</p>
+    </div>
+
+    <div class="phones">
+      <!-- EN: Home -->
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><span class="isl"></span><span>5G</span></div>
+        <div class="apphead"><div><div class="hi">Good evening</div><div class="name">Mahmood</div></div><div style="display:flex;gap:8px"><div class="iconbtn"><svg><use href="#i-bell"/></svg></div><div class="iconbtn"><svg><use href="#i-cart"/></svg></div></div></div>
+        <div class="pcard">
+          <div class="lbl"><span>Gold 24K · per gram</span><span>Indicative · 14:05</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between"><div class="val tnum">31.204<small>OMR</small></div><span class="chg up tnum">▲ +0.42%</span></div>
+          <div class="seg"><span>1D</span><span class="on">1W</span><span>1M</span><span>1Y</span><span>All</span></div>
+          <svg class="chart" viewBox="0 0 260 96" width="100%" height="96" aria-hidden="true">
+            <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2D46B" stop-opacity=".30"/><stop offset="1" stop-color="#F2D46B" stop-opacity="0"/></linearGradient></defs>
+            <g stroke="#3D3E3A" stroke-opacity=".6" stroke-width="1"><line x1="0" y1="24" x2="260" y2="24"/><line x1="0" y1="52" x2="260" y2="52"/><line x1="0" y1="80" x2="260" y2="80"/></g>
+            <path d="M0 70 L22 66 L44 72 L66 60 L88 63 L110 50 L132 54 L154 42 L176 46 L198 34 L220 38 L242 26 L260 22 L260 96 L0 96Z" fill="url(#ag)"/>
+            <path d="M0 70 L22 66 L44 72 L66 60 L88 63 L110 50 L132 54 L154 42 L176 46 L198 34 L220 38 L242 26 L260 22" fill="none" stroke="#DBA761" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="260" cy="22" r="3.5" fill="#F2D46B"/>
+          </svg>
+        </div>
+        <div class="actions">
+          <div><span class="ic"><svg><use href="#i-buy"/></svg></span>Buy</div>
+          <div><span class="ic"><svg><use href="#i-sell"/></svg></span>Sell</div>
+          <div><span class="ic"><svg><use href="#i-gift"/></svg></span>Gift</div>
+          <div><span class="ic"><svg><use href="#i-pin"/></svg></span>Collect</div>
+        </div>
+        <div class="holding"><div class="mini-bar bar" style="width:30px;font-size:0"></div><div class="t"><b>My gold</b><span class="tnum">12.5 g · 24K · 3 bars</span></div><div class="p tnum">OMR 390.050<br><span class="chg up" style="margin-top:4px">+1.8%</span></div></div>
+        <div class="illus">Illustrative screen</div>
+        <div class="tabbar">
+          <div class="on"><svg><use href="#i-home"/></svg>Home</div>
+          <div><svg><use href="#i-grid"/></svg>Browse</div>
+          <div><span class="fab"><i></i></span></div>
+          <div><svg><use href="#i-store"/></svg>Market</div>
+          <div><svg><use href="#i-user"/></svg>Account</div>
+        </div>
+      </div></div>
+
+      <!-- AR: Browse -->
+      <div class="phone"><div class="screen ar" dir="rtl" lang="ar">
+        <div class="status"><span>9:41</span><span class="isl"></span><span>5G</span></div>
+        <div class="apphead"><div><div class="name" style="font-size:18px">تصفّح</div><div class="hi">4 نتائج</div></div><div style="display:flex;gap:8px"><div class="iconbtn"><svg><use href="#i-grid"/></svg></div><div class="iconbtn"><svg><use href="#i-cart"/></svg></div></div></div>
+        <div class="filters"><span class="on">الكل</span><span>سبائك</span><span>عملات</span><span>عيار 24</span></div>
+        <div class="browse">
+          <div class="pc"><div class="img"><span class="wt tnum">1 جرام</span><div class="bar" style="width:44%"><b>1g</b>999.9</div></div><div class="nm">سبيكة ذهب · 1 جرام</div><div class="pu">عيار 24</div><div class="row"><span class="pr tnum">31.950 ر.ع.</span><span class="go"><svg><use href="#i-arrow-l"/></svg></span></div></div>
+          <div class="pc"><div class="img"><span class="wt tnum">2.5 جرام</span><div class="bar" style="width:46%"><b>2.5g</b>999.9</div></div><div class="nm">سبيكة ذهب · 2.5 جرام</div><div class="pu">عيار 24</div><div class="row"><span class="pr tnum">79.120 ر.ع.</span><span class="go"><svg><use href="#i-arrow-l"/></svg></span></div></div>
+          <div class="pc"><div class="img"><span class="wt tnum">5 جرام</span><div class="bar" style="width:48%"><b>5g</b>999.9</div></div><div class="nm">سبيكة ذهب · 5 جرام</div><div class="pu">عيار 24</div><div class="row"><span class="pr tnum">156.020 ر.ع.</span><span class="go"><svg><use href="#i-arrow-l"/></svg></span></div></div>
+          <div class="pc"><div class="img"><span class="wt tnum">10 جرام</span><div class="bar" style="width:52%"><b>10g</b>999.9</div></div><div class="nm">سبيكة ذهب · 10 جرام</div><div class="pu">عيار 24</div><div class="row"><span class="pr tnum">310.400 ر.ع.</span><span class="go"><svg><use href="#i-arrow-l"/></svg></span></div></div>
+        </div>
+        <div class="illus">شاشة توضيحية</div>
+        <div class="tabbar">
+          <div><svg><use href="#i-home"/></svg>الرئيسية</div>
+          <div class="on"><svg><use href="#i-grid"/></svg>تصفّح</div>
+          <div><span class="fab"><i></i></span></div>
+          <div><svg><use href="#i-store"/></svg>السوق</div>
+          <div><svg><use href="#i-user"/></svg>حسابي</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="block grid g3">
+      <div class="card">
+        <h4>Buttons</h4><p class="sub" style="margin:4px 0 18px">48 px high, radius 12, verb plus object, sentence case.</p>
+        <div class="comp-row"><button class="btn p-dark">Buy gold</button><button class="btn sec-dark">Sell</button></div>
+        <div class="comp-row" style="margin-top:12px"><button class="btn dis">Lock price</button><button class="btn p-dark ar" style="font-family:var(--arabic)">اشترِ الذهب</button></div>
+        <div style="margin-top:16px;background:var(--cream);border-radius:12px;padding:14px"><button class="btn p-light">Buy gold</button> <span class="sub" style="color:var(--stone-dark);margin-inline-start:8px">on light</span></div>
+      </div>
+      <div class="card">
+        <h4>Controls</h4><p class="sub" style="margin:4px 0 18px">Pill segments, 8 px chips, 2 px Spark focus ring.</p>
+        <div class="seg" style="margin:0 0 14px"><span>1D</span><span class="on">1W</span><span>1M</span><span>1Y</span><span>All</span></div>
+        <div class="filters" style="padding:0;margin-bottom:14px"><span class="on">All</span><span>Bars</span><span>Coins</span><span>24K</span></div>
+        <div class="input focus">2.5 g</div>
+      </div>
+      <div class="card">
+        <h4>Price and status</h4><p class="sub" style="margin:4px 0 18px">Label → value → change → timestamp. Never colour alone.</p>
+        <div class="sub">Holding value</div>
+        <div class="tnum" style="font-size:32px;line-height:40px;font-weight:700">OMR 390.050</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><span class="chg up tnum">▲ +1.80%</span><span class="chg down tnum">▼ −0.86%</span><span class="tag" style="background:rgba(242,212,107,.14);color:var(--spark)"><span class="gem-i" style="width:7px;height:7px;margin-inline-end:6px"></span>Verified</span></div>
+        <div class="sub" style="margin-top:10px">Indicative · 14:05 GST</div>
+      </div>
+    </div>
+
+    <div class="block grid g4" style="gap:16px">
+      <div class="card"><div class="sub">Spacing</div><div style="font-weight:600;margin-top:6px">4 px base</div><div class="sub">4 · 8 · 12 · 16 · 24 · 32 · 48 · 64</div></div>
+      <div class="card"><div class="sub">Radius</div><div style="font-weight:600;margin-top:6px">8 · 12 · 16 · 24</div><div class="sub">chip · button · card · sheet</div></div>
+      <div class="card"><div class="sub">Motion</div><div style="font-weight:600;margin-top:6px">200 ms standard</div><div class="sub">One 45° gleam on success only</div></div>
+      <div class="card"><div class="sub">Accessibility</div><div style="font-weight:600;margin-top:6px">WCAG 2.1 AA</div><div class="sub">44 px targets, ± and arrows</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 IMAGERY -->
+<section id="imagery">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>07 · Imagery</p>
+      <h2>The real object, in warm light<span class="ar" lang="ar" dir="rtl">الذهب الحقيقي، بإضاءة دافئة</span></h2>
+      <p class="lead">Show the actual bar, the phone that controls it, and the moments gold is given. Calm, editorial and one hero object per frame.</p>
+    </div>
+    <div class="grid g2" style="align-items:start">
+      <div class="grid g2" style="gap:16px">
+        <figure style="margin:0"><img src="reference/app-store-creative-prices.png" alt="Official Goldcom app-store creative: live prices" style="border-radius:16px;width:100%"><figcaption class="sub" style="margin-top:8px">Reference: official creative, live prices</figcaption></figure>
+        <figure style="margin:0"><img src="reference/app-store-creative-catalog.png" alt="Official Goldcom app-store creative: bar catalogue" style="border-radius:16px;width:100%"><figcaption class="sub" style="margin-top:8px">Reference: official creative, catalogue</figcaption></figure>
+      </div>
+      <div style="display:grid;gap:16px">
+        <div class="card"><h4>Show</h4>
+          <ul class="sub" style="margin:10px 0 0;padding-inline-start:18px;line-height:24px">
+            <li>Real bars and coins with legible weight and purity, and generic stamps</li>
+            <li>The phone with the dark Goldcom UI, held naturally or floating</li>
+            <li>Gifting moments: Eid, weddings, newborns, graduations</li>
+            <li>Omani and Gulf people in modest dress, respectful poses</li>
+            <li>Warm upper-left key light, golden rim light, charcoal, cream or Bullion backdrops</li>
+          </ul>
+          <div class="verdict ok"><i>✓</i>On brand</div>
+        </div>
+        <div class="card"><h4>Never show</h4>
+          <ul class="sub" style="margin:10px 0 0;padding-inline-start:18px;line-height:24px">
+            <li>$ € or other foreign currency signs, coin piles, treasure chests, cash stacks</li>
+            <li>Luxury flexing, casinos, rockets, neon trading screens</li>
+            <li>Fake hallmarks, refiner, bank or regulator logos</li>
+            <li>Immodest dress, alcohol, AI artefacts, distorted engravings</li>
+          </ul>
+          <div class="verdict no"><i>✕</i>Off brand</div>
+        </div>
+        <div class="card" style="background:var(--charcoal);border-color:var(--charcoal);color:#fff"><h4 style="color:var(--spark)">AI image prompt (product hero)</h4>
+          <p class="mono" style="font-size:12px;line-height:19px;color:#D9D5CC;margin:10px 0 0">Photorealistic studio product photograph of a 5 g 24-karat gold bar with a clean minimal stamp showing only the weight and "999.9", resting on matte charcoal stone, warm directional key light from upper left, soft golden rim light, shallow depth of field, calm premium editorial mood, palette #62422A #DBA761 #151513, negative space on the left, no text, no logos, 4:5</p>
+          <p class="sub" style="margin:10px 0 0">Negative prompts and more templates are in the guidelines §7.4. Never let a model draw the logo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 LAYOUTS -->
+<section id="layouts" class="white">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>08 · Layouts</p>
+      <h2>Templates for every channel<span class="ar" lang="ar" dir="rtl">قوالب لكل قناة</span></h2>
+      <p class="lead">One image, one headline, one action. The logo goes in a corner (top-right in Arabic, top-left in English), with the disclaimer wherever a price or return appears.</p>
+    </div>
+    <div class="templates">
+      <figure class="tpl" style="margin:0">
+        <div class="appstore">
+          <img class="lg" src="logo/goldcom-logo-stacked-mono-white.svg" alt="">
+          <div class="mini-phone"><div>
+            <div class="mp-card"><div class="l"></div><div class="v"></div><svg viewBox="0 0 100 30" style="margin-top:6px;width:100%"><path d="M0 24 L15 20 L30 22 L45 14 L60 16 L75 8 L100 4" fill="none" stroke="#DBA761" stroke-width="2"/></svg></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div class="mp-card" style="height:70px;display:grid;place-items:center"><div class="bar" style="width:40%;font-size:0"></div></div><div class="mp-card" style="height:70px;display:grid;place-items:center"><div class="bar" style="width:40%;font-size:0"></div></div></div>
+            <div class="mp-card"><div class="l"></div><div class="v" style="width:40%"></div></div>
+            <div style="margin-top:auto;align-self:center;width:28px;height:28px;border-radius:50%;background:var(--spark);display:grid;place-items:center"><i style="width:9px;height:9px;background:#000;transform:rotate(45deg);display:block"></i></div>
+          </div></div>
+          <div class="hl" lang="ar">ذهب حقيقي،<br>من جوالك</div>
+        </div>
+        <figcaption><b>App-store screenshot</b>1290 × 2796 · Bullion + pattern</figcaption>
+      </figure>
+
+      <figure class="tpl" style="margin:0">
+        <div class="social" lang="ar">
+          <img class="sym" src="logo/goldcom-symbol.svg" alt="">
+          <div class="hero"><div class="bar"><b>1g</b>FINE GOLD<br>999.9</div></div>
+          <div class="txt"><h4>ابدأ من جرام واحد</h4><p>امتلك سبيكة ذهب حقيقية، وتابعها من جوالك.</p><span class="cta">اشترِ الذهب</span></div>
+          <div class="disc">أسعار الذهب متغيرة، وقد ترتفع قيمة مقتنياتك أو تنخفض. هذا المحتوى ليس نصيحة مالية.</div>
+        </div>
+        <figcaption><b>Feed post (4:5)</b>1080 × 1350 · Onyx Glow</figcaption>
+      </figure>
+
+      <figure class="tpl" style="margin:0">
+        <div class="story" lang="ar">
+          <img class="lg" src="logo/goldcom-logo-stacked-mono-white.svg" alt="">
+          <div class="gift"><span class="gem-i"></span><b class="tnum" style="font-family:var(--arabic)">5 جرام</b><span>هدية ذهب · عيار 24</span></div>
+          <div class="hl">أهدِ من تحب<br>ذهبًا حقيقيًا</div>
+        </div>
+        <figcaption><b>Story / Reel</b>1080 × 1920 · Bullion</figcaption>
+      </figure>
+
+      <figure class="tpl" style="margin:0">
+        <div class="email">
+          <div class="card">
+            <img src="logo/goldcom-logo-horizontal.svg" alt="">
+            <h4>Your gold gift has arrived</h4>
+            <p>Aisha sent you 2.5 g of 24K gold. It's recorded in your Goldcom account, ready to keep, sell or collect.</p>
+            <span class="btn p-light">View my gold</span>
+          </div>
+          <div class="foot">Golden Platform for Technology and Investment LLC · Muscat, Oman · support@goldcom.om<br>Gold prices change and the value of your holdings can go down as well as up.</div>
+        </div>
+        <figcaption><b>Email</b>600 px · Cream + White card</figcaption>
+      </figure>
+
+      <figure class="tpl" style="margin:0">
+        <div class="bizcards">
+          <div class="biz front"><img src="logo/goldcom-logo-stacked-reversed.svg" alt=""></div>
+          <div class="biz back"><b>Mahmood Al Balushi</b><span class="r">Head of Customer Experience</span><div class="c">+968 0000 0000<br>name@goldcom.om<br>goldcom.om · Muscat, Oman</div><img src="logo/goldcom-symbol.svg" alt=""></div>
+        </div>
+        <figcaption><b>Business card</b>85 × 55 mm · foil option on front</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 09 VOICE -->
+<section id="voice">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>09 · Voice</p>
+      <h2>Fact first, then feeling<span class="ar" lang="ar" dir="rtl">الحقيقة أولًا، ثم الشعور</span></h2>
+      <p class="lead">Exact over impressive. Calm about markets. Warm about family. Short sentences, one idea each. Arabic is written natively, never translated.</p>
+    </div>
+
+    <div class="vs">
+      <div class="h ok">Say</div><div class="h no">Don't say</div>
+      <div>Own a real 1 g gold bar, recorded in your name.</div><div class="no-t">Invest in gold and watch your money grow!</div>
+      <div>See the live indicative price before you buy.</div><div class="no-t">The best gold prices in Oman, guaranteed.</div>
+      <div>Gold is at OMR 31.204/g today, down 0.8%.</div><div class="no-t">Prices are crashing. Buy now before it's too late!</div>
+      <div>Identity verification and biometric login keep your account secure.</div><div class="no-t">100% safe, bank-grade, unhackable.</div>
+      <div>We couldn't complete the payment. Your money hasn't been taken.</div><div class="no-t">Error 402: Transaction failed.</div>
+    </div>
+
+    <div class="block">
+      <h3>Approved lines</h3>
+      <p class="sub">Use them as written. New Arabic lines need native Omani review before publishing.</p>
+      <div class="lines">
+        <div class="line"><div class="ar" lang="ar">ذهب حقيقي، من جوالك</div><div class="en">Real gold, from your phone · master line</div></div>
+        <div class="line"><div class="ar" lang="ar">ابدأ من جرام واحد</div><div class="en">Start from one gram</div></div>
+        <div class="line"><div class="ar" lang="ar">تصفح أسعار الذهب الفورية</div><div class="en">Browse live gold prices</div></div>
+        <div class="line"><div class="ar" lang="ar">في جولدكم تسوق بأمان</div><div class="en">Shop with confidence at Goldcom</div></div>
+        <div class="line"><div class="ar" lang="ar">اعرف سعرك قبل أن تشتري</div><div class="en">Know your price before you buy</div></div>
+        <div class="line"><div class="ar" lang="ar">أهدِ من تحب ذهبًا حقيقيًا</div><div class="en">Gift real gold to the people you love</div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Tone by context</h3>
+      <div class="tones" style="margin-top:24px">
+        <div class="card"><div class="k">Campaign</div><p>"Real gold, from your phone. Start from one gram."</p></div>
+        <div class="card"><div class="k">Transaction</div><p>"Purchase complete. 2.5 g of 24K gold has been added to your holdings."</p></div>
+        <div class="card"><div class="k">Price alert</div><p>"Gold is at OMR 31.204/g (indicative), down 0.8% today."</p></div>
+        <div class="card"><div class="k">Gifting</div><p>"A gift that lasts. Send real gold to someone you love."</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 CLAIMS -->
+<section id="claims" class="dark">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>10 · Claims &amp; compliance</p>
+      <h2>Only what we can document<span class="ar" lang="ar" dir="rtl">لا نقول إلا ما نستطيع إثباته</span></h2>
+      <p class="lead">Trust is the product. Every claim belongs to a tier. Amber claims need approved wording and a document on file. Red claims are never made.</p>
+    </div>
+    <div class="claims">
+      <div class="card"><div class="top"><span class="dot" style="background:var(--gain)"></span>Use freely</div><ul>
+        <li>On the App Store and Google Play</li><li>Omani, based in Muscat</li><li>Arabic and English</li><li>Start from one gram</li><li>Certified gold bars and coins</li><li>Track holdings and price history</li><li>Send gold as a gift</li><li>Sharia advisory by Eltizam</li><li>Identity verification and biometric login</li></ul></div>
+      <div class="card"><div class="top"><span class="dot" style="background:var(--spark)"></span>Sign-off and document required</div><ul>
+        <li>Insured (name the insurer and scope)</li><li>Licensed (authority and CR number)</li><li>Sharia-certified (certificate number)</li><li>Numbered bars recorded in your name</li><li>Vault custody (name the operator)</li><li>Delivery or collection (cities, fees, times)</li><li>30 days of free storage (while live)</li><li>Buyback or settlement speed</li></ul></div>
+      <div class="card"><div class="top"><span class="dot" style="background:var(--loss)"></span>Never</div><ul>
+        <li>Guaranteed returns or profit</li><li>Risk-free or "safe investment"</li><li>Price predictions</li><li>Best, cheapest, #1, most trusted</li><li>Fully regulated, government-backed</li><li>Unverified customer, AUM or volume figures</li><li>Foreign-regulator references</li><li>Personal financial advice</li></ul></div>
+    </div>
+    <div class="disc-box">
+      <div><div class="eyebrow" style="margin-bottom:8px">Mandatory disclaimer · EN</div>Gold prices change and the value of your holdings can go down as well as up. Prices shown are indicative; the final price is confirmed at checkout. This is not financial advice.</div>
+      <div class="ar" lang="ar" dir="rtl"><div class="eyebrow" style="margin-bottom:8px">إخلاء المسؤولية · AR</div>أسعار الذهب متغيرة، وقد ترتفع قيمة مقتنياتك أو تنخفض. الأسعار المعروضة استرشادية، ويُثبَّت السعر النهائي عند إتمام الشراء. هذا المحتوى ليس نصيحة مالية.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CHECKLIST -->
+<section id="checklist" class="white">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow"><span class="gem"></span>Before you publish</p>
+      <h2>The 12-point brand check<span class="ar" lang="ar" dir="rtl">قائمة التحقق قبل النشر</span></h2>
+    </div>
+    <ul class="check">
+      <li>Unmodified logo file, correct version for the background, 1X clear space, above minimum size</li>
+      <li>Name spelled Goldcom / جولدكم</li>
+      <li>Palette colours only. No gold text on light backgrounds</li>
+      <li>Spark is the single main action, ≤ 5%, with Ink text</li>
+      <li>Inter and IBM Plex Sans Arabic from the type scale</li>
+      <li>Arabic fully RTL. Logo, numbers and charts not mirrored</li>
+      <li>OMR with 3 decimals, tabular, labelled indicative</li>
+      <li>Claims are green, or amber with approved wording. No red claims</li>
+      <li>Disclaimer present wherever price, return, "invest" or "save" appears</li>
+      <li>Imagery: real object, warm light, no fake logos or $ signs</li>
+      <li>Voice: fact first, calm, short, no hype or urgency</li>
+      <li>Accessibility: AA contrast, 44 px targets, not colour alone</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="logo/goldcom-logo-horizontal-reversed.svg" alt="Goldcom">
+    <div>Goldcom Brand Guidelines v1.0 · 23 Oct 2026 · Golden Platform for Technology and Investment LLC · goldcom.om</div>
+  </div>
+</footer>
+</body>
+</html>

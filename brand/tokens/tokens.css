@@ -1,0 +1,103 @@
+/* Goldcom design tokens v1.0 — generated from tokens.json (tokens.json is the source of truth). */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Brand (logo) */
+  --gc-amber: #CD864B;
+  --gc-gold: #DBA761;
+  --gc-ink: #000000;
+
+  /* Gold family */
+  --gc-espresso: #3B2A1C;
+  --gc-bronze-deep: #62422A;
+  --gc-bronze: #8A5A2B;
+  --gc-bullion: #C8943D;
+  --gc-sand: #E8CC73;
+  --gc-spark: #F2D46B;
+
+  /* Neutrals */
+  --gc-onyx: #151513;
+  --gc-charcoal: #1D1D1F;
+  --gc-graphite: #2D2E2B;
+  --gc-slate: #3D3E3A;
+  --gc-stone: #9A968C;
+  --gc-stone-dark: #6B675F;
+  --gc-mist: #E9E1CF;
+  --gc-cream: #FFF8EA;
+  --gc-white: #FFFFFF;
+
+  /* Semantic */
+  --gc-gain-dark: #3DBE84;
+  --gc-loss-dark: #F0605D;
+  --gc-gain-light: #1E7F52;
+  --gc-loss-light: #C2362F;
+  --gc-info: #3AA8E8;
+
+  /* Gradients */
+  --gc-gradient-bullion: linear-gradient(180deg, #62422A 0%, #8A6B41 38%, #D0B366 74%, #EDD175 100%);
+  --gc-gradient-gold-leaf: linear-gradient(135deg, #F2D46B 0%, #DBA761 55%, #CD864B 100%);
+  --gc-gradient-onyx-glow: radial-gradient(120% 80% at 50% 0%, #2D2E2B 0%, #151513 60%);
+  --gc-gradient-area-gold: linear-gradient(180deg, rgba(242,212,107,0.28) 0%, rgba(242,212,107,0) 100%);
+  --gc-gradient-area-loss: linear-gradient(180deg, rgba(240,96,93,0.32) 0%, rgba(240,96,93,0) 100%);
+
+  /* Type */
+  --gc-font-latin: "Inter", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --gc-font-arabic: "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --gc-font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+  /* Spacing (4px base) */
+  --gc-space-1: 4px;  --gc-space-2: 8px;  --gc-space-3: 12px; --gc-space-4: 16px;
+  --gc-space-5: 20px; --gc-space-6: 24px; --gc-space-8: 32px; --gc-space-10: 40px;
+  --gc-space-12: 48px; --gc-space-16: 64px; --gc-space-20: 80px; --gc-space-24: 96px;
+
+  /* Radius */
+  --gc-radius-xs: 6px; --gc-radius-sm: 8px; --gc-radius-md: 12px;
+  --gc-radius-lg: 16px; --gc-radius-xl: 24px; --gc-radius-pill: 999px;
+
+  /* Elevation */
+  --gc-shadow-dark-1: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.40);
+  --gc-shadow-dark-2: 0 1px 0 rgba(255,255,255,0.06) inset, 0 12px 32px rgba(0,0,0,0.55);
+  --gc-shadow-light-1: 0 1px 2px rgba(59,42,28,0.06), 0 2px 8px rgba(59,42,28,0.06);
+  --gc-shadow-light-2: 0 8px 32px rgba(59,42,28,0.12);
+  --gc-shadow-spark-glow: 0 0 0 6px rgba(242,212,107,0.14), 0 8px 24px rgba(242,212,107,0.30);
+
+  /* Motion */
+  --gc-duration-fast: 120ms; --gc-duration-base: 200ms; --gc-duration-slow: 320ms;
+  --gc-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --gc-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --gc-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+/* Theme roles — product UI is dark by default; web/print may use light. */
+:root, [data-gc-theme="dark"] {
+  --gc-bg: var(--gc-onyx);
+  --gc-surface: var(--gc-charcoal);
+  --gc-surface-raised: var(--gc-graphite);
+  --gc-border: var(--gc-slate);
+  --gc-text: var(--gc-white);
+  --gc-text-secondary: var(--gc-stone);
+  --gc-accent: var(--gc-gold);
+  --gc-action: var(--gc-spark);
+  --gc-on-action: var(--gc-ink);
+  --gc-gain: var(--gc-gain-dark);
+  --gc-loss: var(--gc-loss-dark);
+}
+[data-gc-theme="light"] {
+  --gc-bg: var(--gc-cream);
+  --gc-surface: var(--gc-white);
+  --gc-surface-raised: var(--gc-white);
+  --gc-border: var(--gc-mist);
+  --gc-text: var(--gc-charcoal);
+  --gc-text-secondary: var(--gc-stone-dark);
+  --gc-accent: var(--gc-bronze);
+  --gc-action: var(--gc-charcoal);
+  --gc-on-action: var(--gc-spark);
+  --gc-gain: var(--gc-gain-light);
+  --gc-loss: var(--gc-loss-light);
+}
+
+/* Base helpers */
+.gc-latin  { font-family: var(--gc-font-latin); }
+.gc-arabic, [dir="rtl"] { font-family: var(--gc-font-arabic); letter-spacing: 0; }
+.gc-price  { font-variant-numeric: tabular-nums lining-nums; font-weight: 700; }
+.gc-serial { font-family: var(--gc-font-mono); letter-spacing: 0.04em; }
