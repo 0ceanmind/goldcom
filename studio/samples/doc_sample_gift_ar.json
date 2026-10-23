@@ -1,0 +1,352 @@
+{
+  "version": 1,
+  "kind": "video",
+  "lang": "ar",
+  "fps": 30,
+  "source": null,
+  "id": "doc_sample_gift_ar",
+  "name": "Eid gifting reel",
+  "format": "story",
+  "width": 1080,
+  "height": 1920,
+  "createdAt": "2026-10-23T12:00:08.000Z",
+  "updatedAt": "2026-10-23T12:00:08.000Z",
+  "slides": [
+    {
+      "id": "s_4zqexvl55k",
+      "template": "statement",
+      "content": {
+        "kicker": "هدية العيد",
+        "title": "هدية *تدوم*.",
+        "body": "أهدِ من تحب ذهبًا حقيقيًا."
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 3.5,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_1vwwqjk55k",
+          "type": "gem",
+          "x": 956,
+          "y": 1370,
+          "w": 44,
+          "h": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "fill": "goldLeaf",
+          "name": "gem"
+        },
+        {
+          "id": "l_mrvkufd55k",
+          "type": "text",
+          "x": 80,
+          "y": 1446,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.05,
+            "dur": 0.6
+          },
+          "text": "هدية العيد",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_wpo5g6z55k",
+          "type": "text",
+          "x": 80,
+          "y": 1519,
+          "w": 920,
+          "h": 118,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "هدية *تدوم*.",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_oig0ry355k",
+          "type": "text",
+          "x": 80,
+          "y": 1669,
+          "w": 920,
+          "h": 71,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.6
+          },
+          "text": "أهدِ من تحب ذهبًا حقيقيًا.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "body"
+        }
+      ]
+    },
+    {
+      "id": "s_tsslyzp55k",
+      "template": "cover",
+      "content": {
+        "kicker": "الإهداء",
+        "title": "أرسل الذهب *في ثوانٍ*",
+        "subtitle": "اختر الوزن وأضف رسالتك.",
+        "visual": "goldbar",
+        "barLabel": "5g"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "wipe",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_g434z2a55k",
+          "type": "logo",
+          "x": 750,
+          "y": 80,
+          "w": 250,
+          "h": 99,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_ft34ttj55k",
+          "type": "goldbar",
+          "x": 379,
+          "y": 1047,
+          "w": 322,
+          "h": 520,
+          "rotation": -6,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "label": "5g",
+          "sub": "FINE GOLD\n999.9",
+          "name": "visual"
+        },
+        {
+          "id": "l_qqsz20p55k",
+          "type": "text",
+          "x": 80,
+          "y": 270,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "الإهداء",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_za4k9xj55k",
+          "type": "text",
+          "x": 80,
+          "y": 331,
+          "w": 920,
+          "h": 281,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "أرسل الذهب *في ثوانٍ*",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_zu8uzq755k",
+          "type": "text",
+          "x": 80,
+          "y": 632,
+          "w": 920,
+          "h": 71,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.6
+          },
+          "text": "اختر الوزن وأضف رسالتك.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "subtitle"
+        }
+      ]
+    },
+    {
+      "id": "s_e2wkh0r55k",
+      "template": "cta",
+      "content": {
+        "title": "أهدِ من تحب ذهبًا حقيقيًا",
+        "button": "أهدِ ذهبًا",
+        "link": "goldcom.om",
+        "disclaimer": "no"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_arddcbh55k",
+          "type": "logo",
+          "x": 390,
+          "y": 567,
+          "w": 300,
+          "h": 288,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "stacked",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_eqf4x6755k",
+          "type": "text",
+          "x": 80,
+          "y": 891,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "أهدِ من تحب ذهبًا حقيقيًا",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_7ii38mw55k",
+          "type": "button",
+          "x": 360,
+          "y": 1151,
+          "w": 360,
+          "h": 104,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.45,
+            "dur": 0.6
+          },
+          "text": "أهدِ ذهبًا",
+          "variant": "auto",
+          "dir": "rtl",
+          "name": "button"
+        },
+        {
+          "id": "l_iygx6k955k",
+          "type": "text",
+          "x": 80,
+          "y": 1291,
+          "w": 920,
+          "h": 62,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.55,
+            "dur": 0.6
+          },
+          "text": "goldcom.om",
+          "role": "body",
+          "color": "accent",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "link"
+        }
+      ]
+    }
+  ]
+}

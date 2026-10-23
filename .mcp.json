@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "goldcom-studio": {
+      "command": "node",
+      "args": ["studio/mcp/server.mjs"]
+    }
+  }
+}

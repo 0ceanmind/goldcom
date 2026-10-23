@@ -1,0 +1,1069 @@
+{
+  "version": 1,
+  "kind": "carousel",
+  "lang": "ar",
+  "fps": 30,
+  "source": null,
+  "id": "doc_sample_launch_ar",
+  "name": "Goldcom launch · Arabic carousel",
+  "format": "feed-portrait",
+  "width": 1080,
+  "height": 1350,
+  "createdAt": "2026-10-23T12:00:10.000Z",
+  "updatedAt": "2026-10-23T12:00:10.000Z",
+  "slides": [
+    {
+      "id": "s_gw7576v55b",
+      "template": "cover",
+      "content": {
+        "kicker": "جديد من جولدكم",
+        "title": "ذهب حقيقي، *من جوالك*",
+        "subtitle": "ابدأ من جرام واحد. تابع ذهبك، أهدِه، بِعه أو استلمه.",
+        "visual": "device",
+        "device": "phone"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_sey290p55c",
+          "type": "logo",
+          "x": 750,
+          "y": 80,
+          "w": 250,
+          "h": 99,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_kza5dg555c",
+          "type": "phone",
+          "x": 80,
+          "y": 838,
+          "w": 920,
+          "h": 1901,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "ar",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_46ounm255c",
+          "type": "text",
+          "x": 80,
+          "y": 270,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "جديد من جولدكم",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_9ucqxld55c",
+          "type": "text",
+          "x": 80,
+          "y": 331,
+          "w": 920,
+          "h": 281,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "ذهب حقيقي، *من جوالك*",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_ovxvuxt55c",
+          "type": "text",
+          "x": 80,
+          "y": 632,
+          "w": 920,
+          "h": 136,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.6
+          },
+          "text": "ابدأ من جرام واحد. تابع ذهبك، أهدِه، بِعه أو استلمه.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "subtitle"
+        },
+        {
+          "id": "l_cp4rit355c",
+          "type": "pager",
+          "x": 80,
+          "y": 110,
+          "w": 300,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "swipe",
+          "name": "pager",
+          "align": "end"
+        }
+      ]
+    },
+    {
+      "id": "s_6u1xdee55b",
+      "template": "statement",
+      "content": {
+        "kicker": "التحدي",
+        "title": "شراء الذهب لا يجب أن يكون *معقدًا*.",
+        "body": "الأسعار تتغير، والتحقق من النقاء صعب، والتخزين غير مريح."
+      },
+      "theme": "charcoal",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_eowc75t55d",
+          "type": "gem",
+          "x": 956,
+          "y": 405,
+          "w": 44,
+          "h": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "fill": "goldLeaf",
+          "name": "gem"
+        },
+        {
+          "id": "l_qatp9zh55d",
+          "type": "text",
+          "x": 80,
+          "y": 481,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.05,
+            "dur": 0.6
+          },
+          "text": "التحدي",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_0ikdgjp55d",
+          "type": "text",
+          "x": 80,
+          "y": 554,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "شراء الذهب لا يجب أن يكون *معقدًا*.",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_3aeeq6i55d",
+          "type": "text",
+          "x": 80,
+          "y": 810,
+          "w": 920,
+          "h": 136,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.6
+          },
+          "text": "الأسعار تتغير، والتحقق من النقاء صعب، والتخزين غير مريح.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "body"
+        },
+        {
+          "id": "l_glb4uq755d",
+          "type": "pager",
+          "x": 740,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_6m1qfxw55b",
+      "template": "feature",
+      "content": {
+        "icon": "gift",
+        "kicker": "الإهداء",
+        "title": "أهدِ ذهبًا حقيقيًا في ثوانٍ",
+        "body": "اختر الوزن، أضف رسالتك، وتصل هديتك فورًا.",
+        "device": "phone"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_8b09e4955d",
+          "type": "icon",
+          "x": 888,
+          "y": 80,
+          "w": 112,
+          "h": 112,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "icon": "gift",
+          "color": "auto",
+          "tile": true,
+          "name": "icon"
+        },
+        {
+          "id": "l_2jptc5s55d",
+          "type": "text",
+          "x": 80,
+          "y": 232,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.05,
+            "dur": 0.6
+          },
+          "text": "الإهداء",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_flnmm5955d",
+          "type": "text",
+          "x": 80,
+          "y": 287,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.12,
+            "dur": 0.6
+          },
+          "text": "أهدِ ذهبًا حقيقيًا في ثوانٍ",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_esi27cx55d",
+          "type": "text",
+          "x": 80,
+          "y": 531,
+          "w": 920,
+          "h": 71,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.24,
+            "dur": 0.6
+          },
+          "text": "اختر الوزن، أضف رسالتك، وتصل هديتك فورًا.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "body"
+        },
+        {
+          "id": "l_a3a86cs55d",
+          "type": "phone",
+          "x": 80,
+          "y": 662,
+          "w": 920,
+          "h": 1901,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "ar",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_eln22h155d",
+          "type": "pager",
+          "x": 80,
+          "y": 80,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager",
+          "align": "end"
+        }
+      ]
+    },
+    {
+      "id": "s_2u878kz55b",
+      "template": "screenshot",
+      "content": {
+        "title": "تصفح أسعار الذهب الفورية",
+        "caption": "أسعار استرشادية تتحدث على مدار اليوم.",
+        "device": "phone",
+        "label": "yes"
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_6rwzezk55d",
+          "type": "text",
+          "x": 80,
+          "y": 80,
+          "w": 920,
+          "h": 91,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "تصفح أسعار الذهب الفورية",
+          "role": "h2",
+          "color": "auto",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_kvkn9ob55d",
+          "type": "text",
+          "x": 80,
+          "y": 183,
+          "w": 920,
+          "h": 62,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.12,
+            "dur": 0.6
+          },
+          "text": "أسعار استرشادية تتحدث على مدار اليوم.",
+          "role": "body",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "caption"
+        },
+        {
+          "id": "l_yq4l4q955d",
+          "type": "phone",
+          "x": 333,
+          "y": 293,
+          "w": 415,
+          "h": 857,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "ar",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_bxwrais55e",
+          "type": "text",
+          "x": 80,
+          "y": 1164,
+          "w": 920,
+          "h": 37,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.5,
+            "dur": 0.6
+          },
+          "text": "شاشة توضيحية",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true
+        },
+        {
+          "id": "l_90z2f3h55e",
+          "type": "pager",
+          "x": 740,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_gor8lqd55b",
+      "template": "steps",
+      "content": {
+        "kicker": "كيف تعمل",
+        "title": "امتلك الذهب في ثلاث خطوات",
+        "items": [
+          "اختر سبيكة معتمدة من 1 جرام",
+          "ثبّت السعر عند الشراء",
+          "احتفظ بها، أهدِها، بِعها أو استلمها"
+        ]
+      },
+      "theme": "cream",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_76d5lnr55e",
+          "type": "text",
+          "x": 80,
+          "y": 120,
+          "w": 920,
+          "h": 41,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "كيف تعمل",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_0ts4rm555e",
+          "type": "text",
+          "x": 80,
+          "y": 175,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "امتلك الذهب في ثلاث خطوات",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_1u1t5k455e",
+          "type": "list",
+          "x": 80,
+          "y": 463,
+          "w": 920,
+          "h": 717,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.6
+          },
+          "items": [
+            "اختر سبيكة معتمدة من 1 جرام",
+            "ثبّت السعر عند الشراء",
+            "احتفظ بها، أهدِها، بِعها أو استلمها"
+          ],
+          "bullet": "number",
+          "role": "body-lg",
+          "color": "auto",
+          "dir": "rtl",
+          "name": "items"
+        },
+        {
+          "id": "l_z9nvatj55e",
+          "type": "pager",
+          "x": 740,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_y6thfq255b",
+      "template": "price",
+      "content": {
+        "title": "اعرف سعرك قبل أن تشتري",
+        "label": "ذهب عيار 24 · للجرام",
+        "price": "OMR 31.204",
+        "change": "+0.42%",
+        "time": "استرشادي · 14:05"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_wb940uo55e",
+          "type": "text",
+          "x": 80,
+          "y": 80,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "اعرف سعرك قبل أن تشتري",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_2f6jkqo55e",
+          "type": "shape",
+          "x": 80,
+          "y": 360,
+          "w": 920,
+          "h": 710,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "shape": "rect",
+          "fill": "surface",
+          "radius": 32,
+          "stroke": "",
+          "facet": false,
+          "name": "card"
+        },
+        {
+          "id": "l_w25z4s355e",
+          "type": "text",
+          "x": 457,
+          "y": 404,
+          "w": 499,
+          "h": 49,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "ذهب عيار 24 · للجرام",
+          "role": "small",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true
+        },
+        {
+          "id": "l_j2hiswu55e",
+          "type": "text",
+          "x": 124,
+          "y": 408,
+          "w": 416,
+          "h": 37,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "استرشادي · 14:05",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "end",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true
+        },
+        {
+          "id": "l_w2fnq8o55e",
+          "type": "text",
+          "x": 390,
+          "y": 460,
+          "w": 566,
+          "h": 90,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "count",
+            "delay": 0.25,
+            "dur": 1.1
+          },
+          "text": "OMR 31.204",
+          "role": "price",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "price"
+        },
+        {
+          "id": "l_bibyaqd55e",
+          "type": "badge",
+          "x": 124,
+          "y": 474,
+          "w": 200,
+          "h": 56,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.5,
+            "dur": 0.6
+          },
+          "text": "▲ +0.42%",
+          "variant": "gain",
+          "gem": false,
+          "dir": "ltr",
+          "name": "change"
+        },
+        {
+          "id": "l_p7k1sia55e",
+          "type": "chart",
+          "x": 124,
+          "y": 604,
+          "w": 832,
+          "h": 422,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "draw",
+            "delay": 0.4,
+            "dur": 1.4
+          },
+          "points": [
+            30,
+            34,
+            31,
+            38,
+            36,
+            44,
+            41,
+            49,
+            46,
+            54,
+            52,
+            60,
+            64
+          ],
+          "trend": "up",
+          "area": true,
+          "grid": true,
+          "name": "chart"
+        },
+        {
+          "id": "l_1epf8l055e",
+          "type": "text",
+          "x": 80,
+          "y": 1130,
+          "w": 920,
+          "h": 70,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.6,
+            "dur": 0.6
+          },
+          "text": "أسعار الذهب متغيرة، وقد ترتفع قيمة مقتنياتك أو تنخفض. الأسعار المعروضة استرشادية، ويُثبَّت السعر النهائي عند إتمام الشراء. هذا المحتوى ليس نصيحة مالية.",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "disclaimer"
+        },
+        {
+          "id": "l_3o9wxck55e",
+          "type": "pager",
+          "x": 740,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_m690uef55b",
+      "template": "cta",
+      "content": {
+        "title": "ابدأ قصتك مع الذهب اليوم",
+        "subtitle": "حمّل جولدكم من App Store و Google Play.",
+        "button": "حمّل التطبيق",
+        "link": "goldcom.om",
+        "disclaimer": "yes"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_mizlrmj55e",
+          "type": "logo",
+          "x": 390,
+          "y": 144,
+          "w": 300,
+          "h": 288,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "stacked",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_85komyy55e",
+          "type": "text",
+          "x": 80,
+          "y": 468,
+          "w": 920,
+          "h": 224,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "ابدأ قصتك مع الذهب اليوم",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_ixj8yi355e",
+          "type": "text",
+          "x": 80,
+          "y": 728,
+          "w": 920,
+          "h": 71,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.6
+          },
+          "text": "حمّل جولدكم من App Store و Google Play.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "subtitle"
+        },
+        {
+          "id": "l_avwmd4j55e",
+          "type": "button",
+          "x": 338,
+          "y": 835,
+          "w": 404,
+          "h": 104,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.45,
+            "dur": 0.6
+          },
+          "text": "حمّل التطبيق",
+          "variant": "auto",
+          "dir": "rtl",
+          "name": "button"
+        },
+        {
+          "id": "l_lsdmb9s55f",
+          "type": "text",
+          "x": 80,
+          "y": 975,
+          "w": 920,
+          "h": 62,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.55,
+            "dur": 0.6
+          },
+          "text": "goldcom.om",
+          "role": "body",
+          "color": "accent",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "link"
+        },
+        {
+          "id": "l_7fxdr9e55f",
+          "type": "text",
+          "x": 80,
+          "y": 1130,
+          "w": 920,
+          "h": 70,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.6,
+            "dur": 0.6
+          },
+          "text": "أسعار الذهب متغيرة، وقد ترتفع قيمة مقتنياتك أو تنخفض. الأسعار المعروضة استرشادية، ويُثبَّت السعر النهائي عند إتمام الشراء. هذا المحتوى ليس نصيحة مالية.",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "disclaimer"
+        },
+        {
+          "id": "l_83oq9pz55f",
+          "type": "pager",
+          "x": 740,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    }
+  ]
+}

@@ -44,3 +44,7 @@ brand/
 - Arabic copy in these files should be reviewed by a native Omani copywriter before it is used in public campaigns.
 - Claims marked 🟡 in the Claims Register need management sign-off and supporting documents before use.
 - To change the brand, update `tokens/tokens.json` and `GOLDCOM_BRAND_GUIDELINES.md` together and bump the version.
+
+## Make designs with these rules
+
+[`../studio`](../studio) is a web workspace that uses this kit to create carousels, posts, animations and videos, by hand or from Claude Code (`npm run connect`).

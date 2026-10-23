@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "kind": "carousel",
+  "lang": "ar",
+  "fps": 30,
+  "source": null,
+  "id": "doc_sample_appstore_ar",
+  "name": "App Store screenshots",
+  "format": "appstore",
+  "width": 1290,
+  "height": 2796,
+  "createdAt": "2026-10-23T12:00:06.000Z",
+  "updatedAt": "2026-10-23T12:00:06.000Z",
+  "slides": [
+    {
+      "id": "s_a8v9q9m55m",
+      "template": "cover",
+      "content": {
+        "title": "تصفح أسعار الذهب الفورية",
+        "visual": "device",
+        "device": "phone"
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_j4fb9wu55m",
+          "type": "logo",
+          "x": 895,
+          "y": 96,
+          "w": 299,
+          "h": 119,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_4n9zahv55m",
+          "type": "phone",
+          "x": 186,
+          "y": 299,
+          "w": 918,
+          "h": 1897,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "ar",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_czgvjuo55m",
+          "type": "text",
+          "x": 96,
+          "y": 2256,
+          "w": 1098,
+          "h": 336,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "تصفح أسعار الذهب الفورية",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        }
+      ]
+    },
+    {
+      "id": "s_53ee58f55m",
+      "template": "cover",
+      "content": {
+        "title": "في جولدكم تسوق بأمان",
+        "visual": "device",
+        "device": "phone",
+        "placeholder": "browse"
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_5106c8b55m",
+          "type": "logo",
+          "x": 895,
+          "y": 96,
+          "w": 299,
+          "h": 119,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_gl9wg4355m",
+          "type": "phone",
+          "x": 186,
+          "y": 299,
+          "w": 918,
+          "h": 1897,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "browse",
+          "lang": "ar",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_nrn0wl355m",
+          "type": "text",
+          "x": 96,
+          "y": 2256,
+          "w": 1098,
+          "h": 336,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "في جولدكم تسوق بأمان",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        }
+      ]
+    },
+    {
+      "id": "s_rn7nnua55m",
+      "template": "cover",
+      "content": {
+        "title": "أهدِ من تحب ذهبًا حقيقيًا",
+        "visual": "goldbar",
+        "barLabel": "5g"
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_ouzzuai55m",
+          "type": "logo",
+          "x": 895,
+          "y": 96,
+          "w": 299,
+          "h": 119,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_hrty2f055m",
+          "type": "goldbar",
+          "x": 453,
+          "y": 937,
+          "w": 385,
+          "h": 621,
+          "rotation": -6,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "label": "5g",
+          "sub": "FINE GOLD\n999.9",
+          "name": "visual"
+        },
+        {
+          "id": "l_z5uhr9255m",
+          "type": "text",
+          "x": 96,
+          "y": 2256,
+          "w": 1098,
+          "h": 336,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "أهدِ من تحب ذهبًا حقيقيًا",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        }
+      ]
+    }
+  ]
+}

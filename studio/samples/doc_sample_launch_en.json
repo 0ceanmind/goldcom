@@ -1,0 +1,1069 @@
+{
+  "version": 1,
+  "kind": "carousel",
+  "lang": "en",
+  "fps": 30,
+  "source": null,
+  "id": "doc_sample_launch_en",
+  "name": "Goldcom launch · English carousel",
+  "format": "feed-portrait",
+  "width": 1080,
+  "height": 1350,
+  "createdAt": "2026-10-23T12:00:09.000Z",
+  "updatedAt": "2026-10-23T12:00:09.000Z",
+  "slides": [
+    {
+      "id": "s_t1s1bi655h",
+      "template": "cover",
+      "content": {
+        "kicker": "New on Goldcom",
+        "title": "Real gold, *from your phone*",
+        "subtitle": "Start from one gram. Track, gift, sell or collect.",
+        "visual": "device",
+        "device": "phone"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_8ov5f4o55h",
+          "type": "logo",
+          "x": 80,
+          "y": 80,
+          "w": 250,
+          "h": 99,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_qun4e9055h",
+          "type": "phone",
+          "x": 80,
+          "y": 772,
+          "w": 920,
+          "h": 1901,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "en",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_rkwxzvl55h",
+          "type": "text",
+          "x": 80,
+          "y": 270,
+          "w": 920,
+          "h": 35,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "New on Goldcom",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_l5oj41455h",
+          "type": "text",
+          "x": 80,
+          "y": 325,
+          "w": 920,
+          "h": 241,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "Real gold, *from your phone*",
+          "role": "display",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_ikj6gha55h",
+          "type": "text",
+          "x": 80,
+          "y": 586,
+          "w": 920,
+          "h": 116,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.6
+          },
+          "text": "Start from one gram. Track, gift, sell or collect.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "subtitle"
+        },
+        {
+          "id": "l_bmjlks355h",
+          "type": "pager",
+          "x": 700,
+          "y": 110,
+          "w": 300,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "swipe",
+          "name": "pager",
+          "align": "end"
+        }
+      ]
+    },
+    {
+      "id": "s_pts8a0c55h",
+      "template": "statement",
+      "content": {
+        "kicker": "The problem",
+        "title": "Buying gold should not feel *complicated*.",
+        "body": "Prices change, purity is hard to judge and storage is inconvenient."
+      },
+      "theme": "charcoal",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_dczxi7w55h",
+          "type": "gem",
+          "x": 80,
+          "y": 434,
+          "w": 44,
+          "h": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "fill": "goldLeaf",
+          "name": "gem"
+        },
+        {
+          "id": "l_j81whd955h",
+          "type": "text",
+          "x": 80,
+          "y": 510,
+          "w": 920,
+          "h": 35,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.05,
+            "dur": 0.6
+          },
+          "text": "The problem",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_3x9gjqr55h",
+          "type": "text",
+          "x": 80,
+          "y": 577,
+          "w": 920,
+          "h": 192,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "Buying gold should not feel *complicated*.",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_j3otfl255h",
+          "type": "text",
+          "x": 80,
+          "y": 801,
+          "w": 920,
+          "h": 116,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.6
+          },
+          "text": "Prices change, purity is hard to judge and storage is inconvenient.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "body"
+        },
+        {
+          "id": "l_i26jooh55h",
+          "type": "pager",
+          "x": 80,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_88t7pky55h",
+      "template": "feature",
+      "content": {
+        "icon": "gift",
+        "kicker": "Gifting",
+        "title": "Send real gold in seconds",
+        "body": "Choose a weight, add a message and your gift arrives instantly.",
+        "device": "phone"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_80q57zo55h",
+          "type": "icon",
+          "x": 80,
+          "y": 80,
+          "w": 112,
+          "h": 112,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "scale",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "icon": "gift",
+          "color": "auto",
+          "tile": true,
+          "name": "icon"
+        },
+        {
+          "id": "l_mzxocbw55h",
+          "type": "text",
+          "x": 80,
+          "y": 232,
+          "w": 920,
+          "h": 35,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.05,
+            "dur": 0.6
+          },
+          "text": "Gifting",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_gey5s8j55i",
+          "type": "text",
+          "x": 80,
+          "y": 281,
+          "w": 920,
+          "h": 192,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.12,
+            "dur": 0.6
+          },
+          "text": "Send real gold in seconds",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_jzf0a3h55i",
+          "type": "text",
+          "x": 80,
+          "y": 493,
+          "w": 920,
+          "h": 116,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.24,
+            "dur": 0.6
+          },
+          "text": "Choose a weight, add a message and your gift arrives instantly.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "body"
+        },
+        {
+          "id": "l_aijzbb755i",
+          "type": "phone",
+          "x": 80,
+          "y": 669,
+          "w": 920,
+          "h": 1901,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "en",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_vuj1f1355i",
+          "type": "pager",
+          "x": 740,
+          "y": 80,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager",
+          "align": "end"
+        }
+      ]
+    },
+    {
+      "id": "s_7b0uf1u55h",
+      "template": "screenshot",
+      "content": {
+        "title": "Browse live gold prices",
+        "caption": "Indicative prices update throughout the day.",
+        "device": "phone",
+        "label": "yes"
+      },
+      "theme": "bullion",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_z2swndr55i",
+          "type": "text",
+          "x": 80,
+          "y": 80,
+          "w": 920,
+          "h": 78,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "Browse live gold prices",
+          "role": "h2",
+          "color": "auto",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_ljiuorw55i",
+          "type": "text",
+          "x": 80,
+          "y": 170,
+          "w": 920,
+          "h": 53,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.12,
+            "dur": 0.6
+          },
+          "text": "Indicative prices update throughout the day.",
+          "role": "body",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "caption"
+        },
+        {
+          "id": "l_mjp7gs655i",
+          "type": "phone",
+          "x": 328,
+          "y": 271,
+          "w": 425,
+          "h": 879,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.8
+          },
+          "src": "",
+          "placeholder": "home",
+          "lang": "en",
+          "statusBar": true,
+          "name": "device"
+        },
+        {
+          "id": "l_kej7yvd55i",
+          "type": "text",
+          "x": 80,
+          "y": 1164,
+          "w": 920,
+          "h": 31,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.5,
+            "dur": 0.6
+          },
+          "text": "Illustrative screen",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true
+        },
+        {
+          "id": "l_9bxx75p55i",
+          "type": "pager",
+          "x": 80,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_b7k2ch855h",
+      "template": "steps",
+      "content": {
+        "kicker": "How it works",
+        "title": "Own gold in three steps",
+        "items": [
+          "Choose a certified bar from 1 g",
+          "Lock the price at checkout",
+          "Hold, gift, sell or collect"
+        ]
+      },
+      "theme": "cream",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_an707p655i",
+          "type": "text",
+          "x": 80,
+          "y": 120,
+          "w": 920,
+          "h": 35,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "How it works",
+          "role": "overline",
+          "color": "accent",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "kicker"
+        },
+        {
+          "id": "l_5gmdvnb55i",
+          "type": "text",
+          "x": 80,
+          "y": 169,
+          "w": 920,
+          "h": 192,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "text": "Own gold in three steps",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_oebqdg255i",
+          "type": "list",
+          "x": 80,
+          "y": 425,
+          "w": 920,
+          "h": 755,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.25,
+            "dur": 0.6
+          },
+          "items": [
+            "Choose a certified bar from 1 g",
+            "Lock the price at checkout",
+            "Hold, gift, sell or collect"
+          ],
+          "bullet": "number",
+          "role": "body-lg",
+          "color": "auto",
+          "dir": "ltr",
+          "name": "items"
+        },
+        {
+          "id": "l_rvue28355i",
+          "type": "pager",
+          "x": 80,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_nzypukj55h",
+      "template": "price",
+      "content": {
+        "title": "Know your price before you buy",
+        "label": "Gold 24K · per gram",
+        "price": "OMR 31.204",
+        "change": "+0.42%",
+        "time": "Indicative · 14:05"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_ykn5rp255i",
+          "type": "text",
+          "x": 80,
+          "y": 80,
+          "w": 920,
+          "h": 192,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "Know your price before you buy",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_t8mk24m55i",
+          "type": "shape",
+          "x": 80,
+          "y": 328,
+          "w": 920,
+          "h": 742,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "shape": "rect",
+          "fill": "surface",
+          "radius": 32,
+          "stroke": "",
+          "facet": false,
+          "name": "card"
+        },
+        {
+          "id": "l_7xorqd355i",
+          "type": "text",
+          "x": 124,
+          "y": 372,
+          "w": 499,
+          "h": 42,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "Gold 24K · per gram",
+          "role": "small",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true
+        },
+        {
+          "id": "l_6cwadfz55j",
+          "type": "text",
+          "x": 540,
+          "y": 376,
+          "w": 416,
+          "h": 31,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "Indicative · 14:05",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "end",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true
+        },
+        {
+          "id": "l_6r2kmzr55j",
+          "type": "text",
+          "x": 124,
+          "y": 428,
+          "w": 566,
+          "h": 90,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "count",
+            "delay": 0.25,
+            "dur": 1.1
+          },
+          "text": "OMR 31.204",
+          "role": "price",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "price"
+        },
+        {
+          "id": "l_ewihz6655j",
+          "type": "badge",
+          "x": 756,
+          "y": 442,
+          "w": 200,
+          "h": 56,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.5,
+            "dur": 0.6
+          },
+          "text": "▲ +0.42%",
+          "variant": "gain",
+          "gem": false,
+          "dir": "ltr",
+          "name": "change"
+        },
+        {
+          "id": "l_d9mj8h355j",
+          "type": "chart",
+          "x": 124,
+          "y": 572,
+          "w": 832,
+          "h": 454,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "draw",
+            "delay": 0.4,
+            "dur": 1.4
+          },
+          "points": [
+            30,
+            34,
+            31,
+            38,
+            36,
+            44,
+            41,
+            49,
+            46,
+            54,
+            52,
+            60,
+            64
+          ],
+          "trend": "up",
+          "area": true,
+          "grid": true,
+          "name": "chart"
+        },
+        {
+          "id": "l_2bm13q955j",
+          "type": "text",
+          "x": 80,
+          "y": 1141,
+          "w": 920,
+          "h": 59,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.6,
+            "dur": 0.6
+          },
+          "text": "Gold prices change and the value of your holdings can go down as well as up. Prices shown are indicative; the final price is confirmed at checkout. This is not financial advice.",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "disclaimer"
+        },
+        {
+          "id": "l_rjd4pzv55j",
+          "type": "pager",
+          "x": 80,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    },
+    {
+      "id": "s_k41x93255h",
+      "template": "cta",
+      "content": {
+        "title": "Start your gold story today",
+        "subtitle": "Download Goldcom on the App Store and Google Play.",
+        "button": "Download the app",
+        "link": "goldcom.om",
+        "disclaimer": "yes"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_wxscruy55j",
+          "type": "logo",
+          "x": 390,
+          "y": 142,
+          "w": 300,
+          "h": 288,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "variant": "stacked",
+          "mode": "auto",
+          "name": "logo"
+        },
+        {
+          "id": "l_mh0i5cs55j",
+          "type": "text",
+          "x": 80,
+          "y": 466,
+          "w": 920,
+          "h": 192,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.15,
+            "dur": 0.6
+          },
+          "text": "Start your gold story today",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_2knit6g55j",
+          "type": "text",
+          "x": 80,
+          "y": 694,
+          "w": 920,
+          "h": 116,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.3,
+            "dur": 0.6
+          },
+          "text": "Download Goldcom on the App Store and Google Play.",
+          "role": "body-lg",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "subtitle"
+        },
+        {
+          "id": "l_qd2iwfw55j",
+          "type": "button",
+          "x": 294,
+          "y": 846,
+          "w": 492,
+          "h": 104,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.45,
+            "dur": 0.6
+          },
+          "text": "Download the app",
+          "variant": "auto",
+          "dir": "ltr",
+          "name": "button"
+        },
+        {
+          "id": "l_bimggkq55j",
+          "type": "text",
+          "x": 80,
+          "y": 986,
+          "w": 920,
+          "h": 53,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.55,
+            "dur": 0.6
+          },
+          "text": "goldcom.om",
+          "role": "body",
+          "color": "accent",
+          "accent": "auto",
+          "align": "center",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "link"
+        },
+        {
+          "id": "l_ft5o7gx55j",
+          "type": "text",
+          "x": 80,
+          "y": 1141,
+          "w": 920,
+          "h": 59,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.6,
+            "dur": 0.6
+          },
+          "text": "Gold prices change and the value of your holdings can go down as well as up. Prices shown are indicative; the final price is confirmed at checkout. This is not financial advice.",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "disclaimer"
+        },
+        {
+          "id": "l_w487j8v55j",
+          "type": "pager",
+          "x": 80,
+          "y": 1230,
+          "w": 260,
+          "h": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "none",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "style": "dots",
+          "name": "pager"
+        }
+      ]
+    }
+  ]
+}

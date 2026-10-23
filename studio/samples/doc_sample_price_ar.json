@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "kind": "post",
+  "lang": "ar",
+  "fps": 30,
+  "source": null,
+  "id": "doc_sample_price_ar",
+  "name": "Gold price post",
+  "format": "feed-portrait",
+  "width": 1080,
+  "height": 1350,
+  "createdAt": "2026-10-23T12:00:07.000Z",
+  "updatedAt": "2026-10-23T12:00:07.000Z",
+  "slides": [
+    {
+      "id": "s_l2m9djg55l",
+      "template": "price",
+      "content": {
+        "title": "سعر الذهب اليوم",
+        "label": "ذهب عيار 24 · للجرام",
+        "price": "OMR 31.204",
+        "change": "+0.42%",
+        "time": "استرشادي · 14:05"
+      },
+      "theme": "onyx",
+      "pattern": "top",
+      "bg": null,
+      "duration": 4,
+      "transition": "fade",
+      "custom": false,
+      "layers": [
+        {
+          "id": "l_tnxiraj55l",
+          "type": "text",
+          "x": 80,
+          "y": 80,
+          "w": 920,
+          "h": 118,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0,
+            "dur": 0.6
+          },
+          "text": "سعر الذهب اليوم",
+          "role": "h1",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "title"
+        },
+        {
+          "id": "l_t52flsi55l",
+          "type": "shape",
+          "x": 80,
+          "y": 254,
+          "w": 920,
+          "h": 760,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.1,
+            "dur": 0.6
+          },
+          "shape": "rect",
+          "fill": "surface",
+          "radius": 32,
+          "stroke": "",
+          "facet": false,
+          "name": "card"
+        },
+        {
+          "id": "l_utx7jeo55l",
+          "type": "text",
+          "x": 457,
+          "y": 298,
+          "w": 499,
+          "h": 49,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "ذهب عيار 24 · للجرام",
+          "role": "small",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true
+        },
+        {
+          "id": "l_rs9ze7l55l",
+          "type": "text",
+          "x": 124,
+          "y": 302,
+          "w": 416,
+          "h": 37,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade-up",
+            "delay": 0.2,
+            "dur": 0.6
+          },
+          "text": "استرشادي · 14:05",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "end",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true
+        },
+        {
+          "id": "l_eqjs32455l",
+          "type": "text",
+          "x": 390,
+          "y": 354,
+          "w": 566,
+          "h": 90,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "count",
+            "delay": 0.25,
+            "dur": 1.1
+          },
+          "text": "OMR 31.204",
+          "role": "price",
+          "color": "auto",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "ltr",
+          "fit": true,
+          "name": "price"
+        },
+        {
+          "id": "l_f1pwqxh55l",
+          "type": "badge",
+          "x": 124,
+          "y": 368,
+          "w": 200,
+          "h": 56,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.5,
+            "dur": 0.6
+          },
+          "text": "▲ +0.42%",
+          "variant": "gain",
+          "gem": false,
+          "dir": "ltr",
+          "name": "change"
+        },
+        {
+          "id": "l_80cucoz55l",
+          "type": "chart",
+          "x": 124,
+          "y": 498,
+          "w": 832,
+          "h": 472,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "draw",
+            "delay": 0.4,
+            "dur": 1.4
+          },
+          "points": [
+            30,
+            34,
+            31,
+            38,
+            36,
+            44,
+            41,
+            49,
+            46,
+            54,
+            52,
+            60,
+            64
+          ],
+          "trend": "up",
+          "area": true,
+          "grid": true,
+          "name": "chart"
+        },
+        {
+          "id": "l_t2qf2b355l",
+          "type": "text",
+          "x": 80,
+          "y": 1130,
+          "w": 920,
+          "h": 70,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.6,
+            "dur": 0.6
+          },
+          "text": "أسعار الذهب متغيرة، وقد ترتفع قيمة مقتنياتك أو تنخفض. الأسعار المعروضة استرشادية، ويُثبَّت السعر النهائي عند إتمام الشراء. هذا المحتوى ليس نصيحة مالية.",
+          "role": "caption",
+          "color": "fg2",
+          "accent": "auto",
+          "align": "start",
+          "valign": "top",
+          "dir": "rtl",
+          "fit": true,
+          "name": "disclaimer"
+        }
+      ]
+    }
+  ]
+}
