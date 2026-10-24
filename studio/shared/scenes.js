@@ -70,7 +70,7 @@ function phoneBox(h, { w, y, frame = 'iphone', x }) {
 function screenOf(box, frame = 'iphone') {
   const sp = frame === 'android' ? { rim: 0.009, bezel: 0.028 } : { rim: 0.011, bezel: 0.036 };
   const inset = box.w * (sp.rim + sp.bezel);
-  return { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset };
+  return { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset, r: Math.max(0, box.w * (frame === 'android' ? 0.105 : 0.165) - inset) };
 }
 
 /** A phone layer that shows footage (video or screenshot) with its time map, taps and a tap hint for stills. */
@@ -81,7 +81,11 @@ function footagePhone(h, ctx, c, box, { delay = 0.15, enter = 'rise', tilt = nul
   const plan = footagePlan(c, ctx.dur);
   // A tap in the last moments of a clip belongs to the next step: leave it out so the ripple never gives it away.
   const taps = video ? (c.taps || []).filter((tp) => tp.t >= plan.from - 0.05 && tp.t <= plan.to - 0.35).map((tp) => ({ t: +plan.toSlide(tp.t).toFixed(3), x: tp.x, y: tp.y })) : [];
-  const hint = c.hint ? String(c.hint).split(',').map(Number) : (c.taps?.length ? [c.taps[0].x, c.taps[0].y] : null);
+  // Stills show this step's own tap (inside its footage range), never a tap from another step of the recording.
+  const next = video ? (c.taps || []).find((tp) => tp.t >= plan.from - 0.05 && tp.t <= plan.to + 0.3) : (c.taps || [])[0];
+  // A manual "x,y" overrides it; anything that is not two numbers (e.g. a sentence) falls back to the recorded tap.
+  const manual = String(c.hint || '').split(',').map((v) => (v.trim() === '' ? NaN : Number(v)));
+  const hint = c.hint === 'none' ? null : manual.length === 2 && manual.every(Number.isFinite) ? manual : next ? [next.x, next.y] : null;
   const keys = [];
   if (ctx.seq && enter === 'rise') {
     keys.push({ t: delay, y: box.y + Math.round(260 * h.s), opacity: 0 });
@@ -91,7 +95,7 @@ function footagePhone(h, ctx, c, box, { delay = 0.15, enter = 'rise', tilt = nul
     name: 'device', src, frame, statusBar: video || c.statusBar === 'no' ? false : true, lang: ctx.lang, placeholder: c.placeholder || 'home',
     x: box.x, y: box.y, w: box.w, h: box.h, tilt: tilt || undefined, shadow: 'floating',
     vmap: video ? plan.vmap : undefined, poster: video ? num(c.poster, plan.from + Math.min(0.4, (plan.to - plan.from) / 2)) : undefined,
-    taps, tapHint: !ctx.seq && hint && hint.every(Number.isFinite) ? { x: hint[0], y: hint[1] } : null,
+    taps, tapHint: !ctx.seq && hint ? { x: hint[0], y: hint[1] } : null,
     keys: keys.length ? keys : undefined, anim: keys.length ? anim('none', 0) : anim('fade-up', delay, 0.8),
   });
   return { layer, taps, plan };
@@ -219,7 +223,7 @@ export const SCENES = {
       { key: 'to', label: 'Footage end (s)', type: 'text' },
       { key: 'zoom', label: 'Camera zoom on taps', type: 'select', options: ['1.35', '1.2', '1.6', '1'] },
       { key: 'frame', label: 'Phone', type: 'select', options: ['iphone', 'android'] },
-      { key: 'hint', label: 'Tap hint for stills "x,y" (0–1)', type: 'text' },
+      { key: 'hint', label: 'Tap ring position on stills as "x,y" fractions of the screen (empty = the recorded tap; "none" = no ring)', type: 'text' },
       { key: 'placeholder', label: 'Mock screen when no footage', type: 'select', options: ['home', 'browse'] },
     ],
     example: { step: '1', title: 'Open *Browse*', body: 'Bars start from one gram.', placeholder: 'browse' },
@@ -245,11 +249,35 @@ export const SCENES = {
       if (wide) box = phoneBox(h, { w: ctx.H * 0.47, y: h.m * 0.6, x: h.rtl ? h.m * 1.5 : h.W - h.m * 1.5 - ctx.H * 0.47 });
       else if (tall) box = phoneBox(h, { w: h.W * 0.66, y: textBottom + Math.round(70 * h.s) });
       else box = phoneBox(h, { w: h.W * 0.56, y: textBottom + Math.round(56 * h.s) });
-      const { layer, taps } = footagePhone(h, ctx, { ...c, frame: c.frame || 'iphone' }, box, { delay: 0.2 });
+      let { layer, taps } = footagePhone(h, ctx, { ...c, frame: c.frame || 'iphone' }, box, { delay: 0.2 });
+      // On a still the phone may bleed off the bottom, but never past the button the viewer is told to tap.
+      if (!ctx.seq && !wide && layer.tapHint) {
+        const limit = ctx.H - Math.round(80 * h.s);
+        const hintY = (b) => { const sc = screenOf(b, layer.frame); return sc.y + layer.tapHint.y * sc.h; };
+        let w = box.w;
+        while (hintY(box) > limit && w > h.W * 0.38) { w -= h.W * 0.02; box = phoneBox(h, { w, y: box.y }); }
+        ({ layer, taps } = footagePhone(h, ctx, { ...c, frame: c.frame || 'iphone' }, box, { delay: 0.2 }));
+      }
       res.push(layer);
       // Dark plate behind the text so zoomed footage slides under it cleanly.
       res.push(plateLayer(h, textBottom));
       res.push(...[step, label, title, body].filter(Boolean).map((l) => ({ ...out(l, ctx), fixed: true })));
+      // Segmented progress (like Stories): earlier steps full, this one fills while it plays, later ones dim.
+      const total = Math.min(10, Math.max(0, Math.round(num(c.total, 0))));
+      const cur = Math.round(num(c.step, 1));
+      if (total > 1 && cur >= 1 && cur <= total) {
+        const gap = Math.round(8 * h.s), bw = (h.cw - gap * (total - 1)) / total, bh = Math.max(4, Math.round(6 * h.s));
+        const by = Math.round(h.m * 0.35);
+        for (let i = 1; i <= total; i++) {
+          const bx = h.rtl ? h.W - h.m - i * bw - (i - 1) * gap : h.m + (i - 1) * (bw + gap);
+          res.push(L('shape', { name: `progress${i}`, shape: 'rect', fill: 'slate', radius: bh / 2, x: bx, y: by, w: bw, h: bh, fixed: true, opacity: 0.9, anim: anim('none', 0) }));
+          if (i <= cur) {
+            const fill = L('shape', { name: `progress-fill${i}`, shape: 'rect', fill: 'spark', radius: bh / 2, x: bx, y: by, w: bw, h: bh, fixed: true, anim: anim('none', 0) });
+            if (i === cur && ctx.seq) fill.keys = h.rtl ? [{ t: 0, x: bx + bw, w: 0 }, { t: ctx.dur, x: bx, w: bw, ease: 'linear' }] : [{ t: 0, w: 0 }, { t: ctx.dur, w: bw, ease: 'linear' }];
+            res.push(fill);
+          }
+        }
+      }
       const zoom = num(c.zoom, 1.35);
       const screen = screenOf(layer, layer.frame);
       const camera = ctx.seq && zoom > 1.01 ? tapCamera(taps, { ...screen, y: screen.y + ctx.top }, ctx, { zoom, dur: ctx.dur }) : null;
@@ -586,12 +614,13 @@ export const SCENES = {
       for (const l of blocks) { l.y = y; y += l.h + Math.round(18 * h.s); }
       const box = phoneBox(h, { w: h.W * (tall ? 0.64 : 0.52), y: y + Math.round(60 * h.s) });
       const from = num(c.from, 0.5);
-      const { layer } = footagePhone(h, ctx, { ...c, from, to: from + 0.04, poster: from }, box, { delay: 0.15 });
+      const { layer } = footagePhone(h, ctx, { ...c, from, to: from + 0.04, poster: from, hint: 'none' }, box, { delay: 0.15 });
       res.push(layer);
       const sc = screenOf(box, layer.frame);
       const [rx, ry, rw, rh] = (String(c.region || '0.06,0.2,0.88,0.18').split(',').map(Number).concat([0, 0, 0, 0])).slice(0, 4);
       const reg = { x: sc.x + rx * sc.w, y: sc.y + ry * sc.h, w: Math.max(20, rw * sc.w), h: Math.max(20, rh * sc.h) };
-      res.push(L('focus', { name: 'focus', x: reg.x, y: reg.y, w: reg.w, h: reg.h, radius: Math.round(18 * h.s), dim: 0.62, anim: anim('fade', 1.0, 0.6) }));
+      // The dim stays inside the phone screen, so the slide around the phone keeps its theme.
+      res.push(L('focus', { name: 'focus', x: reg.x, y: reg.y, w: reg.w, h: reg.h, radius: Math.round(18 * h.s), dim: 0.62, clip: { x: sc.x, y: sc.y, w: sc.w, h: sc.h, r: sc.r }, anim: anim('fade', 1.0, 0.6) }));
       if (c.callout) {
         const cw = Math.round(Math.min(h.cw, 640 * h.s));
         const t = textLayer(h, { name: 'callout', text: c.callout, role: 'h3', x: 0, y: reg.y + reg.h + Math.round(30 * h.s), w: cw, lang: ctx.lang, delay: 1.35, a: 'fade-up' });

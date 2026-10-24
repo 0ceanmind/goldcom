@@ -6,7 +6,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
-import { getBrowser } from '../browser.mjs';
+import { getBrowser, closeBrowser } from '../browser.mjs';
 import { FFMPEG } from '../media/ffmpeg.mjs';
 import { ensureFrames } from '../footage/store.mjs';
 import { docDuration } from '../../shared/schema.js';
@@ -18,15 +18,38 @@ const footageIds = (doc) => {
 };
 
 /** Open a render page in frames mode. */
-async function openPage(browser, base, doc, fps, scale) {
+async function openPageOnce(browser, base, doc, fps, scale) {
   const ctx = await browser.newContext({ viewport: { width: 400, height: 400 }, deviceScaleFactor: 1 });
-  const page = await ctx.newPage();
-  await page.addInitScript((d) => { window.__DOC = d; }, doc);
-  await page.goto(`${base}/render.html?mode=frames&fps=${fps}&scale=${scale}`, { waitUntil: 'load', timeout: 60000 });
-  await page.waitForFunction('window.__READY === true || window.__ERROR', null, { timeout: 60000 });
-  const err = await page.evaluate('window.__ERROR || null');
-  if (err) { await ctx.close(); throw new Error(`Render page failed: ${err}`); }
-  return { page, close: () => ctx.close() };
+  const errors = [];
+  try {
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('requestfailed', (r) => errors.push(`${r.url()} ${r.failure()?.errorText || 'failed'}`));
+    await page.addInitScript((d) => { window.__DOC = d; }, doc);
+    await page.goto(`${base}/render.html?mode=frames&fps=${fps}&scale=${scale}`, { waitUntil: 'load', timeout: 45000 });
+    await page.waitForFunction('window.__READY === true || window.__ERROR', null, { timeout: 45000 });
+    const err = await page.evaluate('window.__ERROR || null');
+    if (err) throw new Error(`Render page failed: ${err}`);
+    return { page, close: () => ctx.close() };
+  } catch (e) {
+    await ctx.close().catch(() => {});
+    if (errors.length) e.message += ` (${errors.slice(-3).join('; ')})`;
+    throw e;
+  }
+}
+
+// A render page that does not come up (a stuck browser after a long session, a slow cold start) is retried once,
+// then once more on a freshly launched browser when no other job is using the current one.
+async function openPage(base, doc, fps, scale) {
+  for (let attempt = 0; ; attempt++) {
+    const browser = await getBrowser();
+    try {
+      return await openPageOnce(browser, base, doc, fps, scale);
+    } catch (e) {
+      if (attempt >= 2 || /Render page failed/.test(e.message)) throw e;
+      if (attempt === 1 && browser.contexts().length === 0) await closeBrowser();
+    }
+  }
 }
 
 /**
@@ -40,9 +63,12 @@ export async function renderFrames(opts, onFrame) {
   const duration = mode === 'slide' ? Number(doc.slides[index]?.duration) || 4 : docDuration(doc);
   const times = opts.times || Array.from({ length: Math.max(1, Math.round(duration * fps)) }, (_, i) => i / fps);
   for (const id of footageIds(doc)) await ensureFrames(id, fps);
-  const browser = await getBrowser();
   const nWorkers = Math.max(1, Math.min(opts.workers || Math.max(1, Math.min(4, os.cpus().length - 1)), times.length));
-  const pages = await Promise.all(Array.from({ length: nWorkers }, () => openPage(browser, base, doc, fps, scale)));
+  // The first page proves the browser is healthy; the others then open in parallel.
+  const first = await openPage(base, doc, fps, scale);
+  const pages = [first, ...await Promise.all(Array.from({ length: nWorkers - 1 }, () => openPage(base, doc, fps, scale)).map((p) => p.catch((e) => e)))];
+  const broken = pages.find((p) => p instanceof Error);
+  if (broken) { await Promise.all(pages.filter((p) => !(p instanceof Error)).map((p) => p.close().catch(() => {}))); throw broken; }
   const results = new Map();
   let next = 0, written = 0, failed = null;
   const waiters = new Set();

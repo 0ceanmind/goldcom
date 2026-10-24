@@ -22,7 +22,7 @@ export function startExport({ base, docId, mode = 'auto', index = 0, fps, scale 
     job.title = `Export · ${doc.name}`;
     fs.mkdirSync(EXPORTS_DIR, { recursive: true });
     const m = mode === 'auto' ? (['reel', 'video'].includes(doc.kind) ? 'sequence' : doc.slides.length > 1 ? 'slides' : 'slide') : mode;
-    const f = fps || doc.fps || getSettings().exportFps || 30;
+    const f = fps || getSettings().exportFps || doc.fps || 30;
     const signal = job.controller.signal;
     const one = async (opts, out, frac0, frac1) => {
       const tmpVideo = `${out}.video.mp4`;

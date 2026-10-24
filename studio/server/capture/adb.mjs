@@ -94,7 +94,18 @@ export async function deviceInfo(serial) {
   return { serial, width: m ? Number(m[1]) : 1080, height: m ? Number(m[2]) : 2400, density: dens ? Number(dens[1]) : 420, model, android, maker };
 }
 
-export const screencap = (serial) => adb(['exec-out', 'screencap', '-p'], { serial, timeout: 15000 });
+// A complete PNG starts with the signature and ends with the IEND chunk; a phone that is busy (or a flaky USB link)
+// can return a cut-off image, so it is retried.
+const pngComplete = (b) => b.length > 64 && b.readUInt32BE(0) === 0x89504e47 && b.subarray(b.length - 12).includes(Buffer.from('IEND'));
+export async function screencap(serial) {
+  let last;
+  for (let i = 0; i < 3; i++) {
+    last = await adb(['exec-out', 'screencap', '-p'], { serial, timeout: 15000 });
+    if (pngComplete(last)) return last;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`The phone returned an incomplete screenshot (${last.length} bytes). Unlock the phone and keep the screen on.`);
+}
 export const tap = (serial, x, y) => sh(serial, `input tap ${Math.round(x)} ${Math.round(y)}`);
 export const swipe = (serial, x1, y1, x2, y2, ms = 450) => sh(serial, `input swipe ${Math.round(x1)} ${Math.round(y1)} ${Math.round(x2)} ${Math.round(y2)} ${Math.round(ms)}`);
 export const keyevent = (serial, code) => sh(serial, `input keyevent ${code}`);
@@ -182,6 +193,7 @@ export async function startRecording(serial, { bitRate = 16e6, maxSec = 180 } = 
     async stop(localFile) {
       await sh(serial, 'pkill -2 screenrecord || kill -2 $(pidof screenrecord)').catch(() => {});
       await new Promise((r) => { const t = setTimeout(r, 4000); child.on('close', () => { clearTimeout(t); r(); }); });
+      if (child.exitCode === null) child.kill();
       await new Promise((r) => setTimeout(r, 700));
       await adb(['pull', remote, localFile], { serial, timeout: 120000 });
       await sh(serial, `rm -f ${remote}`).catch(() => {});

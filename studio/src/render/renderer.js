@@ -346,20 +346,22 @@ function drawLine(c, line, x, y, w, align, rtl, space, colors, fx) {
       const rw = run.tokens.reduce((acc, [t], j) => acc + t.width + (j && !t.glue ? space : 0), 0);
       cursor -= rw;
       let cx = cursor;
-      // Punctuation that ends the Latin run ("99.99%)." ) belongs to the Arabic sentence: draw it at the run's left, mirrored.
-      const [lastT, lastK] = run.tokens[run.tokens.length - 1];
-      const tail = /^(.*[A-Za-z0-9%])([^A-Za-z0-9%]+)$/.exec(lastT.w);
-      if (tail) {
-        const tw = c.measureText(tail[2]).width;
-        c.direction = 'rtl'; put({ ...lastT, w: tail[2] }, lastK, cx);
-        cx += tw;
-      }
-      run.tokens.forEach(([t, k], j) => {
+      // Punctuation around the Latin run («Browse», "(99.9%)." ) belongs to the Arabic sentence: it is drawn mirrored,
+      // the closing marks at the run's left and the opening marks at its right.
+      const toks = run.tokens.map(([t, k]) => ({ t, k, w: t.w }));
+      const f0 = toks[0], fl = toks[toks.length - 1];
+      const tail = /^(.*[A-Za-z0-9%])([^A-Za-z0-9%]+)$/.exec(fl.w);
+      if (tail) fl.w = tail[1];
+      const head = /^([^A-Za-z0-9]+)(.*[A-Za-z0-9].*)$/.exec(f0.w);
+      if (head) f0.w = head[2];
+      if (tail) { c.direction = 'rtl'; put({ ...fl.t, w: tail[2] }, fl.k, cx); cx += c.measureText(tail[2]).width; }
+      toks.forEach(({ t, k, w: tw }, j) => {
         if (j && !t.glue) cx += space;
         c.direction = 'ltr';
-        if (tail && k === lastK) { put({ ...t, w: tail[1] }, k, cx); return; }
-        put(t, k, cx); cx += t.width;
+        put({ ...t, w: tw }, k, cx);
+        cx += tw === t.w ? t.width : c.measureText(tw).width;
       });
+      if (head) { c.direction = 'rtl'; put({ ...f0.t, w: head[1] }, f0.k, cx); }
     }
   }
 }

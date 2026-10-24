@@ -28,7 +28,7 @@ export function SettingsDialog({ onClose, toast }) {
   };
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal settings" onClick={(e) => e.stopPropagation()}>
+      <div className="modal gc2 settings" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head"><h3>Settings</h3><button className="btn icon ghost" onClick={onClose}><Icon name="x" /></button></div>
         <div className="modal-body">
           <section>
@@ -115,7 +115,7 @@ export function UpdateButton({ toast }) {
         : <button className="btn icon ghost" title="Check for updates" onClick={() => { check(true).then(() => setOpen(true)); }}><Icon name="download" /></button>}
       {open && (
         <div className="modal-bg" onClick={() => !job && setOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal gc2" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head"><h3>{state?.available ? 'A new version is ready' : 'You are up to date'}</h3><button className="btn icon ghost" onClick={() => setOpen(false)}><Icon name="x" /></button></div>
             <div className="modal-body">
               {state?.error && <p className="note err">{state.error}</p>}

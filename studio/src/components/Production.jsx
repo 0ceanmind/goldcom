@@ -4,7 +4,7 @@ import { normalizeDocument } from '../../shared/schema.js';
 import { TEMPLATES } from '../../shared/templates.js';
 import { LivePreview } from './Gallery.jsx';
 import { StatusPill } from './Home.jsx';
-import { Icon } from './ui.jsx';
+import { Icon, SlideThumb } from './ui.jsx';
 
 const STAGES = [
   ['brief', 'Brief', 'Understanding the request'],
@@ -46,6 +46,8 @@ export default function Production({ id, images, onOpenDoc, onBack, toast }) {
   }, [docKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [job?.log?.length, tab]);
+  // Waiting for a concept choice: show the ideas.
+  useEffect(() => { if (job?.status === 'waiting') setTab('ideas'); }, [job?.status]);
 
   if (!job) return <div className="welcome"><p className="hint">Loading production…</p></div>;
   const cur = job.status === 'done' ? ORDER.done : stageIndex(job.stage);
@@ -99,11 +101,16 @@ export default function Production({ id, images, onOpenDoc, onBack, toast }) {
       </div>
       {job.status === 'running' && <div className="bar thin wide"><div style={{ width: `${Math.round((job.progress || 0) * 100)}%` }} /></div>}
       {job.status === 'error' && <div className="note err">Something went wrong: {job.error}. Press Resume to try again from where it stopped.</div>}
+      {job.status === 'waiting' && <div className="note">Three ideas are ready. Pick one in the Ideas tab and Claude carries on from there.</div>}
 
       <div className="prod-body">
         <div className="prod-preview">
           {video ? (
             <video key={video.url} src={video.url} controls autoPlay loop playsInline className="final-video" />
+          ) : doc && !['reel', 'video'].includes(doc.kind) && doc.slides.length > 1 ? (
+            <div className="slide-strip" dir={doc.lang === 'ar' ? 'rtl' : 'ltr'}>
+              {doc.slides.map((sl, i) => <div key={sl.id} className="strip-item"><SlideThumb doc={doc} index={i} width={260} images={images} /><span>{i + 1}</span></div>)}
+            </div>
           ) : doc ? (
             <div className="preview-frame"><LivePreview doc={doc} images={images} width={340} active /></div>
           ) : (

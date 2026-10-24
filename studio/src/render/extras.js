@@ -84,11 +84,13 @@ export function drawFocus(c, layer, ctx) {
   const x = layer.x - pad, y = layer.y - pad, w = layer.w + pad * 2, h = layer.h + pad * 2;
   const r = (layer.radius ?? 18) * 1;
   c.save();
+  if (layer.clip) { const k = layer.clip; rr(c, k.x, k.y, k.w, k.h, k.r || 0); c.clip(); }
   c.beginPath();
   c.rect(-ctx.W, -ctx.H, ctx.W * 3, ctx.H * 3);
   c.moveTo(x + r, y); c.arcTo(x, y, x, y + h, r); c.arcTo(x, y + h, x + w, y + h, r); c.arcTo(x + w, y + h, x + w, y, r); c.arcTo(x + w, y, x, y, r); c.closePath();
   c.fillStyle = `rgba(10,10,9,${layer.dim ?? 0.62})`;
   c.fill('evenodd');
+  if (layer.clip) { c.restore(); c.save(); }
   rr(c, x, y, w, h, r);
   c.strokeStyle = COLORS.spark; c.lineWidth = 4 * ctx.s; c.shadowColor = 'rgba(242,212,107,0.55)'; c.shadowBlur = 22 * ctx.s; c.stroke();
   c.restore();
@@ -106,11 +108,26 @@ export function drawBubble(c, layer, ctx) {
   c.restore();
 }
 
-/** Rounded plates behind text lines (captions over footage or busy sets). */
+/**
+ * One plate behind text lines (captions over footage or busy sets). Lines touch, so a multi-line caption reads as
+ * a single stepped shape; only the outer corners are rounded and the shape is filled once (no darker seams).
+ */
 export function drawPlates(c, rects, ctx) {
+  if (!rects.length) return;
   c.save();
-  c.fillStyle = isLight(ctx.theme) ? 'rgba(255,248,234,0.88)' : 'rgba(21,21,19,0.78)';
-  for (const r of rects) { rr(c, r.x, r.y, r.w, r.h, Math.min(r.h / 2, 18 * ctx.s)); c.fill(); }
+  c.fillStyle = isLight(ctx.theme) ? 'rgba(255,248,234,0.9)' : 'rgba(21,21,19,0.8)';
+  const R = Math.min(rects[0].h / 2, 18 * ctx.s);
+  const rows = rects.map((r, i) => ({ ...r }));
+  for (let i = 1; i < rows.length; i++) { const mid = (rows[i - 1].y + rows[i - 1].h + rows[i].y) / 2; rows[i - 1].h = mid - rows[i - 1].y; rows[i].h += rows[i].y - mid; rows[i].y = mid; }
+  c.beginPath();
+  rows.forEach((r, i) => {
+    const prev = rows[i - 1], next = rows[i + 1];
+    const wider = (o) => !o || r.x < o.x - 1 || r.x + r.w > o.x + o.w + 1;
+    const top = wider(prev) ? R : 0, bottom = wider(next) ? R : 0;
+    if (c.roundRect) c.roundRect(r.x, r.y, r.w, r.h + (next ? 0.5 : 0), [top, top, bottom, bottom]);
+    else c.rect(r.x, r.y, r.w, r.h + (next ? 0.5 : 0));
+  });
+  c.fill('nonzero');
   c.restore();
 }
 

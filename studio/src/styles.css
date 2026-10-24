@@ -513,9 +513,8 @@ textarea.input.code { font-family: var(--mono); font-size: 12px; min-height: 120
 .job-line.error { color: var(--loss); } .job-line.done { color: var(--gain); }
 
 /* ---------- Modals (settings, update) ---------- */
-.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 60; padding: 20px; }
-.modal { width: min(560px, 100%); max-height: 90vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 90px rgba(0,0,0,.6); overflow: hidden; }
-.modal.settings { width: min(680px, 100%); }
+.modal.gc2 { width: min(560px, 100%); max-height: 90vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 90px rgba(0,0,0,.6); overflow: hidden; }
+.modal.gc2.settings { width: min(680px, 100%); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .modal-head h3 { margin: 0; font-size: 15px; }
 .modal-body { overflow: auto; padding: 18px; display: grid; gap: 18px; }
@@ -530,3 +529,7 @@ textarea.input.code { font-family: var(--mono); font-size: 12px; min-height: 120
 @media (max-width: 1100px) { .prod-body { grid-template-columns: 1fr; } .prod-side { border-left: 0; border-top: 1px solid var(--line); min-height: 50vh; } .footage-page { grid-template-columns: 1fr; } }
 .asset.footage { position: relative; }
 .asset.footage span { position: absolute; left: 4px; right: 4px; bottom: 4px; font-size: 10px; background: rgba(0,0,0,.72); border-radius: 5px; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.slide-strip { display: flex; gap: 14px; overflow-x: auto; max-width: 100%; padding: 4px 4px 12px; }
+.strip-item { flex: none; width: 260px; position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06); }
+.strip-item canvas { display: block; }
+.strip-item span { position: absolute; top: 8px; inset-inline-start: 8px; font-size: 11px; font-weight: 700; background: rgba(0,0,0,.65); border-radius: 6px; padding: 2px 7px; }

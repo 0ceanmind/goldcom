@@ -360,7 +360,15 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
   job.reviews = job.reviews || [];
   for (let round = job.reviews.length; round < opts.reviewRounds; round++) {
     step('review', 0.56 + round * 0.12, `Art director review, round ${round + 1}…`);
-    const frames = await reviewFrames({ base, doc, times: reviewTimes(doc, { perSlide: isSequence(doc.kind) ? 2 : 1 }), scale: isSequence(doc.kind) ? 0.36 : 0.45 });
+    let frames;
+    try {
+      frames = await reviewFrames({ base, doc, times: reviewTimes(doc, { perSlide: isSequence(doc.kind) ? 2 : 1 }), scale: isSequence(doc.kind) ? 0.36 : 0.45 });
+    } catch (e) {
+      if (signal.aborted) throw e;
+      // The design is already built; a renderer hiccup should not throw the production away.
+      updateJob(job, {}, `Art director review skipped: the frames could not be rendered (${e.message.split('\n')[0]})`);
+      break;
+    }
     const lint = lintDocument(doc).map((i) => `[${i.level}] scene ${i.slide + 1}: ${i.message}`);
     const images = frames.map((f) => ({ data: f.buf.toString('base64'), mediaType: 'image/jpeg', label: f.label }));
     const prompt = `You are reviewing the rendered ${brief.format} "${job.storyboard.title}" (${brief.lang === 'ar' ? 'Arabic' : 'English'}). The images are frames in order, labelled by scene.\n\nStoryboard (scene numbers are 1-based):\n${J(job.storyboard.scenes.map((s, i) => ({ n: i + 1, scene: s.scene, duration: s.duration, theme: s.theme, fields: s.fields, footage: s.footage })))}\n\nCaption: ${job.storyboard.caption?.text}\n\nAutomatic brand check:\n${lint.join('\n') || 'no issues'}\n\nReview like a demanding art director and brand guardian: hook strength, legibility on a phone, hierarchy, overlaps/clipping, Instagram safe zones, footage relevance (does the screen match the instruction?), pacing, story clarity, brand voice, claims and disclaimers, Arabic quality, AI-sounding copy. Then give precise edits (field values in final form). Verdict "ship" only if it is genuinely ready to post (score ≥ 8).`;
