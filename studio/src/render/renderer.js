@@ -271,7 +271,8 @@ const isRtlWord = (w) => isArabic(w);
 const isLtrStrong = (w) => /[A-Za-z0-9]/.test(w) && !isArabic(w);
 
 function drawLine(c, line, x, y, w, align, rtl, space, colors, fx) {
-  const plain = !fx && !line.tokens.some((t) => t.em);
+  // Arabic lines with numbers take the run-based path, so "99.9%" never flips to "%99.9" in canvas bidi.
+  const plain = !fx && !line.tokens.some((t) => t.em) && !(rtl && line.tokens.some((t) => /\d/.test(t.w)));
   let left;
   if (align === 'center') left = x + (w - line.width) / 2;
   else if ((align === 'start') !== rtl) left = x; // start+ltr or end+rtl → left edge
@@ -314,7 +315,20 @@ function drawLine(c, line, x, y, w, align, rtl, space, colors, fx) {
       const rw = run.tokens.reduce((acc, [t], j) => acc + t.width + (j && !t.glue ? space : 0), 0);
       cursor -= rw;
       let cx = cursor;
-      run.tokens.forEach(([t, k], j) => { if (j && !t.glue) cx += space; c.direction = 'ltr'; put(t, k, cx); cx += t.width; });
+      // Punctuation that ends the Latin run ("99.99%)." ) belongs to the Arabic sentence: draw it at the run's left, mirrored.
+      const [lastT, lastK] = run.tokens[run.tokens.length - 1];
+      const tail = /^(.*[A-Za-z0-9%])([^A-Za-z0-9%]+)$/.exec(lastT.w);
+      if (tail) {
+        const tw = c.measureText(tail[2]).width;
+        c.direction = 'rtl'; put({ ...lastT, w: tail[2] }, lastK, cx);
+        cx += tw;
+      }
+      run.tokens.forEach(([t, k], j) => {
+        if (j && !t.glue) cx += space;
+        c.direction = 'ltr';
+        if (tail && k === lastK) { put({ ...t, w: tail[1] }, k, cx); return; }
+        put(t, k, cx); cx += t.width;
+      });
     }
   }
 }
@@ -337,7 +351,8 @@ function countText(text, p) {
 function upperKeepBrand(text) {
   const str = String(text);
   if (/goldcom/i.test(str)) return str;
-  return str.replace(/\S+/g, (w) => (/\.om\b|\.com\b|@/i.test(w) ? w : w.toUpperCase()));
+  // Web addresses and units after a number ("1 g", "10 kg", "1 oz") keep their spelling.
+  return str.replace(/(\d\s?)(g|kg|oz|mg)\b/g, '$1\u0000$2').replace(/\S+/g, (w) => (/\.om\b|\.com\b|@|\u0000/i.test(w) ? w : w.toUpperCase())).replace(/\u0000/g, '');
 }
 
 function tickText(text, lt, amount = 1) {
@@ -354,7 +369,7 @@ function tickText(text, lt, amount = 1) {
 function layoutText(c, layer, s, text) {
   const t = TYPE[layer.role] || TYPE.body;
   const rtl = layer.dir === 'rtl' || (layer.dir !== 'ltr' && isArabic(text));
-  const upper = t.upper && !rtl;
+  const upper = t.upper && !rtl && layer.upper !== false;
   const str = upper ? upperKeepBrand(text) : text;
   let size = (layer.size || t.size * (rtl && t.arScale ? t.arScale : 1)) * s;
   const weight = layer.weight || t.weight;
@@ -392,7 +407,7 @@ function drawText(c, layer, ctx, p, raw) {
   let lines = lay.lines;
   if (text !== (layer.text || '')) {
     // Re-wrap the changing string with the settled font size so the layout does not jump.
-    lines = wrapText(c, (TYPE[layer.role]?.upper && !lay.rtl) ? upperKeepBrand(text) : text, layer.w, lay.font, lay.ls).lines;
+    lines = wrapText(c, (TYPE[layer.role]?.upper && !lay.rtl && layer.upper !== false) ? upperKeepBrand(text) : text, layer.w, lay.font, lay.ls).lines;
   }
   let budget = Infinity;
   if (kind === 'type' && animating) budget = Math.floor(String(layer.text).length * raw);
@@ -765,7 +780,7 @@ function drawAppScreen(c, x, y, w, h, kind, lang) {
       gimg.addColorStop(0, '#4a4033'); gimg.addColorStop(1, '#262521');
       c.fillStyle = gimg; rr(c, X(cx + 8, 118), y + (cy + 8) * k, 118 * k, 110 * k, 10 * k); c.fill();
       drawGoldBar(c, { x: X(cx + 46, 42), y: y + (cy + 26) * k, w: 42 * k, h: 70 * k, label: g, sub: '999.9' }, {}, 0);
-      T(rtl ? `سبيكة ${g.replace('g', '')} جرام` : `Gold bar · ${g}`, cx + 10, cy + 140, 11, COLORS.white, 600);
+      T(rtl ? `سبيكة ${g.replace(/\s*g$/, '')} جرام` : `Gold bar · ${g}`, cx + 10, cy + 140, 11, COLORS.white, 600);
       T(rtl ? 'عيار 24 · معتمدة' : '24K · certified', cx + 10, cy + 160, 9.5, COLORS.stone, 500);
     });
   } else {
@@ -776,7 +791,15 @@ function drawAppScreen(c, x, y, w, h, kind, lang) {
     c.font = `700 ${28 * k}px ${rtl ? FONTS.arabic : FONTS.latin}`; c.fillStyle = COLORS.white; c.direction = rtl ? 'rtl' : 'ltr'; c.textAlign = rtl ? 'right' : 'left';
     c.fillText(rtl ? '12.5 جرام' : '12.5 g', rtl ? x + w - 26 * k : x + 26 * k, y + 158 * k);
     T(rtl ? 'عيار 24 · 3 سبائك' : '24K · 3 bars', 26, 176, 10.5, COLORS.stone, 500);
-    drawChart(c, { x: x + 26 * k, y: y + 190 * k, w: 248 * k, h: 110 * k, area: true, grid: true, trend: 'up', points: [40, 42, 41, 44, 43, 42, 45, 44, 46, 45, 47, 46, 48] }, { s: k * 0.4, theme: 'onyx' }, 1);
+    // Holdings, not a chart: a mock screen should not suggest that gold only goes up (brand §11.2).
+    const rows = rtl ? [['سبيكة 5 جرام', '× 2'], ['سبيكة 2.5 جرام', '× 1']] : [['5 g bar', '× 2'], ['2.5 g bar', '× 1']];
+    rows.forEach(([name, qty], i) => {
+      const ry = 196 + i * 52;
+      c.fillStyle = COLORS.graphite; rr(c, X(22, 256), y + ry * k, 256 * k, 42 * k, 10 * k); c.fill();
+      drawGoldBar(c, { x: X(32, 16), y: y + (ry + 8) * k, w: 16 * k, h: 26 * k, label: '', sub: '' }, {}, 0);
+      T(name, 58, ry + 26, 11.5, COLORS.white, 600);
+      T(qty, 266, ry + 26, 11.5, COLORS.stone, 500, 'end');
+    });
     const acts = rtl ? ['شراء', 'بيع', 'إهداء', 'استلام'] : ['Buy', 'Sell', 'Gift', 'Collect'];
     const icn = ['buy', 'sell', 'gift', 'pin'];
     acts.forEach((a, i) => {
@@ -1214,7 +1237,7 @@ function drawCountdown(c, layer, ctx) {
     c.restore();
     c.letterSpacing = '0px';
     c.font = FONT(500, Math.min(bh * 0.16, 26 * ctx.s * (layer.compact ? 0.9 : 1.2)), rtl); c.fillStyle = layer.compact ? COLORS.stoneDark : resolveColor('fg2', ctx.theme, { layer, H: ctx.H }); c.direction = rtl ? 'rtl' : 'ltr';
-    c.textBaseline = 'alphabetic';
+    c.textBaseline = 'alphabetic'; c.textAlign = 'center';
     c.fillText(labels[pi] || '', bx + bw / 2, y + bh + (h - bh) * 0.7);
   });
   c.textBaseline = 'alphabetic';
@@ -1324,9 +1347,11 @@ function drawChat(c, layer, ctx, p, raw) {
     c.translate(0, (1 - q) * fs);
     const rad = Math.min(b.bh / 2, fs * 1.1);
     rr(c, bx, cy, b.bw, b.bh, rad);
-    c.fillStyle = me ? COLORS.spark : light ? COLORS.white : COLORS.slate; c.fill();
-    if (light && !me) { c.strokeStyle = COLORS.mist; c.lineWidth = Math.max(1, 2 * ctx.s); c.stroke(); }
-    c.font = font; c.fillStyle = me ? COLORS.ink : light ? COLORS.charcoal : COLORS.white;
+    // Brand replies: graphite with a gold edge (Spark is kept for the main action only, brand §4).
+    c.fillStyle = me ? COLORS.graphite : light ? COLORS.white : COLORS.slate; c.fill();
+    if (me) { c.strokeStyle = COLORS.gold; c.lineWidth = Math.max(1, 2.5 * ctx.s); c.stroke(); }
+    else if (light) { c.strokeStyle = COLORS.mist; c.lineWidth = Math.max(1, 2 * ctx.s); c.stroke(); }
+    c.font = font; c.fillStyle = me ? COLORS.white : light ? COLORS.charcoal : COLORS.white;
     b.wr.lines.forEach((ln, li) => drawLine(c, ln, bx + pad, cy + pad * 0.65 + li * lh + lh * 0.5 + fs * 0.36, b.bw - pad * 2, 'start', rtl, b.wr.space, { base: c.fillStyle, accent: COLORS.bronze }));
     c.restore();
     cy += b.bh + gap;

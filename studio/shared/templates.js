@@ -233,6 +233,7 @@ export const TEMPLATES = {
       { key: 'device', label: 'Device', type: 'select', options: ['phone', 'browser'] },
       { key: 'screenshot', label: 'Screenshot', type: 'asset' },
       { key: 'url', label: 'Browser URL', type: 'text' },
+      { key: 'placeholder', label: 'Mock screen when there is no screenshot', type: 'select', options: ['home', 'browse'] },
       { key: 'label', label: 'Show "Illustrative screen" label', type: 'select', options: ['no', 'yes'] },
     ],
     example: { title: 'Live prices, always in view', caption: 'Indicative prices update throughout the day.', device: 'phone', label: 'yes' },
@@ -363,7 +364,8 @@ export const TEMPLATES = {
         const cy = stacked ? y + i * (ch + gap) : y;
         const pad = Math.round(40 * h.s);
         out.push(L('shape', { name: `card${i}`, shape: 'rect', fill: card.fill, stroke: card.accent ? 'accent' : '', radius: Math.round(28 * h.s), facet: !!card.accent, x: h.X(cx, cw), y: cy, w: cw, h: ch, anim: anim('fade-up', 0.15 + i * 0.15) }));
-        out.push(textLayer(h, { text: card.label, role: 'overline', x: cx + pad, y: cy + pad, w: cw - 2 * pad, color: card.accent ? 'accent' : 'fg2', lang: ctx.lang, delay: 0.2 + i * 0.15 }));
+        // Paired column labels share one case; one of them usually names Goldcom, which is never uppercased.
+        out.push({ ...textLayer(h, { text: card.label, role: 'overline', x: cx + pad, y: cy + pad, w: cw - 2 * pad, color: card.accent ? 'accent' : 'fg2', lang: ctx.lang, delay: 0.2 + i * 0.15 }), upper: false });
         out.push(L('list', { name: `list${i}`, items: card.items, bullet: card.bullet, role: 'body', color: card.fg, x: h.X(cx + pad, cw - 2 * pad), y: cy + pad + 60 * h.s, w: cw - 2 * pad, h: ch - 2 * pad - 60 * h.s, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade-up', 0.3 + i * 0.15) }));
       });
       out.push(...pagerLayers(h, ctx));
@@ -655,8 +657,12 @@ export const TEMPLATES = {
       const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h2', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 50 * h.s;
       const msgs = (Array.isArray(c.messages) ? c.messages : String(c.messages || '').split('\n')).filter((m) => (typeof m === 'string' ? m.trim() : m?.text)).map((m) => (typeof m === 'string' ? (m.trim().startsWith('>') ? { from: 'me', text: m.trim().slice(1).trim() } : { from: 'them', text: m.trim() }) : m));
       const bottom = h.H - h.m - (ctx.noPager ? 0 : 80 * h.s);
-      out.push(L('shape', { name: 'panel', shape: 'rect', fill: 'surface', radius: Math.round(36 * h.s), x: h.m - 20 * h.s, y: y - 30 * h.s, w: h.cw + 40 * h.s, h: bottom - y + 30 * h.s, facet: true, anim: anim('fade', 0.1) }));
-      out.push(L('chat', { name: 'chat', messages: msgs, x: h.m + 20 * h.s, y, w: h.cw - 40 * h.s, h: bottom - y - 40 * h.s, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('type', 0.4, Math.max(2, msgs.length * 1.1)) }));
+      // Size the panel to the conversation (same metrics as the chat renderer) so it never ends in empty space.
+      const fs = 34 * h.s, pad = fs * 0.75, lh = fs * (ctx.lang === 'ar' ? 1.55 : 1.4), cw = h.cw - 40 * h.s;
+      const need = msgs.reduce((acc, m) => acc + estimateText(m.text, 'body', cw * 0.78 - pad * 2, h.s, ctx.lang).lines * lh + pad * 1.3 + fs * 0.55, 0) + fs * 0.6;
+      const chatH = Math.min(bottom - y - 40 * h.s, need);
+      out.push(L('shape', { name: 'panel', shape: 'rect', fill: 'surface', radius: Math.round(36 * h.s), x: h.m - 20 * h.s, y: y - 30 * h.s, w: h.cw + 40 * h.s, h: chatH + 70 * h.s, facet: true, anim: anim('fade', 0.1) }));
+      out.push(L('chat', { name: 'chat', messages: msgs, x: h.m + 20 * h.s, y, w: cw, h: chatH, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('type', 0.4, Math.max(2, msgs.length * 1.1)) }));
       out.push(...pagerLayers(h, ctx));
       return out;
     },
@@ -725,7 +731,7 @@ export const TEMPLATES = {
         const d = 0.2 + i * 0.12;
         out.push(L('shape', { name: `card${i}`, shape: 'rect', fill: 'surface', radius: Math.round(28 * h.s), x: h.X(cx, cw), y: cy, w: cw, h: ch, anim: anim('fade-up', d) }));
         const bh = ch * 0.5, bw = bh * 0.62;
-        out.push(L('goldbar', { name: `bar${i}`, label: wgt.replace(/\s+/g, ''), sub: '999.9', x: h.X(cx + (cw - bw) / 2, bw), y: cy + ch * 0.08, w: bw, h: bh, anim: anim('pop', d + 0.1, 0.7), loop: { type: 'shimmer', speed: 0.6 + (i % 3) * 0.15 } }));
+        out.push(L('goldbar', { name: `bar${i}`, label: wgt, sub: '999.9', x: h.X(cx + (cw - bw) / 2, bw), y: cy + ch * 0.08, w: bw, h: bh, anim: anim('pop', d + 0.1, 0.7), loop: { type: 'shimmer', speed: 0.6 + (i % 3) * 0.15 } }));
         out.push(textLayer(h, { name: `w${i}`, text: ctx.lang === 'ar' ? `سبيكة ${wgt.replace(/\s*g$/i, '').replace(/\s*جرام$/, '')} جرام` : `Gold bar · ${wgt}`, role: 'h3', x: cx + 24 * h.s, y: cy + ch * 0.64, w: cw - 48 * h.s, align: 'center', lang: ctx.lang, delay: d + 0.2 }));
         if (price) out.push(L('text', { name: `p${i}`, text: price, role: 'body-lg', weight: 700, x: h.X(cx + 24 * h.s, cw - 48 * h.s), y: cy + ch * 0.8, w: cw - 48 * h.s, h: Math.round(56 * h.s), color: 'accent', align: 'center', dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', fit: true, anim: anim('count', d + 0.25, 1) }));
       });
@@ -956,7 +962,7 @@ function listLayout(c, ctx, bullet) {
 export const TEMPLATE_IDS = Object.keys(TEMPLATES);
 
 /** Build layers for a slide from its template + content. */
-const CENTERED = new Set(['list', 'steps', 'faq', 'feature', 'code', 'comparison']);
+const CENTERED = new Set(['list', 'steps', 'faq', 'feature', 'code', 'comparison', 'chat']);
 
 export function applyTemplate(slide, doc, index, total, band = 0) {
   const tpl = TEMPLATES[slide.template];
@@ -1002,7 +1008,8 @@ export function applyTemplate(slide, doc, index, total, band = 0) {
   }
   // Single posts, Story frames and animated posts carry a small logo so they are never unbranded in the feed.
   // Corner order follows the reading start (top-right in Arabic, brand §9.2); Reels and Stories keep it out of the UI zones.
-  if (['post', 'story', 'motion'].includes(doc.kind) && slide.brandMark !== false && !layers.some((l) => l.type === 'logo')) {
+  // Carousel covers too: the first slide is the tile on the profile grid.
+  if ((['post', 'story', 'motion'].includes(doc.kind) || (doc.kind === 'carousel' && index === 0)) && slide.brandMark !== false && !layers.some((l) => l.type === 'logo')) {
     const m = Math.round(80 * k);
     const rtl = ctx.lang === 'ar';
     const zTop = zone ? Math.round(zone.top * k + 10 * k) : Math.round(m * 0.6);

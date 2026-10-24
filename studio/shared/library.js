@@ -36,11 +36,12 @@ const TICKER = (t) => [
 const STAMP = (t, hhmm, indicative = false) => {
   const d = new Date();
   const date = t(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), d.toLocaleDateString('ar-OM-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }));
-  return `${indicative ? t('Indicative · ', 'استرشادي · ') : ''}${date} · ${hhmm}`;
+  return `${indicative ? t('Indicative · ', 'استرشادي · ') : ''}${date} · ${hhmm} ${t('GST', 'بتوقيت عُمان')}`;
 };
 const PRICE = (t) => t('OMR 31.204', '31.204 ر.ع.');
 const BARS = (t) => t(['1 g | OMR 33.180', '2.5 g | OMR 81.910', '5 g | OMR 162.260', '10 g | OMR 321.400'], ['1 g | 33.180 ر.ع.', '2.5 g | 81.910 ر.ع.', '5 g | 162.260 ر.ع.', '10 g | 321.400 ر.ع.']);
 const NOTE_PRICE = 'Update the price, change and time to the posting moment before you publish. The date is set to the day you created this design.';
+const NOTE_QUIZ = "Add Instagram's quiz sticker in the marked space when you post, with 18K, 21K and 24K as options, and mark 24K as the correct answer. The marker is not exported.";
 const NOTE_STICKER = (name) => `Add Instagram's ${name} sticker in the marked space when you post. The marker is not exported.`;
 
 export const LIBRARY_CATEGORIES = {
@@ -165,10 +166,10 @@ export const LIBRARY = [
         S('cover', 'onyx', { kicker: t('New', 'جديد من جولدكم'), title: t('Real gold, *from your phone*', 'ذهب حقيقي، *من جوالك*'), subtitle: t('Start from one gram. Track, gift, sell or collect.', 'ابدأ من جرام واحد، ثم تابع ذهبك أو أهدِه أو بِعه أو استلمه.'), visual: 'device', device: 'phone' }),
         S('statement', 'charcoal', { kicker: t('The problem', 'التحدي'), title: t('Buying gold should not feel *complicated*.', 'لا ينبغي أن يكون شراء الذهب *معقدًا*.'), body: t('Prices change, purity is hard to judge and storage is a hassle.', 'الأسعار تتغير، والتأكد من النقاوة صعب، والتخزين متعب.') }),
         S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Send gold *as a gift*', 'أهدِ الذهب *لمن تحب*'), body: t('Pick a weight, add a message and send it from the app.', 'اختر الوزن، وأضف رسالتك، وأرسله من التطبيق.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }),
-        S('screenshot', 'bullion', { title: t('Browse live gold prices', 'تصفح أسعار الذهب الفورية'), caption: t('Indicative prices, updated through the day.', 'أسعار استرشادية تتحدث على مدار اليوم.'), device: 'phone', label: 'yes' }),
+        S('screenshot', 'bullion', { title: t('Browse certified 24K bars', 'تصفّح سبائك عيار 24 المعتمدة'), caption: t('Choose a weight from 1 g to 10 g.', 'اختر الوزن من 1 جرام إلى 10 جرام.'), device: 'phone', placeholder: 'browse', label: 'no' }),
         S('steps', 'cream', { kicker: t('How it works', 'كيف يعمل'), title: t('Own gold in three steps', 'امتلك الذهب في ثلاث خطوات'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }),
         S('price', 'onyx', { title: t('Know your price before you buy', 'اعرف سعرك قبل أن تشتري'), label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05', true) }),
-        ctaApp(t, { title: t('Your first gram, in a few taps', 'جرامك الأول بلمسات قليلة'), subtitle: t('Download Goldcom and buy your first gram.', 'حمّل جولدكم واشترِ جرامك الأول.'), disclaimer: 'yes' }),
+        ctaApp(t, { title: t('Your first gram starts here', 'جرامك الأول يبدأ من هنا'), subtitle: t('Download Goldcom and buy your first gram.', 'حمّل جولدكم واشترِ جرامك الأول.'), disclaimer: 'yes' }),
       ],
       caption: { text: t(`Swipe through to see how Goldcom works, from your first gram to collecting a bar.\n\n${PRICE_NOTE.en}`, `اسحب لترى كيف يعمل جولدكم، من جرامك الأول حتى استلام السبيكة.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang) },
     }),
@@ -208,7 +209,7 @@ export const LIBRARY = [
       slides: [
         S('cover', 'bullion', { title: t('A gift that *lasts*', 'هدية *تدوم*'), visual: 'goldbar', barLabel: '5 g' }),
         S('notification', 'onyx', { kicker: t('How it feels', 'كيف تصل'), title: t('The best kind of *notification*', 'أجمل *إشعار* قد يصلك'), body: t('Your gift reaches them in the app.', 'هديتك تصلهم في التطبيق.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }),
-        S('steps', 'cream', { kicker: t('How to send', 'طريقة الإرسال'), title: t('Gift gold in three steps', 'أهدِ الذهب في ثلاث خطوات'), items: [t('Choose the weight', 'اختر الوزن'), t('Add a personal message', 'أضف رسالة شخصية'), t('Send it from the app', 'أرسلها من التطبيق')] }),
+        S('steps', 'cream', { kicker: t('How to send', 'طريقة الإرسال'), title: t('Gift gold in three steps', 'أهدِ الذهب في ثلاث خطوات'), items: [t('Choose the weight', 'اختر الوزن'), t('Add a personal message', 'أضف رسالة شخصية'), t('Send the gift from the app', 'أرسل الهدية من التطبيق')] }),
         S('list', 'charcoal', { kicker: t('For every occasion', 'لكل مناسبة'), title: t('Moments worth gold', 'لحظات تستحق الذهب'), items: [t('Eid', 'العيد'), t('Weddings', 'الأعراس'), t('A new baby', 'مولود جديد'), t('Graduation', 'التخرج')], bullet: 'gem' }),
         ctaApp(t, { title: t('Send your first gold gift', 'أرسل أول هدية ذهب'), subtitle: t('Pick a weight and add your message.', 'اختر الوزن وأضف رسالتك.'), button: t('Gift gold', 'أهدِ ذهبًا') }),
       ],
@@ -300,7 +301,7 @@ export const LIBRARY = [
     build: (lang, t = P(lang)) => ({
       slides: [
         S('kinetic', 'onyx', { lines: t(['Real gold.', 'From your phone.', '*From one gram.*']  , ['ذهب حقيقي.', 'من جوالك.', '*من جرام واحد.*']) }, { duration: 3.5, bgMotion: 'drift' }),
-        S('cover', 'onyx', { kicker: t('24K, from 1 g', 'عيار 24، من جرام واحد'), title: t('Buy certified 24K bars', 'اشترِ سبائك عيار 24 معتمدة'), subtitle: t('In a few taps, in Arabic or English.', 'بلمسات قليلة، بالعربية أو الإنجليزية.'), visual: 'device', device: 'phone' }, { duration: 4, transition: 'slide' }),
+        S('cover', 'onyx', { kicker: t('From one gram', 'من جرام واحد'), title: t('Buy certified 24K bars', 'اشترِ سبائك عيار 24 معتمدة'), subtitle: t('From your phone, in Arabic or English.', 'من جوالك، بالعربية أو الإنجليزية.'), visual: 'device', device: 'phone' }, { duration: 4, transition: 'slide' }),
         S('products', 'charcoal', { kicker: t('Pick a weight', 'اختر الوزن'), title: t('From 1 g to 10 g', 'من 1 جرام إلى 10 جرام'), products: BARS(t), note: t('Illustrative prices.', 'أسعار توضيحية.'), disclaimer: 'yes' }, { duration: 4, transition: 'wipe' }),
         S('cta', 'onyx', { title: t('Start with one gram', 'ابدأ بجرام واحد'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'yes' }, { duration: 3.5, transition: 'zoom' }),
       ],
@@ -313,11 +314,11 @@ export const LIBRARY = [
     build: (lang, t = P(lang)) => ({
       slides: [
         S('statement', 'bullion', { kicker: t('Eid gifting', 'هدايا العيد'), title: t('A gift that *lasts*.', 'هدية *تدوم*.'), body: t('Real gold, sent from your phone.', 'ذهب حقيقي، ترسله من جوالك.') }, { duration: 3.5 }),
-        S('notification', 'onyx', { title: t('It arrives *right away*', 'تصل *في الحال*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 4.5, transition: 'wipe' }),
+        S('notification', 'onyx', { title: t('It lands *in their app*', 'تصلهم *في التطبيق*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 4.5, transition: 'wipe' }),
         S('cover', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Choose a weight, *add a message*', 'اختر الوزن، *وأضف رسالتك*'), visual: 'goldbar', barLabel: '2.5 g' }, { duration: 3.5, transition: 'slide' }),
         S('cta', 'onyx', { title: t('Send your first gold gift', 'أرسل أول هدية ذهب'), button: t('Gift gold', 'أهدِ ذهبًا'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 3.5, transition: 'fade' }),
       ],
-      caption: { text: t('For Eid, weddings and new arrivals. Send gold in a few taps. 🎁', 'للعيد والأعراس والمواليد الجدد. أرسل الذهب بلمسات قليلة. 🎁'), hashtags: tags(lang, t('#EidGift', '#هدايا_العيد')) },
+      caption: { text: t('For Eid, weddings and new arrivals. Send real gold from your phone. 🎁', 'للعيد والأعراس والمواليد الجدد. أهدِ ذهبًا حقيقيًا من جوالك. 🎁'), hashtags: tags(lang, t('#EidGift', '#هدايا_العيد')) },
     }),
   },
   {
@@ -327,7 +328,7 @@ export const LIBRARY = [
       slides: [
         S('kinetic', 'onyx', { lines: t(['Three steps', 'to *own gold*.'], ['ثلاث خطوات', 'لتمتلك *الذهب*.']) }, { duration: 3 }),
         S('steps', 'charcoal', { kicker: t('How it works', 'كيف يعمل'), title: t('Own gold in three steps', 'امتلك الذهب في ثلاث خطوات'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }, { duration: 5, transition: 'slide' }),
-        S('screenshot', 'bullion', { title: t('All in one app', 'كل ذلك في تطبيق واحد'), device: 'phone', label: 'yes' }, { duration: 4, transition: 'zoom' }),
+        S('screenshot', 'bullion', { title: t('All in one app', 'كل ذلك في تطبيق واحد'), device: 'phone', label: 'no' }, { duration: 4, transition: 'zoom' }),
         S('cta', 'onyx', { title: t('Try it with one gram', 'جرّبه بجرام واحد'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 3.5, transition: 'fade' }),
       ],
       caption: { text: t('Choose, lock the price, own it. That is the whole process.', 'اختر، ثبّت السعر، وامتلك. هذه هي الخطوات كلها.'), hashtags: tags(lang) },
@@ -388,7 +389,7 @@ export const LIBRARY = [
     }),
   },
   {
-    id: 'story-quiz', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'education'], notes: NOTE_STICKER('quiz'),
+    id: 'story-quiz', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'education'], notes: NOTE_QUIZ,
     name: { en: 'Quiz: which is purest?', ar: 'اختبار: أيها الأنقى؟' },
     build: (lang, t = P(lang)) => ({
       slides: [
@@ -435,7 +436,7 @@ export const LIBRARY = [
     name: { en: 'Gift arrived', ar: 'وصلت الهدية' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('A gold gift, *delivered*', 'هدية ذهب *وصلت*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 }),
+        S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('A gold gift, *received*', 'هدية ذهب *وصلت*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 }),
         S('cta', 'onyx', { title: t('Send a gold gift today', 'أرسل هدية ذهب اليوم'), button: t('Gift gold', 'أهدِ ذهبًا'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 5 }),
       ],
       caption: { text: '', hashtags: [] },
@@ -476,7 +477,7 @@ export const LIBRARY = [
     }),
   },
   {
-    id: 'motion-countdown', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['occasion', 'live'],
+    id: 'motion-countdown', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['occasion', 'live'], notes: 'Set the timer to the time left until National Day when you post, and update the caption to match.',
     name: { en: 'National Day countdown', ar: 'عدّ تنازلي للعيد الوطني' },
     build: (lang, t = P(lang)) => ({
       slides: [S('countdown', 'onyx', { kicker: t('Oman National Day', 'العيد الوطني العُماني'), title: t('Counting down with *pride*', 'نعدّ الأيام *بفخر*'), days: '7', hours: '10', minutes: '30', subtitle: t('From the Goldcom team in Muscat.', 'من فريق جولدكم في مسقط.') }, { duration: 6 })],
@@ -488,7 +489,7 @@ export const LIBRARY = [
     name: { en: 'Goal ring', ar: 'دائرة الهدف' },
     build: (lang, t = P(lang)) => ({
       slides: [S('goal', 'charcoal', { kicker: t('A simple plan', 'خطة بسيطة'), title: t('Save toward a gift, *gram by gram*', 'ادّخر لهدية، *جرامًا بعد جرام*'), value: '62', label: t('6.2 g', '6.2 جرام'), sub: t('of 10 g · example', 'من 10 جرام · مثال'), items: [t('Choose the weight you want', 'اختر الوزن الذي تريده'), t('Buy a little when it suits you', 'اشترِ القليل كلما ناسبك'), t('Track your holdings in the app', 'تابع ذهبك في التطبيق')], disclaimer: 'yes' }, { duration: 6 })],
-      caption: { text: t('Big goals get easier when you take them one gram at a time.', 'الأهداف الكبيرة تصبح أسهل حين تقطعها جرامًا بعد جرام.'), hashtags: tags(lang, t('#SaveInGold', '#ادخار_الذهب')) },
+      caption: { text: t(`Big goals get easier when you take them one gram at a time.\n\n${PRICE_NOTE.en}`, `الأهداف الكبيرة تصبح أسهل حين تقطعها جرامًا بعد جرام.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#SaveInGold', '#ادخار_الذهب')) },
     }),
   },
   {
@@ -503,12 +504,12 @@ export const LIBRARY = [
 
   // ───────────── More interactive designs ─────────────
   {
-    id: 'reel-quiz', category: 'reel', format: 'story', kind: 'reel', tags: ['interactive', 'education'], notes: NOTE_STICKER('quiz'),
+    id: 'reel-quiz', category: 'reel', format: 'story', kind: 'reel', tags: ['interactive', 'education'], notes: NOTE_QUIZ,
     name: { en: 'Quiz reel: purest karat', ar: 'ريل اختبار: أنقى عيار' },
     build: (lang, t = P(lang)) => ({
       slides: [
         S('kinetic', 'onyx', { lines: t(['Quick quiz.', '*Think you know your karats?*'], ['اختبار سريع.', '*هل تعرف العيارات جيدًا؟*']) }, { duration: 3 }),
-        S('sticker', 'cream', { kicker: t('Pick one', 'اختر إجابة'), title: t('Which karat is the *purest*?', 'أي عيار هو *الأنقى*؟'), sticker: 'quiz', question: t('Your answer', 'إجابتك'), options: t(['18K', '21K', '24K'], ['عيار 18', 'عيار 21', 'عيار 24']), correct: '3', native: 'yes' }, { duration: 5, transition: 'slide' }),
+        S('sticker', 'cream', { kicker: t('Pick one', 'اختر إجابة'), title: t('Which karat is the *purest*?', 'أي عيار هو *الأنقى*؟'), sticker: 'quiz', question: t('Which karat is the purest?', 'أي عيار هو الأنقى؟'), options: t(['18K', '21K', '24K'], ['عيار 18', 'عيار 21', 'عيار 24']), correct: '3', native: 'yes' }, { duration: 5, transition: 'slide' }),
         S('fact', 'onyx', { kicker: t('The answer', 'الإجابة'), fact: t('*24K*, at least 99.9% gold', '*عيار 24*، بنقاوة 99.9% على الأقل'), body: t('Every Goldcom bar is 24K.', 'وكل سبائك جولدكم من عيار 24.') }, { duration: 4, transition: 'zoom' }),
       ],
       caption: { text: t('Did you get it right? Tell us in the comments.', 'هل أجبت إجابة صحيحة؟ أخبرنا في التعليقات.'), hashtags: tags(lang, t('#GoldGuide', '#دليل_الذهب')) },
@@ -519,14 +520,14 @@ export const LIBRARY = [
     name: { en: 'Price ticker, animated', ar: 'شريط الأسعار متحركًا' },
     build: (lang, t = P(lang)) => ({
       slides: [S('live-price', 'charcoal', { label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '11:20'), ticker: TICKER(t) }, { duration: 8, bgMotion: 'drift' })],
-      caption: { text: t(`Where gold stands this morning, per gram and per bar.\n\n${PRICE_NOTE.en}`, `أين يقف الذهب هذا الصباح، للجرام وللسبيكة.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
+      caption: { text: t(`Where gold stands this morning: per gram, per 10 g and per ounce.\n\n${PRICE_NOTE.en}`, `أين يقف الذهب هذا الصباح: للجرام ولكل 10 جرام وللأونصة.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
     }),
   },
   {
     id: 'motion-notification', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['gifting'],
     name: { en: 'Gift notification, animated', ar: 'إشعار الهدية متحركًا' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Gold that arrives *as a message*', 'ذهب يصل *في رسالة*'), body: t('Gold gifts arrive the moment they are sent.', 'هدايا الذهب تصل لحظة إرسالها.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 })],
+      slides: [S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Gold that arrives *as a message*', 'ذهب يصل *في رسالة*'), body: t('Your gift appears in their Goldcom app.', 'تظهر هديتك في تطبيق جولدكم لدى من تهديه.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 })],
       caption: { text: t('Imagine opening your phone to this. 🎁', 'تخيّل أن تفتح جوالك فتجد هذا الإشعار. 🎁'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
     }),
   },
@@ -575,6 +576,11 @@ export function buildLibraryDoc(item, lang = 'ar') {
   const built = item.build(lang);
   const doc = createDocument({ name: item.name[lang] || item.name.en, format: item.format, kind: item.kind, lang, caption: built.caption });
   doc.source = { type: 'library', item: item.id };
+  // Buttons inside a Reel cannot be tapped, so the caption points to the link in the bio.
+  const last = built.slides[built.slides.length - 1];
+  if (item.kind === 'reel' && last?.template === 'cta' && doc.caption && !/goldcom\.om/.test(doc.caption.text)) {
+    doc.caption = { ...doc.caption, text: `${doc.caption.text}\n\n${lang === 'ar' ? 'الرابط في الملف الشخصي: goldcom.om' : 'Link in bio: goldcom.om'}` };
+  }
   if (item.notes) doc.notes = item.notes;
   doc.slides = built.slides.map((s) => createSlide({ pattern: 'top', duration: 4, transition: 'fade', ...s, layers: [] }));
   return applyAllTemplates(normalizeDocument(doc));
