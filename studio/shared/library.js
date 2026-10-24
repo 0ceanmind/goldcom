@@ -53,518 +53,294 @@ export const LIBRARY_CATEGORIES = {
   video: 'Videos',
 };
 
+// Visual first: every design is one 3D scene per slide that shows the idea, with at most one short line.
+// (knowledge/design-dna.md, knowledge/lessons.md)
+const V = (scene, params, content = {}, more = {}) => S('scene', more.theme || 'onyx', { scene, params, ...content }, { pattern: 'none', duration: more.duration || 6, transition: more.transition || 'fade', ...more });
+const NOTE_GIFTBOX = 'The gift box is a visual metaphor for gifting in the app. Do not promise physical gift packaging unless Goldcom offers it.';
+const NOTE_STORAGE = 'Storage and custody wording needs sign-off (brand §11, amber tier): name the operator before saying "vault" or "insured".';
+const NOTE_SCREEN = 'The phone shows an illustrative buy screen with an example price. Swap in a real screenshot (scene setting "Screenshot URL") when you have one.';
+// The sticker slot sits low (above Instagram's bottom bar) so the real sticker never covers the hero object.
+const sticker = (kind, question, options = [], more = {}) => ({ type: 'sticker', kind, question, options, guide: true, x: 0.2, y: 0.69, w: 0.6, h: 0.14, rotation: -2, anim: { in: 'pop', delay: 0.6, dur: 0.6 }, ...more });
+const LOGO_END = (t, more = {}) => V('logo-mark', { mode: 'assemble' }, { title: t('Download Goldcom', 'حمّل جولدكم'), caption: t('App Store · Google Play · goldcom.om', 'App Store · Google Play · goldcom.om'), textZone: 'bottom' }, { duration: 4, ...more });
+
 export const LIBRARY = [
   // ───────────── Posts ─────────────
+  {
+    id: 'post-real-gold', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['brand', 'product'],
+    name: { en: 'Real gold, yours', ar: 'ذهب حقيقي، ملكك' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('bar-hero', { weight: '10 g', motion: 'reveal' }, { title: t('Real gold. *Yours.*', 'ذهب حقيقي. *ملكك.*'), caption: t('Minted 24K bar · 10 g', 'سبيكة عيار 24 · 10 جرام') })],
+      caption: { text: t('A minted 24K bar with its weight stamped on it. Buy from one gram in the app, then keep it, gift it or collect it.', 'سبيكة ذهب عيار 24 مختوم عليها وزنها. اشترِ من جرام واحد عبر التطبيق، ثم احتفظ بها أو أهدِها أو استلمها.'), hashtags: tags(lang) },
+    }),
+  },
+  {
+    id: 'post-first-gram', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['brand', 'education'],
+    name: { en: 'Start with one gram', ar: 'ابدأ بجرام واحد' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('gram-steps', {}, { title: t('Start with *one gram*.', 'ابدأ *بجرام واحد*.'), caption: t('1 g · 5 g · 10 g · 50 g · 100 g, at real size', '1 · 5 · 10 · 50 · 100 جرام، بأحجامها الحقيقية') }, { duration: 7 })],
+      caption: { text: t("Gold doesn't need a big budget. Start with a 1 g bar and add more when it suits you.", 'الذهب لا يحتاج إلى ميزانية كبيرة. ابدأ بسبيكة جرام واحد، وأضف إليها متى ناسبك.'), hashtags: tags(lang) },
+    }),
+  },
+  {
+    id: 'post-purity', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['education', 'purity'],
+    name: { en: 'Four nines', ar: 'أربع تسعات' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('gold-number', { text: '999.9' }, { title: t('Four nines of *pure gold*.', 'أربع تسعات من *الذهب الخالص*.'), textZone: 'bottom' }, { duration: 5 })],
+      caption: { text: t('24K bars are usually 999.9 fine: at least 99.99% gold. Jewellery is usually 18K to 22K, mixed with other metals to hold its shape.', 'سبائك عيار 24 غالبًا بنقاء 999.9، أي ذهب بنسبة 99.99% على الأقل. أما المجوهرات فغالبًا من عيار 18 إلى 22، ممزوجة بمعادن أخرى لتحافظ على شكلها.'), hashtags: tags(lang, t('#24K', '#عيار_24')) },
+    }),
+  },
   {
     id: 'post-price-today', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['price'], notes: NOTE_PRICE,
     name: { en: 'Gold price today', ar: 'سعر الذهب اليوم' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('price', 'onyx', { title: t('Gold today', 'الذهب اليوم'), label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05', true) })],
-      caption: { text: t(`Today's indicative price for 24K gold, per gram. You'll see the live price in the app before you buy.\n\n${PRICE_NOTE.en}`, `سعر الذهب عيار 24 للجرام اليوم. السعر المباشر يظهر لك في التطبيق قبل الشراء.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
+      slides: [V('gold-number', { text: '31.204' }, { title: t('24K gold, *per gram*', 'ذهب عيار 24، *للجرام*'), caption: `${t('OMR', 'ر.ع.')} · ${STAMP(t, '14:05', true)}`, textZone: 'bottom', disclaimer: 'yes' }, { duration: 5 })],
+      caption: { text: t(`Today's indicative price for 24K gold, per gram. You see the live price in the app before you buy.\n\n${PRICE_NOTE.en}`, `سعر الذهب عيار 24 للجرام اليوم. السعر المباشر يظهر لك في التطبيق قبل الشراء.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
     }),
   },
   {
-    id: 'post-first-gram', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['brand'],
-    name: { en: 'Your first gram', ar: 'جرامك الأول' },
+    id: 'post-gift', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['gifting'], notes: NOTE_GIFTBOX,
+    name: { en: 'Gift gold', ar: 'أهدِ ذهبًا' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('statement', 'cream', { kicker: t('Start small', 'ابدأ بالقليل'), title: t('Your first gram is *real gold*.', 'جرامك الأول ذهب *حقيقي*.'), body: t('Certified 24K bars start from one gram on Goldcom.', 'سبائك عيار 24 المعتمدة تبدأ من جرام واحد في جولدكم.') })],
-      caption: { text: t('You don\'t need a big budget to own gold. One gram is a real start, and you can add to it whenever you like.', 'امتلاك الذهب لا يحتاج إلى ميزانية كبيرة. جرام واحد بداية حقيقية، وتستطيع أن تضيف إليه متى شئت.'), hashtags: tags(lang) },
+      slides: [V('gift-box', { weight: '5 g' }, { title: t('Gift *gold*.', 'أهدِ *ذهبًا*.') })],
+      caption: { text: t('Send gold to someone you love, from one gram. They can keep it or collect the bar.', 'أهدِ الذهب لمن تحب، بدءًا من جرام واحد. يحتفظ به في التطبيق، أو يستلم السبيكة.'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
     }),
   },
   {
-    id: 'post-karat-fact', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['education'],
-    name: { en: 'Did you know: 24K', ar: 'هل تعلم: عيار 24' },
+    id: 'post-keep', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['trust'], notes: NOTE_STORAGE,
+    name: { en: 'Keep it or collect it', ar: 'احتفظ به أو استلمه' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('fact', 'onyx', {
-        kicker: t('Did you know?', 'هل تعلم؟'),
-        fact: t('24K gold is at least *99.9%* pure', 'نقاوة عيار 24 تبلغ *99.9%* على الأقل'),
-        body: t('That is why most gold bars are 24K. Jewellery is usually 18K to 22K, mixed with other metals so it holds its shape.', 'لهذا تكون معظم سبائك الذهب من عيار 24، بينما تُخلط المجوهرات عادةً بمعادن أخرى لتحافظ على شكلها.'),
-        source: t('Gold bars are often 999.9 fine (99.99%).', 'سبائك الذهب غالبًا بنقاوة 999.9 (أي 99.99%).'),
-      })],
-      caption: { text: t('The karat number tells you how much of the metal is gold. 24K is the purest form you can buy.', 'رقم العيار يخبرك بنسبة الذهب في المعدن، وعيار 24 هو الأنقى بين ما يمكنك شراؤه.'), hashtags: tags(lang, t('#GoldFacts', '#معلومات_الذهب')) },
+      slides: [V('vault-tile', { weight: '50 g' }, { title: t('Keep it, or *collect it*.', 'احتفظ به، أو *استلمه*.') })],
+      caption: { text: t('Keep your gold in the app, or collect the bar whenever you like.', 'احتفظ بذهبك في التطبيق، أو استلم السبيكة متى شئت.'), hashtags: tags(lang) },
     }),
   },
   {
-    id: 'post-myth-budget', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['education'],
-    name: { en: 'Myth: gold needs a big budget', ar: 'خرافة: الذهب يحتاج مبلغًا كبيرًا' },
+    id: 'post-monthly', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['habit'],
+    name: { en: 'A little, every month', ar: 'القليل، كل شهر' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('myth', 'charcoal', { title: t('Myth or fact?', 'خرافة أم حقيقة؟'), myth: t('You need a lot of money to own gold.', 'امتلاك الذهب يحتاج إلى مبلغ كبير.'), fact: t('You can start with one gram and add more whenever you like.', 'تستطيع البدء بجرام واحد، والإضافة متى شئت.') })],
-      caption: { text: t('One of the most common things we hear. Gold works in small amounts too.', 'من أكثر ما نسمعه. الذهب يناسب الكميات الصغيرة أيضًا.'), hashtags: tags(lang) },
+      slides: [V('coin-stack', { count: 12 }, { title: t('A little, *every month*.', 'القليل، *كل شهر*.') })],
+      caption: { text: t('A gram or two each month, and your grams add up. Prices change, so buy at a pace that suits you.', 'جرام أو جرامان كل شهر، وتتراكم جراماتك. الأسعار تتغير، فاشترِ بالوتيرة التي تناسبك.'), hashtags: tags(lang) },
     }),
   },
   {
-    id: 'post-faq-collect', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['faq'],
-    name: { en: 'Q&A: collect your bar', ar: 'سؤال: استلام السبيكة' },
+    id: 'post-app', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['app'], notes: NOTE_SCREEN,
+    name: { en: 'Three taps', ar: 'ثلاث نقرات' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('faq', 'sand', { kicker: t('You asked', 'سألتمونا'), question: t('Can I collect my gold as a real bar?', 'هل أستطيع استلام ذهبي سبيكةً حقيقية؟'), answer: t('Yes. Request collection in the app and pick it up as a certified bar.', 'نعم. اطلب الاستلام من التطبيق، وتسلّم ذهبك سبيكةً معتمدة.') })],
-      caption: { text: t('Your gold is a physical bar, not just a number on a screen. When you want to hold it, request collection in the app.', 'ذهبك سبيكة حقيقية وليس مجرد رقم على الشاشة. وعندما ترغب في استلامه، اطلب ذلك من التطبيق.'), hashtags: tags(lang) },
-    }),
-  },
-  {
-    id: 'post-bars', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['product'], notes: NOTE_PRICE,
-    name: { en: 'Choose your bar', ar: 'اختر سبيكتك' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('products', 'onyx', { kicker: t('Choose your bar', 'اختر سبيكتك'), title: t('From 1 g to 10 g', 'من 1 جرام إلى 10 جرام'), products: BARS(t), note: t('Illustrative prices. The live price is shown in the app.', 'أسعار توضيحية. السعر المباشر يظهر في التطبيق.'), disclaimer: 'yes' })],
-      caption: { text: t(`Four weights, all 24K and certified. Pick the one that fits today.\n\n${PRICE_NOTE.en}`, `أربعة أوزان، كلها عيار 24 ومعتمدة. اختر ما يناسبك اليوم.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldBar', '#سبائك_الذهب')) },
-    }),
-  },
-  {
-    id: 'post-trust', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['trust'],
-    name: { en: 'Built on trust', ar: 'مبني على الثقة' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('list', 'cream', { kicker: t('Why us', 'لماذا نحن'), title: t('Four things you can count on', 'أربعة أمور تطمئنك'), items: [t('Identity verification when you sign up', 'التحقق من الهوية عند التسجيل'), t('Biometric login on your phone', 'الدخول بالبصمة من جوالك'), t('Sharia advisory by Eltizam', 'بإشراف استشاري شرعي من التزام'), t('An Omani platform, based in Muscat', 'منصة عُمانية مقرها مسقط')], bullet: 'check' })],
-      caption: { text: t('A few of the things that sit behind every purchase on Goldcom.', 'بعض ما يقف خلف كل عملية شراء في جولدكم.'), hashtags: tags(lang, t('#Muscat', '#مسقط')) },
-    }),
-  },
-  {
-    id: 'post-eid', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['occasion'],
-    name: { en: 'Eid Mubarak', ar: 'عيد مبارك' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('greeting', 'bullion', { kicker: t('From all of us', 'من أسرة جولدكم'), title: t('Eid Mubarak', 'عيد مبارك'), body: t('May your days be bright and your family close.', 'كل عام وأنتم بخير، وأيامكم عامرة بالفرح.') })],
-      caption: { text: t('Eid Mubarak from the Goldcom team.', 'عيدكم مبارك من فريق جولدكم.'), hashtags: tags(lang, t('#EidMubarak', '#عيد_مبارك')) },
-    }),
-  },
-  {
-    id: 'post-national-day', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['occasion'],
-    name: { en: 'National Day', ar: 'العيد الوطني' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('greeting', 'onyx', { kicker: t('Oman National Day', 'العيد الوطني العُماني'), title: t('Happy National Day', 'كل عام وعُمان بخير'), body: t('Proud to be an Omani platform, built in Muscat.', 'نفخر بأننا منصة عُمانية من مسقط.') })],
-      caption: { text: t('Happy National Day to everyone in Oman.', 'كل عام وعُمان وأهلها بخير.'), hashtags: tags(lang, t('#OmanNationalDay', '#العيد_الوطني')) },
+      slides: [V('phone-taps', { weight: '1 g' }, { title: t('Three taps. *Real gold.*', 'ثلاث نقرات. *ذهب حقيقي.*'), caption: t('Illustrative screen', 'شاشة توضيحية') }, { duration: 7 })],
+      caption: { text: t('Pick a weight, check the indicative price, buy. The gold is yours.', 'اختر الوزن، راجع السعر الاسترشادي، واشترِ. والذهب ملكك.'), hashtags: tags(lang) },
     }),
   },
   {
     id: 'post-ramadan', category: 'post', format: 'square', kind: 'post', tags: ['occasion'],
     name: { en: 'Ramadan Kareem', ar: 'رمضان كريم' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('greeting', 'charcoal', { title: t('Ramadan Kareem', 'رمضان كريم'), body: t('Wishing you a blessed month with the people you love.', 'نتمنى لكم شهرًا مباركًا مع من تحبون.') })],
-      caption: { text: t('Ramadan Kareem from all of us at Goldcom.', 'رمضان كريم من أسرة جولدكم.'), hashtags: tags(lang, t('#RamadanKareem', '#رمضان_كريم')) },
+      slides: [V('crescent', {}, { title: t('Ramadan Kareem', 'رمضان كريم'), textZone: 'bottom' }, { duration: 8 })],
+      caption: { text: t('Ramadan Kareem from all of us at Goldcom.', 'رمضان كريم من أسرة جولدكم، وكل عام وأنتم بخير.'), hashtags: tags(lang, t('#Ramadan', '#رمضان')) },
     }),
   },
   {
-    id: 'post-hook', category: 'post', format: 'square', kind: 'post', tags: ['brand'],
-    name: { en: 'Real gold. From your phone.', ar: 'ذهب حقيقي. من جوالك.' },
+    id: 'post-eid', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['occasion', 'gifting'],
+    name: { en: 'Eid Mubarak', ar: 'عيد مبارك' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('kinetic', 'onyx', { lines: t(['Real gold.', 'From your phone.', '*From one gram.*'], ['ذهب حقيقي.', 'من جوالك.', '*من جرام واحد.*']), caption: 'goldcom.om' })],
-      caption: { text: t('Certified 24K bars, bought in a few taps.', 'سبائك عيار 24 معتمدة، تشتريها بلمسات قليلة.'), hashtags: tags(lang, t('#GoldApp', '#تطبيق_ذهب')) },
+      slides: [V('gift-box', { weight: '2.5 g', lining: 'cream' }, { title: t('Eid *Mubarak*', 'عيد *مبارك*') })],
+      caption: { text: t('Eid Mubarak from Goldcom. May it bring you and your family joy.', 'عساكم من عوّاده. عيد مبارك من جولدكم.'), hashtags: tags(lang, t('#EidMubarak', '#عيد_مبارك')) },
     }),
   },
   {
-    id: 'post-download', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['app'],
-    name: { en: 'Download the app', ar: 'حمّل التطبيق' },
+    id: 'post-brand', category: 'post', format: 'square', kind: 'post', tags: ['brand'],
+    name: { en: 'The mark', ar: 'العلامة' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('cover', 'onyx', { kicker: t('The app', 'تطبيق جولدكم'), title: t('Gold, *in a few taps*', 'الذهب *بلمسات قليلة*'), subtitle: t('Browse live prices, buy from one gram and send gold as a gift.', 'تابع الأسعار المباشرة، واشترِ من جرام واحد، وأهدِ الذهب لمن تحب.'), visual: 'device', device: 'phone' })],
-      caption: { text: t('Goldcom is available on the App Store and Google Play, in Arabic and English.', 'جولدكم متوفر على App Store و Google Play بالعربية والإنجليزية.'), hashtags: tags(lang, t('#GoldApp', '#تطبيق_ذهب')) },
+      slides: [{ ...V('logo-mark', { mode: 'assemble' }, { title: t('Real gold, from your phone.', 'ذهب حقيقي، من جوالك.'), textZone: 'bottom' }, { duration: 4 }), brandMark: false }],
+      caption: { text: t('Goldcom: certified 24K gold from one gram, in your pocket.', 'جولدكم: ذهب عيار 24 معتمد يبدأ من جرام واحد، في جيبك.'), hashtags: tags(lang) },
     }),
   },
 
   // ───────────── Carousels ─────────────
   {
-    id: 'carousel-launch', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['brand', 'app'], notes: NOTE_PRICE,
+    id: 'carousel-launch', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['brand', 'app'], notes: `${NOTE_SCREEN} ${NOTE_GIFTBOX}`,
     name: { en: 'Meet Goldcom', ar: 'تعرّف على جولدكم' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('cover', 'onyx', { kicker: t('New', 'جديد من جولدكم'), title: t('Real gold, *from your phone*', 'ذهب حقيقي، *من جوالك*'), subtitle: t('Start from one gram. Track, gift, sell or collect.', 'ابدأ من جرام واحد، ثم تابع ذهبك أو أهدِه أو بِعه أو استلمه.'), visual: 'device', device: 'phone' }),
-        S('statement', 'charcoal', { kicker: t('The problem', 'التحدي'), title: t('Buying gold should not feel *complicated*.', 'لا ينبغي أن يكون شراء الذهب *معقدًا*.'), body: t('Prices change, purity is hard to judge and storage is a hassle.', 'الأسعار تتغير، والتأكد من النقاوة صعب، والتخزين متعب.') }),
-        S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Send gold *as a gift*', 'أهدِ الذهب *لمن تحب*'), body: t('Pick a weight, add a message and send it from the app.', 'اختر الوزن، وأضف رسالتك، وأرسله من التطبيق.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }),
-        S('screenshot', 'bullion', { title: t('Browse certified 24K bars', 'تصفّح سبائك عيار 24 المعتمدة'), caption: t('Choose a weight from 1 g to 10 g.', 'اختر الوزن من 1 جرام إلى 10 جرام.'), device: 'phone', placeholder: 'browse', label: 'no' }),
-        S('steps', 'cream', { kicker: t('How it works', 'كيف يعمل'), title: t('Own gold in three steps', 'امتلك الذهب في ثلاث خطوات'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }),
-        S('price', 'onyx', { title: t('Know your price before you buy', 'اعرف سعرك قبل أن تشتري'), label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05', true) }),
-        ctaApp(t, { title: t('Your first gram starts here', 'جرامك الأول يبدأ من هنا'), subtitle: t('Download Goldcom and buy your first gram.', 'حمّل جولدكم واشترِ جرامك الأول.'), disclaimer: 'yes' }),
+        V('bar-hero', { weight: '10 g' }, { title: t('Real gold. *From your phone.*', 'ذهب حقيقي. *من جوالك.*') }),
+        V('gram-steps', {}, { title: t('Start with *one gram*.', 'ابدأ *بجرام واحد*.') }, { duration: 7 }),
+        V('phone-taps', {}, { title: t('Buy in *three taps*.', 'اشترِ *بثلاث نقرات*.'), caption: t('Illustrative screen', 'شاشة توضيحية') }, { duration: 7 }),
+        V('gift-box', { weight: '5 g' }, { title: t('Send it as *a gift*.', 'أهدِه *لمن تحب*.') }),
+        V('vault-tile', {}, { title: t('Keep it, or *collect it*.', 'احتفظ به، أو *استلمه*.') }),
+        LOGO_END(t),
       ],
-      caption: { text: t(`Swipe through to see how Goldcom works, from your first gram to collecting a bar.\n\n${PRICE_NOTE.en}`, `اسحب لترى كيف يعمل جولدكم، من جرامك الأول حتى استلام السبيكة.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang) },
+      caption: { text: t('Certified 24K gold from one gram. Buy it, gift it, keep it or collect it, all from the Goldcom app.', 'ذهب عيار 24 معتمد يبدأ من جرام واحد. اشترِه وأهدِه واحتفظ به أو استلمه، كله من تطبيق جولدكم.'), hashtags: tags(lang) },
     }),
   },
   {
-    id: 'carousel-how', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['education', 'app'], notes: NOTE_PRICE,
-    name: { en: 'How buying works', ar: 'كيف تشتري' },
+    id: 'carousel-purity', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['education', 'purity'],
+    name: { en: 'What 24K means', ar: 'ماذا يعني عيار 24' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('statement', 'onyx', { kicker: t('Step by step', 'خطوة بخطوة'), title: t('Buying gold on Goldcom takes *three steps*.', 'اشترِ الذهب من جولدكم في *ثلاث خطوات*.') }),
-        S('products', 'charcoal', { kicker: t('1 · Choose', '1 · اختر'), title: t('Pick a weight', 'اختر الوزن'), products: BARS(t), note: t('Illustrative prices.', 'أسعار توضيحية.'), disclaimer: 'yes' }),
-        S('price', 'onyx', { title: t('2 · Lock the price at checkout', '2 · ثبّت السعر عند الدفع'), label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05', true) }),
-        S('list', 'cream', { kicker: t('3 · Own it', '3 · امتلكه'), title: t('Once it\'s yours, you can:', 'بعد الشراء، يمكنك:'), items: [t('Track it in your portfolio', 'متابعته في محفظتك'), t('Send it as a gift', 'إهداؤه لمن تحب'), t('Sell it when you choose', 'بيعه متى شئت'), t('Collect it as a physical bar', 'استلامه سبيكةً حقيقية')], bullet: 'gem' }),
-        ctaApp(t, { title: t('Try it with one gram', 'جرّبه بجرام واحد'), subtitle: t('Pick a bar, lock the price, done.', 'اختر السبيكة، وثبّت السعر، وانتهى الأمر.') }),
+        V('gold-number', { text: '24K' }, { title: t('What does *24K* mean?', 'ماذا يعني *عيار 24*؟'), textZone: 'bottom' }, { duration: 5 }),
+        V('gold-number', { text: '999.9', reveal: 'rise' }, { title: t('At least *99.99%* gold.', 'ذهب بنسبة *99.99%* على الأقل.'), textZone: 'bottom' }, { duration: 5 }),
+        V('bar-hero', { weight: '20 g', motion: 'turntable' }, { title: t('Weight and purity, *stamped*.', 'الوزن والنقاء، *مختومان*.') }),
+        LOGO_END(t),
       ],
-      caption: { text: t(`Choose a bar, lock the price, and it's yours. Bookmark this for later.\n\n${PRICE_NOTE.en}`, `اختر السبيكة، ثبّت السعر، وتصبح لك. احفظ المنشور للرجوع إليه.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#HowToBuyGold', '#شراء_الذهب')) },
+      caption: { text: t('Karat measures how much of a piece is pure gold, out of 24 parts. 24K is as pure as gold gets: bars are usually 999.9 fine.', 'العيار يقيس نسبة الذهب الخالص في القطعة من 24 جزءًا. عيار 24 هو أنقى الذهب، والسبائك غالبًا بنقاء 999.9.'), hashtags: tags(lang, t('#24K', '#عيار_24')) },
     }),
   },
   {
-    id: 'carousel-karat', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['education'],
-    name: { en: 'Gold karats explained', ar: 'دليل عيارات الذهب' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('statement', 'onyx', { kicker: t('Gold guide', 'دليل الذهب'), title: t('24K, 22K, 21K, 18K. What is the *difference*?', 'ما *الفرق* بين عيار 24 و22 و21 و18؟'), body: t('Swipe for the quick guide.', 'اسحب لترى الدليل السريع.') }),
-        S('karat', 'charcoal', { kicker: t('Purity', 'النقاوة'), title: t('What the karat number means', 'ماذا يعني رقم العيار؟'), rows: [t('24K | 99.9 | Bars and coins', 'عيار 24 | 99.9 | السبائك والعملات'), t('22K | 91.6 | Traditional jewellery', 'عيار 22 | 91.6 | المشغولات التقليدية'), t('21K | 87.5 | Everyday jewellery', 'عيار 21 | 87.5 | مجوهرات الاستخدام اليومي'), t('18K | 75.0 | Fine jewellery with stones', 'عيار 18 | 75.0 | المجوهرات المرصّعة بالأحجار')] }),
-        S('fact', 'onyx', { kicker: t('Why bars are 24K', 'لماذا السبائك عيار 24'), fact: t('Pure gold is *soft*', 'الذهب الخالص *ليّن*'), body: t('Jewellery mixes in other metals so it keeps its shape. Bars do not need to, so they stay 24K.', 'تُضاف معادن أخرى للمجوهرات لتحافظ على شكلها، أما السبائك فلا تحتاج إلى ذلك، ولهذا تبقى عيار 24.') }),
-        S('faq', 'sand', { kicker: t('You asked', 'سألتمونا'), question: t('Which karat does Goldcom sell?', 'ما العيار الذي يبيعه جولدكم؟'), answer: t('Certified 24K bars and coins, from one gram.', 'سبائك وعملات عيار 24 معتمدة، تبدأ من جرام واحد.') }),
-        ctaApp(t, { title: t('Shop 24K bars from 1 g', 'تسوّق سبائك عيار 24 من جرام واحد'), subtitle: t('Every bar is 24K and certified.', 'كل السبائك عيار 24 ومعتمدة.'), button: t('See the bars', 'شاهد السبائك') }),
-      ],
-      caption: { text: t('Save this guide for the next time you shop for gold.', 'احفظ هذا الدليل لمرة قادمة تشتري فيها الذهب.'), hashtags: tags(lang, t('#GoldGuide', '#دليل_الذهب')) },
-    }),
-  },
-  {
-    id: 'carousel-gifting', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['gifting', 'occasion'],
+    id: 'carousel-gifting', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['gifting', 'occasion'], notes: `${NOTE_GIFTBOX} ${NOTE_SCREEN}`,
     name: { en: 'Gifting gold', ar: 'إهداء الذهب' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('cover', 'bullion', { title: t('A gift that *lasts*', 'هدية *تدوم*'), visual: 'goldbar', barLabel: '5 g' }),
-        S('notification', 'onyx', { kicker: t('How it feels', 'كيف تصل'), title: t('The best kind of *notification*', 'أجمل *إشعار* قد يصلك'), body: t('Your gift reaches them in the app.', 'هديتك تصلهم في التطبيق.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }),
-        S('steps', 'cream', { kicker: t('How to send', 'طريقة الإرسال'), title: t('Gift gold in three steps', 'أهدِ الذهب في ثلاث خطوات'), items: [t('Choose the weight', 'اختر الوزن'), t('Add a personal message', 'أضف رسالة شخصية'), t('Send the gift from the app', 'أرسل الهدية من التطبيق')] }),
-        S('list', 'charcoal', { kicker: t('For every occasion', 'لكل مناسبة'), title: t('Moments worth gold', 'لحظات تستحق الذهب'), items: [t('Eid', 'العيد'), t('Weddings', 'الأعراس'), t('A new baby', 'مولود جديد'), t('Graduation', 'التخرج')], bullet: 'gem' }),
-        ctaApp(t, { title: t('Send your first gold gift', 'أرسل أول هدية ذهب'), subtitle: t('Pick a weight and add your message.', 'اختر الوزن وأضف رسالتك.'), button: t('Gift gold', 'أهدِ ذهبًا') }),
+        V('gift-box', { weight: '5 g' }, { title: t('Gift *gold*.', 'أهدِ *ذهبًا*.') }),
+        V('gram-steps', { weights: '1 g, 2.5 g, 5 g', highlight: 'none' }, { title: t('Pick the *weight*.', 'اختر *الوزن*.') }, { duration: 6 }),
+        V('phone-taps', { weight: '2.5 g' }, { title: t('Send it from *the app*.', 'أرسله *من التطبيق*.'), caption: t('Illustrative screen', 'شاشة توضيحية') }, { duration: 7 }),
+        LOGO_END(t),
       ],
-      caption: { text: t('Gold has always been part of our celebrations. Now you can send it from your phone. 🎁', 'الذهب كان دائمًا جزءًا من مناسباتنا، والآن تستطيع إهداءه من جوالك. 🎁'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
+      caption: { text: t('Eid, a new baby, a graduation: gold is a gift that lasts. Choose the weight and send it in the app.', 'عيد، مولود جديد، تخرّج: الذهب هدية تدوم. اختر الوزن وأرسله من التطبيق.'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
     }),
   },
   {
-    id: 'carousel-faq', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['faq'],
-    name: { en: 'Your questions, answered', ar: 'أسئلتكم وإجاباتنا' },
+    id: 'carousel-price', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['price', 'education'], notes: `${NOTE_PRICE} Replace the series on slide 1 with the real last 30 days.`,
+    name: { en: 'Gold price, the last month', ar: 'سعر الذهب خلال الشهر' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('statement', 'onyx', { kicker: t('Q&A', 'سؤال وجواب'), title: t('Four questions we *often* get', 'أربعة أسئلة تصلنا *كثيرًا*'), body: t('Swipe for the answers.', 'اسحب لترى الإجابات.') }),
-        S('faq', 'charcoal', { kicker: t('Question 1', 'السؤال 1'), question: t('What is the smallest amount I can buy?', 'ما أقل كمية أستطيع شراءها؟'), answer: t('One gram of certified 24K gold.', 'جرام واحد من ذهب عيار 24 المعتمد.') }),
-        S('faq', 'charcoal', { kicker: t('Question 2', 'السؤال 2'), question: t('Is the gold real?', 'هل الذهب حقيقي؟'), answer: t('Yes. You buy physical, certified bars, and you can request collection.', 'نعم. أنت تشتري سبائك حقيقية معتمدة، وتستطيع طلب استلامها.') }),
-        S('faq', 'charcoal', { kicker: t('Question 3', 'السؤال 3'), question: t('Do I know the price before I pay?', 'هل أعرف السعر قبل الدفع؟'), answer: t('Yes. The price and any fees are shown at checkout before you confirm.', 'نعم. يظهر لك السعر وأي رسوم عند الدفع، قبل التأكيد.') }),
-        S('faq', 'charcoal', { kicker: t('Question 4', 'السؤال 4'), question: t('Is it available in Arabic?', 'هل التطبيق متوفر بالعربية؟'), answer: t('Yes. The app works in Arabic and English.', 'نعم. التطبيق يعمل بالعربية والإنجليزية.') }),
-        ctaApp(t, { title: t('More questions?', 'لديك سؤال آخر؟'), subtitle: t('Message us or write to support@goldcom.om', 'راسلنا أو اكتب إلى support@goldcom.om'), button: t('Ask us', 'اسألنا') }),
+        V('price-ridge', {}, { title: t('The last *30 days*.', 'آخر *30 يومًا*.'), caption: t('24K per gram · indicative, illustrative series', 'عيار 24 للجرام · سلسلة توضيحية استرشادية') }),
+        V('gold-number', { text: '31.204' }, { title: t('Today, *per gram*', 'اليوم، *للجرام*'), caption: `${t('OMR', 'ر.ع.')} · ${STAMP(t, '14:05', true)}`, textZone: 'bottom', disclaimer: 'yes' }, { duration: 5 }),
+        LOGO_END(t),
       ],
-      caption: { text: t('If your question is not here, ask it in the comments and we will answer.', 'إذا لم تجد سؤالك هنا، اكتبه في التعليقات وسنجيبك.'), hashtags: tags(lang, t('#GoldFAQ', '#أسئلة_الذهب')) },
-    }),
-  },
-  {
-    id: 'carousel-myths', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['education'],
-    name: { en: 'Gold myths', ar: 'خرافات عن الذهب' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('kinetic', 'onyx', { lines: t(['Three gold myths.', '*Let\'s clear them up.*'], ['ثلاث خرافات عن الذهب.', '*لنوضّحها معًا.*']) }),
-        S('myth', 'charcoal', { title: t('Myth 1', 'الخرافة 1'), myth: t('You need a lot of money to own gold.', 'امتلاك الذهب يحتاج إلى مبلغ كبير.'), fact: t('You can start with one gram.', 'تستطيع البدء بجرام واحد.') }),
-        S('myth', 'charcoal', { title: t('Myth 2', 'الخرافة 2'), myth: t('Buying gold online means you never see it.', 'شراء الذهب عبر الإنترنت يعني أنك لن تراه أبدًا.'), fact: t('Your bar is physical, and you can request collection.', 'سبيكتك حقيقية، وتستطيع طلب استلامها.') }),
-        S('myth', 'charcoal', { title: t('Myth 3', 'الخرافة 3'), myth: t('All gold is the same.', 'كل الذهب متشابه.'), fact: t('Purity varies. 24K is at least 99.9% gold; 18K is 75%.', 'النقاوة تختلف؛ عيار 24 لا يقل عن 99.9% ذهبًا، وعيار 18 نسبته 75%.') }),
-        ctaApp(t, { title: t('See it for yourself', 'شاهد بنفسك'), subtitle: t('Start with one gram and see how it works.', 'ابدأ بجرام واحد وتعرّف على طريقة العمل.'), button: t('Open Goldcom', 'افتح جولدكم') }),
-      ],
-      caption: { text: t('Which one did you believe? Tell us in the comments.', 'أي واحدة كنت تصدقها؟ أخبرنا في التعليقات.'), hashtags: tags(lang, t('#GoldMyths', '#خرافات_الذهب')) },
-    }),
-  },
-  {
-    id: 'carousel-first-gram', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['brand'],
-    name: { en: 'Start with one gram', ar: 'ابدأ بجرام واحد' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('stat', 'onyx', { kicker: t('Start small', 'ابدأ بالقليل'), stat: t('1 g', '1 جرام'), label: t('is all you need to own real gold', 'يكفي لتمتلك ذهبًا حقيقيًا'), body: t('Certified 24K bars from one gram.', 'سبائك عيار 24 معتمدة تبدأ من جرام واحد.') }),
-        S('goal', 'charcoal', { kicker: t('A simple plan', 'خطة بسيطة'), title: t('Save toward a gift, *gram by gram*', 'ادّخر لهدية، *جرامًا بعد جرام*'), value: '62', label: t('6.2 g', '6.2 جرام'), sub: t('of 10 g · example', 'من 10 جرام · مثال'), items: [t('Choose the weight you want', 'اختر الوزن الذي تريده'), t('Buy a little when it suits you', 'اشترِ القليل كلما ناسبك'), t('Track your holdings in the app', 'تابع ذهبك في التطبيق')], disclaimer: 'yes' }),
-        S('list', 'cream', { kicker: t('The idea', 'الفكرة'), title: t('Small steps, real gold', 'خطوات صغيرة، ذهب حقيقي'), items: [t('No big upfront amount', 'لا حاجة إلى مبلغ كبير'), t('Every gram is a physical bar', 'كل جرام سبيكة حقيقية'), t('Add more whenever you like', 'أضف متى شئت')], bullet: 'gem' }),
-        ctaApp(t, { subtitle: t('One gram today, more whenever you like.', 'جرام اليوم، والمزيد متى شئت.'), disclaimer: 'yes' }),
-      ],
-      caption: { text: t(`A gift for a wedding, a child's future, or just for you: one gram at a time.\n\n${PRICE_NOTE.en}`, `هدية لعرس، أو لمستقبل طفل، أو لنفسك: جرامًا بعد جرام.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#SaveInGold', '#ادخار_الذهب')) },
-    }),
-  },
-  {
-    id: 'carousel-price', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['price', 'education'], notes: NOTE_PRICE,
-    name: { en: 'How your price is set', ar: 'كيف يُحدد سعرك' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('statement', 'onyx', { kicker: t('Clear pricing', 'وضوح السعر'), title: t('What decides the price *you pay*?', 'ما الذي يحدد السعر *الذي تدفعه*؟') }),
-        S('live-price', 'onyx', { label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05'), ticker: TICKER(t) }),
-        S('steps', 'cream', { kicker: t('Three parts', 'ثلاثة عناصر'), title: t('What makes up your price', 'مِمَّ يتكوّن سعرك؟'), items: [t('The live gold price', 'سعر الذهب المباشر'), t('The weight you choose', 'الوزن الذي تختاره'), t('Any fees, shown before you confirm', 'أي رسوم، تظهر لك قبل التأكيد')] }),
-        ctaApp(t, { title: t('See today\'s price in the app', 'شاهد سعر اليوم في التطبيق'), subtitle: t('The price is locked the moment you pay.', 'يُثبَّت السعر لحظة الدفع.'), disclaimer: 'yes' }),
-      ],
-      caption: { text: t(`No surprises at checkout: you see the price and any fees before you confirm.\n\n${PRICE_NOTE.en}`, `لا مفاجآت عند الدفع: ترى السعر وأي رسوم قبل التأكيد.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
-    }),
-  },
-  {
-    id: 'carousel-compare', category: 'carousel', format: 'feed-portrait', kind: 'carousel', tags: ['brand'],
-    name: { en: 'The old way vs Goldcom', ar: 'الطريقة التقليدية مقابل جولدكم' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('comparison', 'onyx', { title: t('Buying gold, then and now', 'شراء الذهب بين الأمس واليوم'), beforeLabel: t('The old way', 'الطريقة التقليدية'), before: [t('Visit several shops', 'زيارة عدة محلات'), t('Ask around for prices', 'السؤال عن الأسعار هنا وهناك'), t('Keep it at home', 'الاحتفاظ به في المنزل')], afterLabel: t('With Goldcom', 'مع جولدكم'), after: [t('Buy from your phone', 'الشراء من جوالك'), t('See the live price first', 'رؤية السعر المباشر أولًا'), t('Hold, gift or collect', 'الاحتفاظ به أو إهداؤه أو استلامه')] }),
-        ctaApp(t, { title: t('Buy your gold the new way', 'اشترِ ذهبك بالطريقة الجديدة'), subtitle: t('Certified 24K bars, from one gram.', 'سبائك عيار 24 معتمدة، من جرام واحد.') }),
-      ],
-      caption: { text: t('Same gold, fewer steps.', 'الذهب نفسه، بخطوات أقل.'), hashtags: tags(lang) },
-    }),
-  },
-  // ───────────── Reels (continuous 9:16 video) ─────────────
-  {
-    id: 'reel-live-price', category: 'reel', format: 'story', kind: 'reel', tags: ['price', 'live'], notes: NOTE_PRICE,
-    name: { en: 'Live price reel', ar: 'ريل السعر المباشر' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('logo-sting', 'onyx', { tagline: t('Gold prices, live', 'أسعار الذهب، مباشرة') }, { duration: 3, bgMotion: 'drift' }),
-        S('live-price', 'onyx', { label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05'), ticker: TICKER(t) }, { duration: 6, transition: 'zoom', bgMotion: 'drift' }),
-        S('cta', 'onyx', { title: t('Check the price before you buy', 'اعرف السعر قبل أن تشتري'), button: t('Open Goldcom', 'افتح جولدكم'), link: 'goldcom.om', disclaimer: 'yes' }, { duration: 4, transition: 'fade' }),
-      ],
-      caption: { text: t(`Gold moves through the day. Goldcom shows you the indicative price live, so you know where it stands before you buy.\n\n${PRICE_NOTE.en}`, `سعر الذهب يتحرك طوال اليوم، وجولدكم يعرض لك السعر الاسترشادي مباشرة لتعرف أين يقف قبل الشراء.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
-    }),
-  },
-  {
-    id: 'reel-hook', category: 'reel', format: 'story', kind: 'reel', tags: ['brand', 'app'], notes: NOTE_PRICE,
-    name: { en: 'Real gold in 15 seconds', ar: 'الذهب الحقيقي في 15 ثانية' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('kinetic', 'onyx', { lines: t(['Real gold.', 'From your phone.', '*From one gram.*']  , ['ذهب حقيقي.', 'من جوالك.', '*من جرام واحد.*']) }, { duration: 3.5, bgMotion: 'drift' }),
-        S('cover', 'onyx', { kicker: t('From one gram', 'من جرام واحد'), title: t('Buy certified 24K bars', 'اشترِ سبائك عيار 24 معتمدة'), subtitle: t('From your phone, in Arabic or English.', 'من جوالك، بالعربية أو الإنجليزية.'), visual: 'device', device: 'phone' }, { duration: 4, transition: 'slide' }),
-        S('products', 'charcoal', { kicker: t('Pick a weight', 'اختر الوزن'), title: t('From 1 g to 10 g', 'من 1 جرام إلى 10 جرام'), products: BARS(t), note: t('Illustrative prices.', 'أسعار توضيحية.'), disclaimer: 'yes' }, { duration: 4, transition: 'wipe' }),
-        S('cta', 'onyx', { title: t('Start with one gram', 'ابدأ بجرام واحد'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'yes' }, { duration: 3.5, transition: 'zoom' }),
-      ],
-      caption: { text: t(`Fifteen seconds on what Goldcom does. Questions are welcome in the comments.\n\n${PRICE_NOTE.en}`, `خمس عشرة ثانية عن جولدكم. نسعد بأسئلتكم في التعليقات.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang) },
-    }),
-  },
-  {
-    id: 'reel-gift', category: 'reel', format: 'story', kind: 'reel', tags: ['gifting', 'occasion'],
-    name: { en: 'Gold gift reel', ar: 'ريل هدية الذهب' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('statement', 'bullion', { kicker: t('Eid gifting', 'هدايا العيد'), title: t('A gift that *lasts*.', 'هدية *تدوم*.'), body: t('Real gold, sent from your phone.', 'ذهب حقيقي، ترسله من جوالك.') }, { duration: 3.5 }),
-        S('notification', 'onyx', { title: t('It lands *in their app*', 'تصلهم *في التطبيق*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 4.5, transition: 'wipe' }),
-        S('cover', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Choose a weight, *add a message*', 'اختر الوزن، *وأضف رسالتك*'), visual: 'goldbar', barLabel: '2.5 g' }, { duration: 3.5, transition: 'slide' }),
-        S('cta', 'onyx', { title: t('Send your first gold gift', 'أرسل أول هدية ذهب'), button: t('Gift gold', 'أهدِ ذهبًا'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 3.5, transition: 'fade' }),
-      ],
-      caption: { text: t('For Eid, weddings and new arrivals. Send real gold from your phone. 🎁', 'للعيد والأعراس والمواليد الجدد. أهدِ ذهبًا حقيقيًا من جوالك. 🎁'), hashtags: tags(lang, t('#EidGift', '#هدايا_العيد')) },
-    }),
-  },
-  {
-    id: 'reel-how', category: 'reel', format: 'story', kind: 'reel', tags: ['education', 'app'],
-    name: { en: 'How it works reel', ar: 'ريل كيف يعمل' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('kinetic', 'onyx', { lines: t(['Three steps', 'to *own gold*.'], ['ثلاث خطوات', 'لتمتلك *الذهب*.']) }, { duration: 3 }),
-        S('steps', 'charcoal', { kicker: t('How it works', 'كيف يعمل'), title: t('Own gold in three steps', 'امتلك الذهب في ثلاث خطوات'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }, { duration: 5, transition: 'slide' }),
-        S('screenshot', 'bullion', { title: t('All in one app', 'كل ذلك في تطبيق واحد'), device: 'phone', label: 'no' }, { duration: 4, transition: 'zoom' }),
-        S('cta', 'onyx', { title: t('Try it with one gram', 'جرّبه بجرام واحد'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 3.5, transition: 'fade' }),
-      ],
-      caption: { text: t('Choose, lock the price, own it. That is the whole process.', 'اختر، ثبّت السعر، وامتلك. هذه هي الخطوات كلها.'), hashtags: tags(lang) },
-    }),
-  },
-  {
-    id: 'reel-karat', category: 'reel', format: 'story', kind: 'reel', tags: ['education'],
-    name: { en: 'Karats in 20 seconds', ar: 'العيارات في 20 ثانية' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('fact', 'onyx', { kicker: t('Quick guide', 'دليل سريع'), fact: t('Not all gold is *equal*', 'ليس كل الذهب *متساويًا*'), body: t('The karat tells you how pure it is.', 'العيار يخبرك بنسبة النقاوة.') }, { duration: 3.5, bgMotion: 'drift' }),
-        S('karat', 'charcoal', { kicker: t('Purity', 'النقاوة'), title: t('What the karat number means', 'ماذا يعني رقم العيار؟'), rows: [t('24K | 99.9 | Bars and coins', 'عيار 24 | 99.9 | السبائك والعملات'), t('22K | 91.6 | Traditional jewellery', 'عيار 22 | 91.6 | المشغولات التقليدية'), t('21K | 87.5 | Everyday jewellery', 'عيار 21 | 87.5 | مجوهرات الاستخدام اليومي'), t('18K | 75.0 | Fine jewellery with stones', 'عيار 18 | 75.0 | المجوهرات المرصّعة بالأحجار')] }, { duration: 7, transition: 'slide' }),
-        S('cta', 'onyx', { title: t('Goldcom sells 24K bars from 1 g', 'جولدكم يبيع سبائك عيار 24 من 1 جرام'), button: t('See the bars', 'شاهد السبائك'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 4, transition: 'zoom' }),
-      ],
-      caption: { text: t('Save this for the next time someone asks what 21K means.', 'احفظ هذا للمرة القادمة التي يسألك فيها أحد عن معنى عيار 21.'), hashtags: tags(lang, t('#GoldGuide', '#دليل_الذهب')) },
-    }),
-  },
-  {
-    id: 'reel-myth', category: 'reel', format: 'story', kind: 'reel', tags: ['education'],
-    name: { en: 'Myth buster reel', ar: 'ريل تصحيح الخرافات' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('kinetic', 'charcoal', { lines: t(['“Gold is only', 'for big budgets.”'], ['«الذهب؟', 'للميزانيات الكبيرة فقط»']) }, { duration: 3 }),
-        S('myth', 'charcoal', { title: t('Myth or fact?', 'خرافة أم حقيقة؟'), myth: t('You need a lot of money to own gold.', 'امتلاك الذهب يحتاج إلى مبلغ كبير.'), fact: t('You can start with one gram and add more whenever you like.', 'تستطيع البدء بجرام واحد، والإضافة متى شئت.') }, { duration: 5, transition: 'wipe' }),
-        S('stat', 'bullion', { stat: t('1 g', '1 جرام'), label: t('is enough to start', 'يكفي للبداية') }, { duration: 3, transition: 'zoom' }),
-        S('cta', 'onyx', { title: t('Your first gram starts here', 'جرامك الأول يبدأ هنا'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 3.5, transition: 'fade' }),
-      ],
-      caption: { text: t('Heard this one before? Gold works in small amounts too.', 'سمعت هذه العبارة من قبل؟ الذهب يناسب الكميات الصغيرة أيضًا.'), hashtags: tags(lang, t('#GoldMyths', '#خرافات_الذهب')) },
-    }),
-  },
-  {
-    id: 'reel-countdown', category: 'reel', format: 'story', kind: 'reel', tags: ['launch', 'live'], notes: 'Set the timer to the real launch time and replace the title with what is launching before you post.',
-    name: { en: 'Launch countdown', ar: 'عدّ تنازلي للإطلاق' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('countdown', 'onyx', { kicker: t('Coming soon', 'قريبًا'), title: t('Something *new* is on the way', 'شيء *جديد* في الطريق'), days: '3', hours: '14', minutes: '20', subtitle: t('Turn on notifications so you hear it first.', 'فعّل الإشعارات لتكون أول من يعرف.') }, { duration: 6, bgMotion: 'drift' }),
-        S('logo-sting', 'onyx', { tagline: t('Stay tuned', 'ترقبوا') }, { duration: 3.5, transition: 'zoom' }),
-      ],
-      caption: { text: t('Something new is coming to Goldcom. Turn on post notifications so you don\'t miss it.', 'شيء جديد قادم إلى جولدكم. فعّل تنبيهات المنشورات حتى لا يفوتك.'), hashtags: tags(lang) },
-    }),
-  },
-  {
-    id: 'reel-logo', category: 'reel', format: 'story', kind: 'reel', tags: ['brand'],
-    name: { en: 'Logo intro (4 s)', ar: 'مقدمة الشعار (4 ثوانٍ)' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('logo-sting', 'onyx', { tagline: t('Real gold, from your phone', 'ذهب حقيقي، من جوالك') }, { duration: 4, bgMotion: 'drift' })],
-      caption: { text: t('Goldcom. Real gold, from your phone.', 'جولدكم. ذهب حقيقي، من جوالك.'), hashtags: tags(lang) },
+      caption: { text: t(`How 24K gold moved over the last month, and today's indicative price per gram.\n\n${PRICE_NOTE.en}`, `حركة سعر الذهب عيار 24 خلال الشهر الماضي، وسعره الاسترشادي اليوم للجرام.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
     }),
   },
 
-  // ───────────── Stories (separate 9:16 frames) ─────────────
+  // ───────────── Reels ─────────────
   {
-    id: 'story-poll', category: 'story', format: 'story', kind: 'story', tags: ['interactive'], notes: NOTE_STICKER('poll'),
-    name: { en: 'Poll: gold or cash?', ar: 'تصويت: ذهب أم نقود؟' },
+    id: 'reel-brand', category: 'reel', format: 'story', kind: 'reel', tags: ['brand', 'app'], notes: NOTE_SCREEN,
+    name: { en: 'Goldcom in 16 seconds', ar: 'جولدكم في 16 ثانية' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('sticker', 'cream', { kicker: t('Your turn', 'دورك'), title: t('Eid gift: what would *you* pick?', 'هدية العيد: ماذا *تختار*؟'), sticker: 'poll', native: 'yes', question: t('Gold or cash?', 'ذهب أم نقود؟'), options: [t('Gold', 'ذهب'), t('Cash', 'نقود')] }, { duration: 6 })],
+      slides: [
+        V('bar-hero', { weight: '10 g' }, { title: t('Real gold.', 'ذهب حقيقي.') }, { duration: 4 }),
+        V('gram-steps', {}, { title: t('From *one gram*.', 'من *جرام واحد*.') }, { duration: 4, transition: 'slide' }),
+        V('phone-taps', {}, { title: t('In *three taps*.', 'بثلاث *نقرات*.') }, { duration: 4, transition: 'wipe' }),
+        LOGO_END(t, { transition: 'zoom' }),
+      ],
+      caption: { text: t('Real gold, from one gram, in three taps.', 'ذهب حقيقي، من جرام واحد، بثلاث نقرات.'), hashtags: tags(lang) },
+    }),
+  },
+  {
+    id: 'reel-gift', category: 'reel', format: 'story', kind: 'reel', tags: ['gifting', 'occasion'], notes: NOTE_GIFTBOX,
+    name: { en: 'Gift reel', ar: 'ريل الهدية' },
+    build: (lang, t = P(lang)) => ({
+      slides: [
+        V('gift-box', { weight: '5 g' }, { title: t('A gift that *lasts*.', 'هدية *تدوم*.') }, { duration: 6 }),
+        LOGO_END(t, { transition: 'fade' }),
+      ],
+      caption: { text: t('Gold for the people you love, from one gram.', 'ذهب لمن تحب، بدءًا من جرام واحد.'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
+    }),
+  },
+  {
+    id: 'reel-price', category: 'reel', format: 'story', kind: 'reel', tags: ['price'], notes: `${NOTE_PRICE} Replace the series with the real last 30 days.`,
+    name: { en: 'Price reel', ar: 'ريل السعر' },
+    build: (lang, t = P(lang)) => ({
+      slides: [
+        V('price-ridge', {}, { title: t('The last *30 days*.', 'آخر *30 يومًا*.'), caption: t('Illustrative series', 'سلسلة توضيحية') }, { duration: 5 }),
+        V('gold-number', { text: '31.204' }, { title: t('Today, *per gram*', 'اليوم، *للجرام*'), caption: `${t('OMR', 'ر.ع.')} · ${STAMP(t, '14:05', true)}`, textZone: 'bottom', disclaimer: 'yes' }, { duration: 5, transition: 'slide' }),
+      ],
+      caption: { text: t(`Today's indicative 24K price per gram.\n\n${PRICE_NOTE.en}`, `السعر الاسترشادي للذهب عيار 24 للجرام اليوم.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
+    }),
+  },
+  {
+    id: 'reel-purity', category: 'reel', format: 'story', kind: 'reel', tags: ['education', 'purity'],
+    name: { en: 'Purity reel', ar: 'ريل النقاء' },
+    build: (lang, t = P(lang)) => ({
+      slides: [
+        V('gold-number', { text: '999.9' }, { title: t('Four *nines*.', 'أربع *تسعات*.'), textZone: 'bottom' }, { duration: 4 }),
+        V('bar-hero', { weight: '10 g', motion: 'turntable' }, { title: t('That is *24K*.', 'هذا هو *عيار 24*.') }, { duration: 4, transition: 'zoom' }),
+      ],
+      caption: { text: t('999.9 means at least 99.99% gold. That is what 24K bars are made of.', '999.9 تعني ذهبًا بنسبة 99.99% على الأقل، ومنه تُصنع سبائك عيار 24.'), hashtags: tags(lang, t('#24K', '#عيار_24')) },
+    }),
+  },
+
+  // ───────────── Stories ─────────────
+  {
+    id: 'story-poll', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'occasion'], notes: `${NOTE_STICKER('poll')} ${NOTE_GIFTBOX}`,
+    name: { en: 'Poll: gold or cash for Eidiya', ar: 'تصويت: العيدية ذهب أم نقود' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('gift-box', { weight: '2.5 g' }, { title: t('Eidiya: gold *or cash*?', 'العيدية: ذهب *أم نقود*؟'), focusY: 0.47 }, { extras: [sticker('poll', t('Gold or cash?', 'ذهب أم نقود؟'), t(['Gold', 'Cash'], ['ذهب', 'نقود']))] })],
       caption: { text: '', hashtags: [] },
     }),
   },
   {
     id: 'story-quiz', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'education'], notes: NOTE_QUIZ,
-    name: { en: 'Quiz: which is purest?', ar: 'اختبار: أيها الأنقى؟' },
+    name: { en: 'Quiz: the purest karat', ar: 'اختبار: أنقى عيار' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('sticker', 'onyx', { kicker: t('Quick quiz', 'اختبار سريع'), title: t('Test your *gold knowledge*', 'اختبر *معلوماتك عن الذهب*'), sticker: 'quiz', native: 'yes', question: t('Which karat is the purest?', 'أي عيار هو الأنقى؟'), options: t(['18K', '21K', '24K'], ['عيار 18', 'عيار 21', 'عيار 24']), correct: '3', note: t('Answer in the next story', 'الإجابة في القصة التالية') }, { duration: 6 }),
-        S('fact', 'onyx', { kicker: t('Answer', 'الإجابة'), fact: t('*24K*, at least 99.9% gold', '*عيار 24*، بنقاوة لا تقل عن 99.9%'), body: t('Every Goldcom bar is 24K.', 'وكل سبائك جولدكم من عيار 24.') }, { duration: 5 }),
+        V('bar-hero', { weight: '10 g', motion: 'turntable' }, { title: t('Which karat is *purest*?', 'أي عيار هو *الأنقى*؟'), focusY: 0.47 }, { extras: [sticker('quiz', t('Which karat is purest?', 'أي عيار هو الأنقى؟'), ['18K', '21K', '24K'])] }),
+        V('gold-number', { text: '24K' }, { title: t('*24K*: 99.9% gold or more.', '*عيار 24*: ذهب بنسبة 99.9% أو أكثر.'), textZone: 'bottom' }, { duration: 5 }),
       ],
       caption: { text: '', hashtags: [] },
     }),
   },
   {
-    id: 'story-slider', category: 'story', format: 'story', kind: 'story', tags: ['interactive'], notes: NOTE_STICKER('emoji slider'),
-    name: { en: 'Emoji slider', ar: 'شريط التفاعل' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('sticker', 'bullion', { kicker: t('Wedding season', 'موسم الأعراس'), title: t('How ready are *you*?', 'ما مدى *استعدادك*؟'), sticker: 'slider', native: 'yes', question: t('Slide to answer', 'حرّك للإجابة'), emoji: '💍', value: '0.8' }, { duration: 6 })],
-      caption: { text: '', hashtags: [] },
-    }),
-  },
-  {
-    id: 'story-ask', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'faq'], notes: NOTE_STICKER('questions'),
-    name: { en: 'Ask us anything', ar: 'اسألنا أي شيء' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('sticker', 'charcoal', { kicker: t('Q&A this week', 'أسئلة هذا الأسبوع'), title: t('Ask us anything about *gold*', 'اسألنا أي شيء عن *الذهب*'), sticker: 'question', native: 'yes', question: t('Your question', 'سؤالك'), note: t('We\'ll answer in our Stories on Thursday', 'نجيب عن أسئلتكم في القصص يوم الخميس') }, { duration: 6 })],
-      caption: { text: '', hashtags: [] },
-    }),
-  },
-  {
-    id: 'story-countdown', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'occasion'], notes: NOTE_STICKER('countdown'),
-    name: { en: 'Countdown to Eid', ar: 'العدّ التنازلي للعيد' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('sticker', 'bullion', { kicker: t('Almost there', 'اقترب الموعد'), title: t('Have you picked your *Eid gifts*?', 'هل اخترت *هدايا العيد*؟'), sticker: 'countdown', native: 'yes', question: t('Eid', 'العيد') }, { duration: 6 })],
-      caption: { text: '', hashtags: [] },
-    }),
-  },
-  {
-    id: 'story-price', category: 'story', format: 'story', kind: 'story', tags: ['price', 'live'], notes: NOTE_PRICE,
+    id: 'story-price', category: 'story', format: 'story', kind: 'story', tags: ['price'], notes: NOTE_PRICE,
     name: { en: 'Price story', ar: 'قصة السعر' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('live-price', 'onyx', { title: t('Gold this morning', 'الذهب هذا الصباح'), label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '09:30'), ticker: TICKER(t) }, { duration: 7, bgMotion: 'drift' })],
+      slides: [V('gold-number', { text: '31.204' }, { title: t('Gold this morning', 'الذهب هذا الصباح'), caption: `${t('OMR per gram, 24K', 'ر.ع. للجرام، عيار 24')} · ${STAMP(t, '09:30', true)}`, textZone: 'bottom', disclaimer: 'yes' }, { duration: 5 })],
       caption: { text: '', hashtags: [] },
     }),
   },
   {
-    id: 'story-gift', category: 'story', format: 'story', kind: 'story', tags: ['gifting'], notes: 'Buttons in a Story cannot be tapped. Add a link sticker to goldcom.om on the last frame when you post.',
-    name: { en: 'Gift arrived', ar: 'وصلت الهدية' },
+    id: 'story-ramadan', category: 'story', format: 'story', kind: 'story', tags: ['interactive', 'occasion'], notes: `${NOTE_STICKER('countdown')} Set it to the expected start of Ramadan.`,
+    name: { en: 'Countdown to Ramadan', ar: 'العد التنازلي لرمضان' },
     build: (lang, t = P(lang)) => ({
-      slides: [
-        S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('A gold gift, *received*', 'هدية ذهب *وصلت*'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 }),
-        S('cta', 'onyx', { title: t('Send a gold gift today', 'أرسل هدية ذهب اليوم'), button: t('Gift gold', 'أهدِ ذهبًا'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 5 }),
-      ],
+      slides: [V('crescent', {}, { title: t('Ramadan is *close*.', 'رمضان *يقترب*.'), textZone: 'bottom' }, { duration: 8, extras: [sticker('countdown', t('Ramadan', 'رمضان'), [], { y: 0.36 })] })],
       caption: { text: '', hashtags: [] },
     }),
   },
 
-  // ───────────── Animated posts (single slide, looping) ─────────────
+  // ───────────── Animated posts ─────────────
   {
-    id: 'motion-live-price', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['price', 'live'], notes: NOTE_PRICE,
-    name: { en: 'Live price, animated', ar: 'السعر المباشر متحركًا' },
+    id: 'motion-bar', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['product'],
+    name: { en: 'Turning bar (loop)', ar: 'سبيكة تدور (حلقة)' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('live-price', 'onyx', { label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '14:05'), ticker: TICKER(t) }, { duration: 8, bgMotion: 'drift' })],
-      caption: { text: t(`The 24K price, per gram, as it moved today.\n\n${PRICE_NOTE.en}`, `سعر الذهب عيار 24 للجرام كما تحرك اليوم.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
+      slides: [V('bar-hero', { weight: '10 g', motion: 'turntable' }, { title: t('Real gold. *Yours.*', 'ذهب حقيقي. *ملكك.*'), seamless: 'yes' }, { duration: 6 })],
+      caption: { text: t('Certified 24K, from one gram.', 'ذهب عيار 24 معتمد، من جرام واحد.'), hashtags: tags(lang) },
+    }),
+  },
+  {
+    id: 'motion-coins', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['habit'],
+    name: { en: 'Coins stacking (loop)', ar: 'عملات تتراكم (حلقة)' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('coin-stack', { count: 12 }, { title: t('A little, *every month*.', 'القليل، *كل شهر*.'), seamless: 'yes' }, { duration: 6 })],
+      caption: { text: t('Gram by gram.', 'جرامًا بعد جرام.'), hashtags: tags(lang) },
     }),
   },
   {
     id: 'motion-logo', category: 'motion', format: 'square', kind: 'motion', tags: ['brand'],
-    name: { en: 'Logo reveal', ar: 'ظهور الشعار' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('logo-sting', 'onyx', { tagline: t('Real gold, from your phone', 'ذهب حقيقي، من جوالك') }, { duration: 5, bgMotion: 'drift' })],
-      caption: { text: t('Goldcom. Real gold, from your phone.', 'جولدكم. ذهب حقيقي، من جوالك.'), hashtags: tags(lang) },
+    name: { en: 'Logo sting (loop)', ar: 'شعار متحرك (حلقة)' },
+    build: (lang) => ({
+      slides: [{ ...V('logo-mark', { mode: 'assemble' }, { seamless: 'yes' }, { duration: 4 }), brandMark: false }],
+      caption: { text: '', hashtags: tags(lang) },
     }),
   },
   {
-    id: 'motion-eid', category: 'motion', format: 'square', kind: 'motion', tags: ['occasion'],
-    name: { en: 'Eid sparkle', ar: 'بريق العيد' },
+    id: 'motion-crescent', category: 'motion', format: 'square', kind: 'motion', tags: ['occasion'],
+    name: { en: 'Ramadan crescent (loop)', ar: 'هلال رمضان (حلقة)' },
     build: (lang, t = P(lang)) => ({
-      slides: [S('greeting', 'onyx', { kicker: t('From all of us', 'من أسرة جولدكم'), title: t('Eid Mubarak', 'عيد مبارك'), body: t('Wishing you and your family a happy Eid.', 'نتمنى لكم ولعائلاتكم عيدًا سعيدًا.') }, { duration: 6, bgMotion: 'drift' })],
-      caption: { text: t('Eid Mubarak. ✨', 'عيدكم مبارك. ✨'), hashtags: tags(lang, t('#EidMubarak', '#عيد_مبارك')) },
-    }),
-  },
-  {
-    id: 'motion-bar', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['product'],
-    name: { en: 'Gold bar shine', ar: 'لمعة السبيكة' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('cover', 'bullion', { title: t('Certified *24K* bars', 'سبائك *عيار 24* معتمدة'), subtitle: t('From one gram, on Goldcom.', 'تبدأ من جرام واحد في جولدكم.'), visual: 'goldbar', barLabel: '10 g' }, { duration: 6, extras: [{ type: 'sparkles', x: 0, y: 0, w: 1, h: 0.6, count: 24, seed: 21, under: false }] })],
-      caption: { text: t('Every bar on Goldcom is 24K and certified.', 'كل سبيكة في جولدكم عيار 24 ومعتمدة.'), hashtags: tags(lang, t('#GoldBar', '#سبائك_الذهب')) },
-    }),
-  },
-  {
-    id: 'motion-countdown', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['occasion', 'live'], notes: 'Set the timer to the time left until National Day when you post, and update the caption to match.',
-    name: { en: 'National Day countdown', ar: 'عدّ تنازلي للعيد الوطني' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('countdown', 'onyx', { kicker: t('Oman National Day', 'العيد الوطني العُماني'), title: t('Counting down with *pride*', 'نعدّ الأيام *بفخر*'), days: '7', hours: '10', minutes: '30', subtitle: t('From the Goldcom team in Muscat.', 'من فريق جولدكم في مسقط.') }, { duration: 6 })],
-      caption: { text: t('A week to go. Happy early National Day to everyone in Oman.', 'أسبوع واحد ويحل العيد الوطني. كل عام وعُمان بخير.'), hashtags: tags(lang, t('#OmanNationalDay', '#العيد_الوطني')) },
-    }),
-  },
-  {
-    id: 'motion-goal', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['brand'],
-    name: { en: 'Goal ring', ar: 'دائرة الهدف' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('goal', 'charcoal', { kicker: t('A simple plan', 'خطة بسيطة'), title: t('Save toward a gift, *gram by gram*', 'ادّخر لهدية، *جرامًا بعد جرام*'), value: '62', label: t('6.2 g', '6.2 جرام'), sub: t('of 10 g · example', 'من 10 جرام · مثال'), items: [t('Choose the weight you want', 'اختر الوزن الذي تريده'), t('Buy a little when it suits you', 'اشترِ القليل كلما ناسبك'), t('Track your holdings in the app', 'تابع ذهبك في التطبيق')], disclaimer: 'yes' }, { duration: 6 })],
-      caption: { text: t(`Big goals get easier when you take them one gram at a time.\n\n${PRICE_NOTE.en}`, `الأهداف الكبيرة تصبح أسهل حين تقطعها جرامًا بعد جرام.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#SaveInGold', '#ادخار_الذهب')) },
-    }),
-  },
-  {
-    id: 'motion-chat', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['faq'],
-    name: { en: 'Chat Q&A', ar: 'محادثة سؤال وجواب' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('chat', 'onyx', { kicker: t('You asked', 'سألتمونا'), title: t('Two questions we hear a lot', 'سؤالان يصلاننا كثيرًا'), messages: t(['What is the smallest amount I can buy?', '> One gram of 24K gold.', 'And can I hold the actual bar?', '> Yes. You can request collection in the app.'], ['ما أقل كمية أستطيع شراءها؟', '> جرام واحد من ذهب عيار 24.', 'وهل أستطيع استلام السبيكة نفسها؟', '> نعم، اطلب الاستلام من التطبيق.']) }, { duration: 7 })],
-      caption: { text: t('Two of the most common questions in our inbox, answered.', 'سؤالان من أكثر ما يصلنا، مع الإجابة.'), hashtags: tags(lang) },
-    }),
-  },
-
-
-  // ───────────── More interactive designs ─────────────
-  {
-    id: 'reel-quiz', category: 'reel', format: 'story', kind: 'reel', tags: ['interactive', 'education'], notes: NOTE_QUIZ,
-    name: { en: 'Quiz reel: purest karat', ar: 'ريل اختبار: أنقى عيار' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('kinetic', 'onyx', { lines: t(['Quick quiz.', '*Think you know your karats?*'], ['اختبار سريع.', '*هل تعرف العيارات جيدًا؟*']) }, { duration: 3 }),
-        S('sticker', 'cream', { kicker: t('Pick one', 'اختر إجابة'), title: t('Which karat is the *purest*?', 'أي عيار هو *الأنقى*؟'), sticker: 'quiz', question: t('Which karat is the purest?', 'أي عيار هو الأنقى؟'), options: t(['18K', '21K', '24K'], ['عيار 18', 'عيار 21', 'عيار 24']), correct: '3', native: 'yes' }, { duration: 5, transition: 'slide' }),
-        S('fact', 'onyx', { kicker: t('The answer', 'الإجابة'), fact: t('*24K*, at least 99.9% gold', '*عيار 24*، بنقاوة 99.9% على الأقل'), body: t('Every Goldcom bar is 24K.', 'وكل سبائك جولدكم من عيار 24.') }, { duration: 4, transition: 'zoom' }),
-      ],
-      caption: { text: t('Did you get it right? Tell us in the comments.', 'هل أجبت إجابة صحيحة؟ أخبرنا في التعليقات.'), hashtags: tags(lang, t('#GoldGuide', '#دليل_الذهب')) },
-    }),
-  },
-  {
-    id: 'motion-ticker', category: 'motion', format: 'square', kind: 'motion', tags: ['price', 'live'], notes: NOTE_PRICE,
-    name: { en: 'Price ticker, animated', ar: 'شريط الأسعار متحركًا' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('live-price', 'charcoal', { label: t('Gold 24K · per gram', 'ذهب عيار 24 · للجرام'), price: PRICE(t), change: '+0.42%', time: STAMP(t, '11:20'), ticker: TICKER(t) }, { duration: 8, bgMotion: 'drift' })],
-      caption: { text: t(`Where gold stands this morning: per gram, per 10 g and per ounce.\n\n${PRICE_NOTE.en}`, `أين يقف الذهب هذا الصباح: للجرام ولكل 10 جرام وللأونصة.\n\n${PRICE_NOTE.ar}`), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
-    }),
-  },
-  {
-    id: 'motion-notification', category: 'motion', format: 'feed-portrait', kind: 'motion', tags: ['gifting'],
-    name: { en: 'Gift notification, animated', ar: 'إشعار الهدية متحركًا' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('notification', 'onyx', { kicker: t('Gifting', 'الإهداء'), title: t('Gold that arrives *as a message*', 'ذهب يصل *في رسالة*'), body: t('Your gift appears in their Goldcom app.', 'تظهر هديتك في تطبيق جولدكم لدى من تهديه.'), notifTitle: t('You received a gold gift', 'وصلتك هدية ذهب'), notifBody: t('Aisha sent you 2.5 g of 24K gold.', 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.') }, { duration: 6 })],
-      caption: { text: t('Imagine opening your phone to this. 🎁', 'تخيّل أن تفتح جوالك فتجد هذا الإشعار. 🎁'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
-    }),
-  },
-  {
-    id: 'story-how', category: 'story', format: 'story', kind: 'story', tags: ['education', 'app'], notes: 'Buttons in a Story cannot be tapped. Add a link sticker to goldcom.om on the last frame when you post.',
-    name: { en: 'How it works, in Stories', ar: 'كيف يعمل، في القصص' },
-    build: (lang, t = P(lang)) => ({
-      slides: [
-        S('statement', 'onyx', { kicker: t('Step by step', 'خطوة بخطوة'), title: t('How to buy *your first gram*', 'كيف تشتري *جرامك الأول*') }, { duration: 4 }),
-        S('steps', 'charcoal', { kicker: t('How it works', 'كيف يعمل'), title: t('Three steps', 'ثلاث خطوات'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }, { duration: 6 }),
-        S('cta', 'onyx', { title: t('Ready for your first gram?', 'جاهز لجرامك الأول؟'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 5 }),
-      ],
-      caption: { text: '', hashtags: [] },
-    }),
-  },
-  {
-    id: 'post-gift-guide', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['gifting', 'occasion'],
-    name: { en: 'Gold gift guide', ar: 'دليل هدايا الذهب' },
-    build: (lang, t = P(lang)) => ({
-      slides: [S('list', 'cream', { kicker: t('Gift guide', 'دليل الهدايا'), title: t('How much gold *for which occasion*?', 'كم من الذهب *لكل مناسبة*؟'), items: [t('Eid gift: 1 g or 2.5 g', 'عيدية: 1 أو 2.5 جرام'), t('A new baby: 1 g', 'مولود جديد: 1 جرام'), t('Graduation: 2.5 g', 'تخرّج: 2.5 جرام'), t('A wedding: 5 g or 10 g', 'عرس: 5 أو 10 جرام')], bullet: 'gem' })],
-      caption: { text: t('A starting point, not a rule. Every gift is personal. Which occasion are you shopping for?', 'مجرد اقتراحات، فكل هدية لها خصوصيتها. لأي مناسبة تبحث عن هدية؟'), hashtags: tags(lang, t('#GoldGift', '#هدية_ذهب')) },
+      slides: [V('crescent', {}, { title: t('Ramadan Kareem', 'رمضان كريم'), textZone: 'bottom', seamless: 'yes' }, { duration: 8 })],
+      caption: { text: t('Ramadan Kareem.', 'رمضان كريم.'), hashtags: tags(lang, t('#Ramadan', '#رمضان')) },
     }),
   },
 
   // ───────────── Video ─────────────
   {
-    id: 'video-brand', category: 'video', format: 'video', kind: 'video', tags: ['brand'],
+    id: 'video-brand', category: 'video', format: 'video', kind: 'video', tags: ['brand'], notes: `${NOTE_SCREEN} ${NOTE_GIFTBOX}`,
     name: { en: 'Brand film 16:9 (web, YouTube)', ar: 'فيلم تعريفي 16:9 (الموقع ويوتيوب)' },
     build: (lang, t = P(lang)) => ({
       slides: [
-        S('logo-sting', 'onyx', { tagline: t('Real gold, from your phone', 'ذهب حقيقي، من جوالك') }, { duration: 3.5, bgMotion: 'drift' }),
-        S('kinetic', 'charcoal', { lines: t(['Gold has always', 'meant *family*.'], ['للذهب مكانة', 'في كل *بيت*.']) }, { duration: 3.5, transition: 'fade' }),
-        S('cover', 'onyx', { kicker: t('The app', 'التطبيق'), title: t('Now it fits *in your pocket*', 'واليوم *في جيبك*'), subtitle: t('Certified 24K bars from one gram.', 'سبائك عيار 24 معتمدة تبدأ من جرام واحد.'), visual: 'device', device: 'phone' }, { duration: 4.5, transition: 'slide' }),
-        S('steps', 'cream', { kicker: t('How it works', 'كيف يعمل'), title: t('Choose. Lock the price. Own it.', 'اختر. ثبّت السعر. امتلك.'), items: [t('Choose a certified bar from 1 g', 'اختر سبيكة معتمدة من 1 جرام'), t('Lock the price at checkout', 'ثبّت السعر عند الدفع'), t('Hold it, gift it, sell it or collect it', 'احتفظ بها أو أهدِها أو بِعها أو استلمها')] }, { duration: 5, transition: 'wipe' }),
-        S('cta', 'onyx', { title: t('Start with one gram', 'ابدأ بجرام واحد'), subtitle: t('On the App Store and Google Play.', 'على App Store و Google Play.'), button: t('Download Goldcom', 'حمّل جولدكم'), link: 'goldcom.om', disclaimer: 'no' }, { duration: 4, transition: 'zoom' }),
+        V('bar-hero', { weight: '10 g' }, { title: t('Real gold.', 'ذهب حقيقي.') }, { duration: 4.5 }),
+        V('gram-steps', {}, { title: t('From *one gram*.', 'من *جرام واحد*.') }, { duration: 5, transition: 'slide' }),
+        V('phone-taps', {}, { title: t('In *three taps*.', 'بثلاث *نقرات*.') }, { duration: 5, transition: 'wipe' }),
+        V('gift-box', {}, { title: t('For the people *you love*.', 'لمن *تحب*.') }, { duration: 5, transition: 'fade' }),
+        LOGO_END(t, { transition: 'zoom' }),
       ],
-      caption: { text: t('Goldcom in 20 seconds.', 'جولدكم في 20 ثانية.'), hashtags: tags(lang) },
+      caption: { text: t('Goldcom in 24 seconds.', 'جولدكم في 24 ثانية.'), hashtags: tags(lang) },
     }),
   },
 ];

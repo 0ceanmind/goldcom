@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: Number(process.env.VITE_PORT || 5173),
-    proxy: { '/api': { target: API, changeOrigin: true }, '/assets': { target: API, changeOrigin: true } },
+    proxy: { '/api': { target: API, changeOrigin: true }, '/assets': { target: API, changeOrigin: true }, '/modules': { target: API, changeOrigin: true } },
   },
   build: {
     outDir: 'dist',

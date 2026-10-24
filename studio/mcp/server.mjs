@@ -10,7 +10,9 @@ import { z } from 'zod';
 import {
   STUDIO_ROOT, listDocuments, getDocument, saveDocument, deleteDocument, createFromSpec, saveAsset, saveAssetFromPath,
 } from '../server/store.mjs';
-import { TEMPLATE_IDS, templateCatalog, applyTemplate, applyAllTemplates, patchContent } from '../shared/templates.js';
+import { TEMPLATE_IDS, templateCatalog, applyTemplate, applyAllTemplates, patchContent, setSceneRegistry } from '../shared/templates.js';
+import { listModules, writeModule, readModuleSource, getModule } from '../server/modules.mjs';
+import { listFeedback, feedbackThemes, readLessons, addLesson, listErrors, updateError, readKnowledge, writeKnowledge, listKnowledge, providerStats } from '../server/memory.mjs';
 import { THEMES, FORMATS, TRANSITIONS, DISCLAIMER, KINDS, SAFE_ZONES, BG_MOTION } from '../shared/brand.js';
 import { LIBRARY, LIBRARY_CATEGORIES, libraryItem, buildLibraryDoc } from '../shared/library.js';
 import { createSlide, normalizeDocument } from '../shared/schema.js';
@@ -81,9 +83,9 @@ function openBrowser(url) {
 }
 
 const slideSchema = z.object({
-  template: z.enum(TEMPLATE_IDS).describe('Template id. See studio_guide for fields.'),
+  template: z.enum(TEMPLATE_IDS).describe('Template id. Prefer "scene" (one 3D visual + one line). See studio_guide for fields.'),
   theme: z.enum(Object.keys(THEMES)).optional().describe('onyx (dark, default) | charcoal | bullion (campaign gradient) | cream (light) | sand (light gold)'),
-  content: z.record(z.string(), z.any()).default({}).describe('Template fields, e.g. { kicker, title, subtitle, body, items[], screenshot, device, icon, stat, label, code, button, link, disclaimer }. Wrap a word in *asterisks* for the gold accent. Can be omitted for logo-sting.'),
+  content: z.record(z.string(), z.any()).default({}).describe('Template fields. scene template: { scene, params, title, caption, textZone, disclaimer }. Others: { kicker, title, subtitle, body, items[], screenshot, device, icon, stat, label, code, button, link, disclaimer }. Wrap a word in *asterisks* for the gold accent.'),
   duration: z.number().min(1).max(30).optional().describe('Seconds (video/animation). Default 4.'),
   transition: z.enum(Object.keys(TRANSITIONS)).optional().describe('Transition into this slide in reels/videos.'),
   bgMotion: z.enum(Object.keys(BG_MOTION)).optional().describe('none | drift (pattern drifts at 45°, feels live) | zoom (slow photo zoom)'),
@@ -95,7 +97,20 @@ function buildSlides(specs) {
 }
 
 // ---------- server ----------
-const server = new McpServer({ name: 'goldcom-studio', version: '1.0.0' });
+setSceneRegistry(await listModules().catch(() => []));
+const server = new McpServer({ name: 'goldcom-studio', version: '2.0.0' });
+const studioJson = async (p, init) => {
+  if (!(await ensureStudio())) throw new Error(`Studio is not running at ${STUDIO_URL}`);
+  const r = await fetch(`${STUDIO_URL}${p}`, init);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+  return body;
+};
+const dnaCore = () => {
+  const md = readKnowledge('design-dna.md') || '';
+  const pick = (h) => { const i = md.indexOf(h); if (i < 0) return ''; const j = md.indexOf('\n## ', i + h.length); return md.slice(i, j < 0 ? undefined : j); };
+  return [pick('## 0.'), pick('## 2.'), pick('## 4.')].filter(Boolean).join('\n');
+};
 
 server.registerTool('studio_guide', {
   title: 'Goldcom brand + studio guide',
@@ -109,13 +124,39 @@ server.registerTool('studio_guide', {
     const m = md.match(/```text\n([\s\S]*?)```/);
     brand = m ? m[1] : md;
   }
+  setSceneRegistry(await listModules().catch(() => []));
+  const scenes = await listModules().catch(() => []);
+  const gens = await studioJson('/api/generators').catch(() => null);
+  const lessons = readLessons();
+  const themes = feedbackThemes().slice(0, 6);
+  const openErrors = listErrors().filter((e) => e.status !== 'fixed').slice(0, 8);
   return text([
     '# Goldcom Studio guide',
+    '',
+    '## Lessons learned (from the user\'s feedback: these override everything below)',
+    lessons || '(none yet)',
+    themes.length ? `\nRecurring complaints, most frequent first: ${themes.map((t) => `${t.label} (${t.weight})`).join(', ')}` : '',
+    '',
+    '## Visual first (the standard)',
+    '- Show, do not tell. Each slide is one strong visual that explains the idea on its own, plus at most ONE short line (Arabic ≤ 6 words, English ≤ 7) and optional small print. Use the "scene" template (3D visual) for most slides.',
+    '- If no scene shows the idea, build one: get_scene_source on a similar scene, write a new module with create_scene_module, check it with test_scene (Read the PNGs), iterate. Or make an image with generate_image (it picks the best provider and learns from ratings).',
+    '- Never: kicker + headline + subline stacks, sparkle particles, flat yellow gold, clip-art phones, pattern wallpaper behind text, more than one accent colour, bouncy easing on metal.',
+    '',
+    '## 3D scenes available (studio/modules/scenes)',
+    ...scenes.map((m) => `- ${m.id}${m.status === 'error' ? ' [BROKEN: ' + m.error + ']' : ''}: ${m.name}. Shows: ${m.idea?.en || m.description}. Text zone: ${m.textZone}. Params: ${(m.params || []).map((x) => `${x.key}${x.options ? `[${x.options.join('|')}]` : ''}=${JSON.stringify(x.default)}`).join(', ') || 'none'}`),
+    '',
+    '## Image and 3D generators',
+    ...(gens ? gens.providers.map((g) => `- ${g.id} (${g.label}, ${g.route}): ${g.available ? `ready via ${g.via}` : `not available: ${g.why}`}`) : ['- (studio not running: generator status unknown)']),
+    '- generate_image picks automatically: product shots → the built-in scenes (brand-exact bars and coins), photos → Gemini/OpenAI, lettering → OpenAI, vector art → Claude (SVG). It falls back when one fails.',
+    '',
+    openErrors.length ? `## Open errors (fix them when they touch your task)\n${openErrors.map((e) => `- ${e.sig} [${e.status}] ${e.source}${e.module ? `/${e.module}` : ''}: ${e.message} (seen ${e.count}x)`).join('\n')}\n` : '',
+    '## Design DNA (studio/knowledge/design-dna.md)',
+    dnaCore() || '(design-dna.md missing)',
     '',
     '## Workflow',
     '1. Understand the subject: for a project, read README, package.json, main routes/features, and recent git log. Extract the one-line promise, the problem, 3–5 features, proof (numbers you can verify) and the audience.',
     '2. Get live visuals: if the project has a UI, start its dev server and call capture_screenshot (device phone for mobile/responsive apps, desktop for web apps). Use the returned url as content.screenshot.',
-    '3. Plan a narrative of 5–10 slides: cover → problem (statement) → features (feature/screenshot) → proof (stat/list/code) → cta. One idea per slide, titles ≤ 8 words.',
+    '3. Plan visual-first: pick the one idea per slide, then the visual that shows it (a scene, a generated image, a real screenshot). Copy comes last: one short line. Carousels: 4–7 slides that alternate scale (wide, macro, number) so they never feel templated; end on the logo-mark scene or a cta.',
     '4. Write copy following the brand voice below. Default language is Arabic (lang "ar") for Omani audiences unless the user asks for English. Write Arabic natively, not as a translation, and mention that new Arabic copy should get native review.',
     '5. Call create_design with a caption (hook first line, 3–5 hashtags). Read its brand_check, then fix issues with edit_slide. Call render_preview to look at the slides and refine.',
     '6. Audit: run the goldcom-auditor agent (Task tool, subagent_type "goldcom-auditor") on the design id. It checks design consistency and whether the copy sounds robotic or like AI filler, in English and Arabic. Fix every blocker and should-fix, then re-render.',
@@ -396,6 +437,138 @@ server.registerTool('brand_check', {
   description: 'Run the Goldcom brand checks (claims register, name spelling, disclaimers, logo use, OMR format) on a design.',
   inputSchema: { id: z.string() },
 }, async ({ id }) => text(lintDocument(await getDocument(id)).map((i) => ({ ...i, slide: i.slide + 1 }))));
+
+// ---------- 3D scenes: use, inspect, build ----------
+server.registerTool('list_scenes', {
+  title: 'List 3D scenes',
+  description: 'Every 3D scene module (studio/modules/scenes): what idea it shows, where it leaves room for text, and its params. Use one with the "scene" template: content { scene, params, title, caption }.',
+  inputSchema: {},
+}, async () => text(await listModules()));
+
+server.registerTool('get_scene_source', {
+  title: 'Read a scene module',
+  description: 'The source code of a scene module. Read one or two before writing a new module, and before repairing one.',
+  inputSchema: { id: z.string() },
+}, async ({ id }) => { const src = readModuleSource(id); return src ? text(src) : fail(`No scene "${id}"`); });
+
+async function sceneFrames(id, params, times, { w = 540, h = 675, lang = 'en', theme = 'onyx' } = {}) {
+  const content = [];
+  const dir = path.join(process.env.TMPDIR || '/tmp', 'goldcom-scene-tests');
+  fs.mkdirSync(dir, { recursive: true });
+  for (const t of times) {
+    const q = new URLSearchParams({ t: String(t), w: String(w), h: String(h), lang, theme, params: JSON.stringify(params || {}), v: String(Date.now()) });
+    const r = await fetch(`${STUDIO_URL}/api/scene-preview/${id}?${q}`);
+    if (!r.ok) { content.push({ type: 'text', text: `t=${t}s: render failed: ${(await r.json().catch(() => ({}))).error || r.status}` }); continue; }
+    const buf = Buffer.from(await r.arrayBuffer());
+    const f = path.join(dir, `${id}-${String(t).replace('.', '_')}.png`);
+    fs.writeFileSync(f, buf);
+    content.push({ type: 'text', text: `t=${t}s (${f})` });
+    content.push({ type: 'image', data: buf.toString('base64'), mimeType: 'image/png' });
+  }
+  return content;
+}
+
+server.registerTool('test_scene', {
+  title: 'Render a scene at several times',
+  description: 'Render a scene module on its own at the given times (seconds) so you can check motion, framing and quality. Look at every frame critically against the design DNA.',
+  inputSchema: { id: z.string(), params: z.record(z.string(), z.any()).optional(), times: z.array(z.number()).max(8).default([0.5, 2, 4]), lang: z.enum(['ar', 'en']).optional(), theme: z.enum(Object.keys(THEMES)).optional(), aspect: z.enum(['4:5', '9:16', '1:1']).optional() },
+}, async ({ id, params, times, lang, theme, aspect }) => {
+  if (!(await ensureStudio())) return fail(`Studio is not running at ${STUDIO_URL}`);
+  const [w, h] = aspect === '9:16' ? [432, 768] : aspect === '1:1' ? [540, 540] : [540, 675];
+  return { content: await sceneFrames(id, params, times, { w, h, lang, theme }) };
+});
+
+server.registerTool('create_scene_module', {
+  title: 'Create or replace a 3D scene module',
+  description: 'Write a new scene module (or fix an existing one, same id). The code is one ES module with a default export { id, name, description, idea:{en,ar}, tags, duration, still, textZone, focusY, params:[{key,label,type,options,default}], create(api) }. It must not import anything: use api.THREE and api.kit (see studio/modules/README.md). The studio validates it, renders test frames and returns them. Fix and resubmit until it loads and looks right.',
+  inputSchema: { id: z.string().regex(/^[a-z0-9][a-z0-9-]{1,48}$/), code: z.string().min(80), test_times: z.array(z.number()).max(6).optional(), test_params: z.record(z.string(), z.any()).optional() },
+}, async ({ id, code, test_times, test_params }) => {
+  const meta = await writeModule(id, code);
+  if (meta.status === 'error') {
+    // Keep the last working version: a module that does not load is never left in place.
+    if (meta.backup) await writeModule(id, meta.backup);
+    else fs.rmSync(path.join(STUDIO_ROOT, 'modules', 'scenes', `${id}.js`), { force: true });
+    return fail(`The module did not load: ${meta.error}${meta.backup ? ' (the previous version was restored)' : ''}`);
+  }
+  setSceneRegistry(await listModules());
+  if (!(await ensureStudio())) return text({ saved: meta, note: 'Saved, but the studio is not running so no test frames were rendered.' });
+  const frames = await sceneFrames(id, test_params, test_times || [0.4, 1.6, 3.5]);
+  const broken = frames.some((c) => c.type === 'text' && /render failed/.test(c.text));
+  return { content: [{ type: 'text', text: `${meta.replaced ? 'Updated' : 'Created'} scene "${id}"${broken ? ' but it failed to render. Fix the error below and resubmit.' : '. Check every frame below; iterate until it is studio-grade.'}` }, ...frames] };
+});
+
+// ---------- generation ----------
+server.registerTool('generate_image', {
+  title: 'Generate an image (smart provider choice)',
+  description: 'Make an image for a design. The router reads the intent (product, photo, typography, illustration, texture, edit), ranks the providers that are set up (built-in 3D scenes, OpenAI, Gemini, ChatGPT via Codex, Claude SVG), adds what it learned from ratings, and falls back when one fails. Brand art direction is added automatically. Optionally attach it to a slide as a layer or as the background.',
+  inputSchema: {
+    prompt: z.string().describe('What the image shows. Describe subject, setting, light, mood. No need to restate brand rules.'),
+    intent: z.enum(['product', 'photo', 'typography', 'illustration', 'texture', 'edit']).optional(),
+    aspect: z.enum(['4:5', '9:16', '1:1', '16:9']).default('4:5'),
+    provider: z.enum(['auto', 'scene', 'openai', 'gemini', 'codex', 'claude']).default('auto'),
+    references: z.array(z.string()).optional().describe('Studio asset URLs (/assets/...) to keep a product or style consistent'),
+    transparent: z.boolean().optional(),
+    attach_to: z.object({ design_id: z.string(), slide: z.number().int().min(0).default(0), as: z.enum(['layer', 'background']).default('background') }).optional(),
+  },
+}, async ({ prompt, intent, aspect, provider, references, transparent, attach_to }) => {
+  try {
+    const r = await studioJson('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, intent, aspect, provider, references, transparent, attach: attach_to ? { docId: attach_to.design_id, slide: attach_to.slide, as: attach_to.as } : undefined }) });
+    const content = [{ type: 'text', text: JSON.stringify({ url: r.asset.url, svg: r.asset.svg, provider: r.provider, model: r.model, intent: r.intent, attempts: r.attempts, degraded: r.degraded, attached: r.attached }, null, 2) }];
+    if (/png|jpe?g|webp/.test(r.asset.mime || '')) {
+      const img = await fetch(`${STUDIO_URL}${r.asset.url}`);
+      content.push({ type: 'image', data: Buffer.from(await img.arrayBuffer()).toString('base64'), mimeType: r.asset.mime });
+    }
+    return { content };
+  } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('generate_3d_model', {
+  title: 'Generate a 3D model (GLB)',
+  description: 'Text-to-3D through Meshy or Tripo (needs a key in Settings). Returns a GLB asset URL. Show it with the "model-showcase" scene: content { scene: "model-showcase", params: { model: "<url>" } }. For gold bars and coins, prefer the built-in scenes: they are exact.',
+  inputSchema: { prompt: z.string(), provider: z.enum(['auto', 'meshy', 'tripo']).default('auto') },
+}, async ({ prompt, provider }) => {
+  try {
+    const r = await studioJson('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, intent: 'model3d', provider, raw: true }) });
+    return text({ url: r.asset.url, provider: r.provider, model: r.model, attempts: r.attempts, use: { template: 'scene', content: { scene: 'model-showcase', params: { model: r.asset.url } } } });
+  } catch (e) { return fail(e.message); }
+});
+
+// ---------- memory: feedback, lessons, errors, knowledge ----------
+server.registerTool('get_feedback', {
+  title: 'Read the user\'s feedback',
+  description: 'What the user said about designs (ratings, reasons, their words) and the recurring complaints. Read it before revising.',
+  inputSchema: { design_id: z.string().optional() },
+}, async ({ design_id }) => text({ themes: feedbackThemes(), feedback: listFeedback({ designId: design_id, limit: 30 }), generator_scores: providerStats() }));
+
+server.registerTool('add_lesson', {
+  title: 'Record a lesson learned',
+  description: 'Save a general rule learned from feedback or a mistake into studio/knowledge/lessons.md. Every future task reads it (studio_guide). Phrase it as an instruction that prevents the problem, e.g. "Price posts: show the number as the visual (gold-number), never a chart with three labels."',
+  inputSchema: { rule: z.string().min(8), why: z.string().optional(), category: z.enum(['Visual', 'Motion', 'Copy', 'Arabic', 'Layout', 'Generation', 'Scenes', 'Process', 'General']).default('General') },
+}, async ({ rule, why, category }) => text(addLesson({ rule, why, category, source: 'claude' })));
+
+server.registerTool('get_errors', {
+  title: 'Renderer errors',
+  description: 'Errors reported by the studio (scene modules that fail to load or render, renderer exceptions). Each has a signature, a count and a status.',
+  inputSchema: { status: z.enum(['open', 'repairing', 'fixed']).optional() },
+}, async ({ status }) => text(listErrors({ status })));
+
+server.registerTool('resolve_error', {
+  title: 'Mark an error fixed',
+  description: 'Mark an error signature as fixed after you have verified the fix (e.g. test_scene renders cleanly).',
+  inputSchema: { sig: z.string(), note: z.string().optional() },
+}, async ({ sig, note }) => { const e = updateError(sig, { status: 'fixed', note }); return e ? text(e) : fail(`No error ${sig}`); });
+
+server.registerTool('save_knowledge', {
+  title: 'Save research notes',
+  description: 'Save what you researched or figured out (a technique, a reference, a recipe) as markdown under studio/knowledge/, e.g. "research/three-js-caustics.md", so later tasks reuse it instead of searching again.',
+  inputSchema: { path: z.string().regex(/\.md$/), content: z.string().min(20) },
+}, async ({ path: rel, content }) => text(writeKnowledge(rel, content)));
+
+server.registerTool('read_knowledge', {
+  title: 'Read the knowledge base',
+  description: 'List or read files in studio/knowledge/ (design DNA, art direction, lessons, research notes, the scene backlog).',
+  inputSchema: { path: z.string().optional() },
+}, async ({ path: rel }) => (rel ? (readKnowledge(rel) ? text(readKnowledge(rel)) : fail(`No knowledge file ${rel}`)) : text(listKnowledge())));
 
 server.registerTool('open_studio', {
   title: 'Open studio',

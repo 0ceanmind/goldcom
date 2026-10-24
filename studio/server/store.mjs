@@ -15,7 +15,7 @@ export const DOCS_DIR = path.join(DATA_DIR, 'documents');
 export const ASSETS_DIR = path.join(DATA_DIR, 'assets');
 const SAMPLES_DIR = path.join(STUDIO_ROOT, 'samples');
 
-const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.webm': 'video/webm' };
+const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.webm': 'video/webm', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json' };
 export const mimeOf = (file) => MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
 const EXT = Object.fromEntries(Object.entries(MIME).map(([k, v]) => [v, k]));
 

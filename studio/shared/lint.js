@@ -18,7 +18,7 @@ const AMBER = [
   [/sharia[-\s]?certified|halal guaranteed/i, 'Sharia certification needs the certificate number. Prefer "Sharia advisory by Eltizam" (§11).'],
   [/recorded in your name|allocated/i, 'Allocation claims need sign-off while operationally true (§11 amber).'],
   [/\bvault\b/i, 'Vault custody claims need the operator named (§11 amber).'],
-  [/free storage|30 days/i, 'Free storage offers only while the offer is live (§11 amber).'],
+  [/free storage|30 days (of )?free|free for 30 days|30 يومًا مجان/i, 'Free storage offers only while the offer is live (§11 amber).'],
   [/مؤمن عليها|مرخص|معتمد شرعي/, 'Arabic amber-tier claim: needs approved wording (§11).'],
 ];
 // Shown prices (OMR figures), saving or investing language need the risk disclaimer; the bare word "price" does not.
@@ -59,6 +59,11 @@ export function lintDocument(doc) {
     if (needs && !hasDisclaimer) issues.push({ level: 'warn', slide: si, layer: null, message: 'Price, saving or investment wording: add the risk disclaimer on this slide or the last slide (§11.2).' });
     const showsPrice = texts.some((t) => /OMR\s?\d|\d\.\d{3}\s?ر\.ع/.test(t.text)) || (slide.layers || []).some((l) => l.type === 'ticker' && !l.hidden);
     for (const { layer, text } of texts) if (showsPrice && layer.type === 'badge' && /^\s*(live|مباشر)\s*$/i.test(text)) issues.push({ level: 'error', slide: si, layer: layer.id, message: 'A posted price is a snapshot: label it "Indicative" with the date, never "Live" (hard rule 7).' });
+    // Visual first (knowledge/lessons.md): a slide should show its idea, not explain it in paragraphs.
+    const words = texts.filter(({ layer }) => !['disclaimer', 'caption'].includes(layer.name) && layer.role !== 'caption').reduce((n, t) => n + String(t.text).replace(/\*/g, '').split(/\s+/).filter(Boolean).length, 0);
+    const hasVisual = (slide.layers || []).some((l) => !l.hidden && ['scene3d', 'image', 'phone', 'browser', 'chart', 'goldbar'].includes(l.type)) || slide.bg?.type === 'image';
+    if (words > (hasVisual ? 22 : 16)) issues.push({ level: 'warn', slide: si, layer: null, message: `${words} words on this slide. Show the idea with a visual and keep one short line (≤ 7 words); move the rest to the caption.` });
+    for (const l of slide.layers || []) if (l.type === 'sparkles' && !l.hidden) issues.push({ level: 'warn', slide: si, layer: l.id, message: 'Sparkle particles read as AI-template decoration. Give the slide life with motion instead (a 3D scene, a light sweep).' });
     const logos = (slide.layers || []).filter((l) => l.type === 'logo' && !l.hidden);
     if (logos.length > 1) issues.push({ level: 'warn', slide: si, layer: logos[1].id, message: 'Use the logo once per layout (§3.4).' });
     for (const l of logos) if (l.rotation) issues.push({ level: 'error', slide: si, layer: l.id, message: 'Never rotate the logo (§3.6).' });

@@ -4,6 +4,7 @@ import { THEMES, TYPE, ANIMATIONS, TRANSITIONS, COLORS, LOOPS, EXITS, BG_MOTION,
 import { LAYER_TYPES } from '../../shared/schema.js';
 import { ICON_NAMES } from '../../shared/icons.js';
 import { Icon, Field, Num, TextIn, Select, ColorPick } from './ui.jsx';
+import { ScenePicker, SceneParams } from './Scenes.jsx';
 
 const THEME_SWATCH = {
   onyx: 'radial-gradient(120% 80% at 50% 0%, #2D2E2B, #151513 60%)',
@@ -76,7 +77,7 @@ function SlidePanel({ doc, slide, api }) {
               ))}
             </div>
           </Field>
-          {tpl.fields.map((f) => <ContentField key={f.key} f={f} value={content[f.key]} rtl={rtl} onChange={(v, o) => setC(f.key, v, o)} api={api} />)}
+          {tpl.fields.map((f) => <ContentField key={f.key} f={f} value={content[f.key]} content={content} lang={lang} rtl={rtl} onChange={(v, o) => setC(f.key, v, o)} api={api} />)}
         </div>
       ) : (
         <div className="section">
@@ -99,9 +100,11 @@ function SlidePanel({ doc, slide, api }) {
   );
 }
 
-function ContentField({ f, value, onChange, rtl, api }) {
+function ContentField({ f, value, onChange, rtl, api, content = {}, lang }) {
   const isRtl = rtl || isArabic(String(value || ''));
   switch (f.type) {
+    case 'scene': return <Field label={f.label}><ScenePicker value={value} lang={lang} onChange={(v) => onChange(v, { live: false, relayout: true })} /></Field>;
+    case 'scene-params': return <div className="sub-section"><span className="lbl">{f.label}</span><SceneParams sceneId={content.scene} value={value || {}} rtl={rtl} pickAsset={api.pickAsset} onChange={(v, o) => onChange(v, { relayout: true, ...(o || {}) })} /></div>;
     case 'textarea': return <Field label={f.label}><TextIn multiline rows={2} value={value || ''} rtl={isRtl} onChange={onChange} /></Field>;
     case 'code': return <Field label={f.label}><TextIn multiline code rows={7} value={value || ''} onChange={onChange} /></Field>;
     case 'list': return <Field label={f.label}><TextIn multiline rows={4} rtl={isRtl} value={Array.isArray(value) ? value.join('\n') : value || ''} onChange={(v, o) => onChange(v.split('\n').filter((x, i, a) => x.trim() || i === a.length - 1), o)} /></Field>;
@@ -316,6 +319,21 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
             </div>
           )}
           {l.type === 'tap' && <p className="hint">A tap ripple. Place it over a button or notification to show where to touch.</p>}
+          {l.type === 'scene3d' && (
+            <>
+              <Field label="Scene"><ScenePicker value={l.scene} lang={doc.lang} onChange={(v) => up({ scene: v, params: {} })} /></Field>
+              <div className="sub-section"><span className="lbl">Scene settings</span><SceneParams sceneId={l.scene} value={l.params || {}} rtl={doc.lang === 'ar'} pickAsset={api.pickAsset} onChange={(v, o) => up({ params: v }, o)} /></div>
+              <div className="row">
+                <Field label="Subject height %"><Num label="%" value={Math.round((l.focusY ?? 0.5) * 100)} min={20} max={80} onChange={(v) => up({ focusY: Math.max(0.2, Math.min(0.8, v / 100)) })} /></Field>
+                <Field label="Speed"><Num label="×" value={l.speed ?? 1} step={0.1} min={0.1} onChange={(v) => up({ speed: Math.max(0.1, v) })} /></Field>
+              </div>
+              <div className="row">
+                <Field label="Start at (s)"><Num label="S" value={l.timeOffset ?? 0} step={0.1} onChange={(v) => up({ timeOffset: v })} /></Field>
+                <Field label="Background"><label className="check"><input type="checkbox" checked={!!l.transparent} onChange={(e) => up({ transparent: e.target.checked })} />Transparent (use slide theme)</label></Field>
+              </div>
+              <label className="check"><input type="checkbox" checked={!!l.seamless} onChange={(e) => up({ seamless: e.target.checked })} />Seamless loop (motion posts: last frame matches the first)</label>
+            </>
+          )}
         </div>
       </div>
 
@@ -359,7 +377,7 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
   );
 }
 
-const LAYER_ICON = { text: 'text', list: 'list', logo: 'gem', image: 'image', phone: 'phone', browser: 'globe', code: 'code', goldbar: 'bar', chart: 'chart', button: 'square', badge: 'square', icon: 'sparkle', gem: 'gem', shape: 'square', pager: 'more', ticker: 'chart', notification: 'bell', sticker: 'check', countdown: 'clock', progress: 'clock', chat: 'comment', tap: 'sparkle', sparkles: 'star' };
+const LAYER_ICON = { text: 'text', list: 'list', logo: 'gem', image: 'image', phone: 'phone', browser: 'globe', code: 'code', goldbar: 'bar', chart: 'chart', button: 'square', badge: 'square', icon: 'sparkle', gem: 'gem', shape: 'square', pager: 'more', ticker: 'chart', notification: 'bell', sticker: 'check', countdown: 'clock', progress: 'clock', chat: 'comment', tap: 'sparkle', sparkles: 'star', scene3d: 'cube' };
 
 function LayerList({ slide, selId, api }) {
   const layers = [...slide.layers].reverse();

@@ -98,8 +98,52 @@ function visualLayer(h, ctx, c, box) {
   return [deviceLayer(h, ctx, c, { x: box.x ?? h.m, y: box.y, w: box.w ?? h.cw, maxH: box.bleed ? undefined : box.h, delay: 0.3 })];
 }
 
+// ---------- 3D scene registry ----------
+// Scene modules live in studio/modules/scenes/. The server, the MCP server and the editor register their metadata
+// here so the "scene" template knows where each scene leaves room for text.
+let SCENES = {};
+export function setSceneRegistry(list = []) { SCENES = Object.fromEntries((list || []).filter((m) => m && m.id).map((m) => [m.id, m])); }
+export const sceneMeta = (id) => SCENES[id] || null;
+export const sceneList = () => Object.values(SCENES);
+
 // ---------- templates ----------
 export const TEMPLATES = {
+  scene: {
+    name: '3D visual',
+    description: 'Visual-first: one full-bleed 3D scene shows the idea, with at most one short line. Pick a scene module (see list_scenes / studio_guide) and set its params. Use this for most posts, Reels and Stories.',
+    fields: [
+      { key: 'scene', label: 'Scene', type: 'scene' },
+      { key: 'params', label: 'Scene settings', type: 'scene-params' },
+      { key: 'title', label: 'One line, optional (*word* = accent)', type: 'textarea' },
+      { key: 'caption', label: 'Small print (date, "indicative", handle)', type: 'text' },
+      { key: 'textZone', label: 'Text position', type: 'select', options: ['auto', 'top', 'bottom'] },
+      { key: 'align', label: 'Align', type: 'select', options: ['auto', 'start', 'center'] },
+      { key: 'disclaimer', label: 'Risk disclaimer', type: 'select', options: ['no', 'yes'] },
+    ],
+    example: { scene: 'bar-hero', params: { weight: '10 g' }, title: 'Real gold. *Yours.*' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const meta = sceneMeta(c.scene) || {};
+      const zone = c.textZone && c.textZone !== 'auto' ? c.textZone : meta.textZone || 'top';
+      const out = [L('scene3d', { name: 'scene', scene: c.scene || 'bar-hero', params: c.params || {}, x: 0, y: 0, w: h.W, h: ctx.H, bleed: 'full', focusY: Number.isFinite(Number(c.focusY)) && c.focusY !== '' ? Number(c.focusY) : meta.focusY ?? (zone === 'bottom' ? 0.44 : 0.6), seamless: c.seamless === 'yes' || ctx.kind === 'motion', anim: anim('none', 0) })];
+      const title = String(c.title || '').trim();
+      const align = c.align && c.align !== 'auto' ? c.align : zone === 'bottom' ? 'center' : 'start';
+      const w = h.wide ? Math.round(h.cw * 0.6) : h.cw;
+      const blocks = [];
+      // One line, large: the scale contrast with the small print is what makes it read as designed.
+      if (title) blocks.push(textLayer(h, { name: 'title', text: title, role: title.replace(/\*/g, '').length <= 20 ? 'display' : 'h1', x: h.m, y: 0, w, align, lang: ctx.lang, delay: 0.6, a: 'rise' }));
+      if (c.caption) blocks.push(textLayer(h, { name: 'caption', text: c.caption, role: 'caption', x: h.m, y: 0, w, align, color: 'fg2', lang: ctx.lang, delay: 0.9, a: 'fade' }));
+      const gap = Math.round(18 * h.s);
+      const textH = blocks.reduce((a, l) => a + l.h, 0) + gap * Math.max(0, blocks.length - 1);
+      const pagerSpace = ctx.noPager ? 0 : Math.round(90 * h.s);
+      let bottom = ctx.H - h.m - pagerSpace;
+      if (c.disclaimer === 'yes') { const d = disclaimerLayer(h, ctx, bottom); out.push(d); bottom = d.y - Math.round(28 * h.s); }
+      let y = zone === 'bottom' ? bottom - textH : h.m + Math.round(30 * h.s);
+      for (const l of blocks) { l.y = y; y += l.h + gap; }
+      out.push(...blocks, ...pagerLayers(h, ctx));
+      return out;
+    },
+  },
   cover: {
     name: 'Cover',
     description: 'First slide: logo, kicker, big headline, subtitle and a hero visual (phone/browser screenshot, image, gold bar or chart).',
@@ -1077,6 +1121,7 @@ export function patchContent(slide, content) {
 }
 
 export const EXAMPLES_AR = {
+  scene: { scene: 'bar-hero', params: { weight: '10 g' }, title: 'ذهب حقيقي. *لك.*' },
   cover: { kicker: 'جديد من جولدكم', title: 'ذهب حقيقي، *من جوالك*', subtitle: 'ابدأ من جرام واحد. تابع ذهبك، أهدِه، بِعه أو استلمه.', visual: 'device', device: 'phone' },
   statement: { kicker: 'التحدي', title: 'شراء الذهب لا يجب أن يكون *معقدًا*.', body: 'الأسعار تتغير، والتحقق من النقاء صعب، والتخزين غير مريح.' },
   feature: { icon: 'gift', kicker: 'الإهداء', title: 'أهدِ ذهبًا حقيقيًا في ثوانٍ', body: 'اختر الوزن، أضف رسالتك، وتصل هديتك فورًا.', device: 'phone' },

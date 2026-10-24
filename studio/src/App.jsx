@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api.js';
 import { loadFonts, ImageCache } from './render/renderer.js';
+import { sceneRuntime } from './render/scene3d/runtime.js';
 import { exportPng, exportZip, exportVideo, exportGif, exportJson, exportSlideVideosZip, captionText, downloadBlob } from './render/export.js';
 import { normalizeDocument, createSlide, layerDefaults, uid, clone, LAYER_TYPES } from '../shared/schema.js';
 import { TEMPLATES, applyTemplate, applyAllTemplates, patchContent, exampleFor } from '../shared/templates.js';
@@ -12,12 +13,13 @@ import Inspector from './components/Inspector.jsx';
 import Gallery from './components/Gallery.jsx';
 import InstaPreview from './components/InstaPreview.jsx';
 import { NewDocDialog, TemplatePicker, AssetPicker, ClaudePanel, LintPanel } from './components/Dialogs.jsx';
+import { DirectorPanel, GenerateDialog, FeedbackDialog, SettingsDialog, BrainPanel } from './components/Autonomy.jsx';
 import { Icon, SlideThumb, Select } from './components/ui.jsx';
 
 const TOOL_GROUPS = [
   ['Text', 'text', [['text', 'Text'], ['list', 'List']]],
-  ['Brand', 'gem', [['logo', 'Logo'], ['goldbar', 'Gold bar'], ['gem', 'Gem'], ['sparkles', 'Gold sparkles']]],
-  ['Media', 'image', [['image', 'Image'], ['phone', 'Phone mockup'], ['browser', 'Browser mockup'], ['code', 'Code card']]],
+  ['Brand', 'gem', [['logo', 'Logo'], ['goldbar', 'Gold bar (flat)'], ['gem', 'Gem']]],
+  ['Media', 'image', [['scene3d', '3D scene'], ['image', 'Image'], ['phone', 'Phone mockup'], ['browser', 'Browser mockup'], ['code', 'Code card']]],
   ['Data', 'chart', [['chart', 'Price chart'], ['ticker', 'Price ticker'], ['countdown', 'Countdown'], ['progress', 'Progress ring / bar']]],
   ['Interactive', 'sparkle', [['sticker', 'Story sticker'], ['notification', 'Push notification'], ['chat', 'Chat'], ['tap', 'Tap indicator']]],
   ['Shapes & UI', 'square', [['button', 'Button'], ['badge', 'Badge / LIVE'], ['icon', 'Icon'], ['shape', 'Shape'], ['pager', 'Carousel pager']]],
@@ -62,6 +64,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(null);
   const [zones, setZones] = useState(() => readPref('zones', true));
   const [saveState, setSaveState] = useState('saved');
+  const [directorTask, setDirectorTask] = useState(null);
   const images = useMemo(() => new ImageCache(() => setImagesVersion((v) => v + 1)), []);
   const clock = useMemo(createClock, []);
   const hist = useRef({ past: [], future: [], base: null });
@@ -169,7 +172,11 @@ export default function App() {
       es.onmessage = (m) => {
         let ev;
         try { ev = JSON.parse(m.data); } catch { return; }
+        window.dispatchEvent(new CustomEvent('studio-event', { detail: ev }));
+        if (ev.type === 'repair') toast(`Self-repair: Claude is fixing the "${ev.module || 'studio'}" error in the background.`);
+        if (ev.type === 'agent' && ev.done) toast(ev.status === 'done' ? 'Claude finished the task.' : `Claude stopped: ${ev.status}`, ev.status !== 'done');
         if (ev.type === 'document' || ev.type === 'deleted') refreshList();
+        if (ev.type === 'module') sceneRuntime.invalidate(ev.id).then(() => setImagesVersion((v) => v + 1));
         const cur = docRef.current;
         if (ev.type === 'document' && cur && ev.id === cur.id && ev.updatedAt !== lastSaved.current && ev.updatedAt !== cur.updatedAt) {
           if (dirty.current || saving.current) toast('This design changed elsewhere. Your newer edits were kept.');
@@ -275,11 +282,11 @@ export default function App() {
     const k = s0;
     const l = { ...base, ...(doc.lang === 'ar' ? AR_DEFAULTS[type] || {} : {}), x: Math.round(base.x * k), y: Math.round(base.y * k), w: Math.round(base.w * k), h: Math.round(base.h * k), ...extra };
     if (type === 'phone') l.lang = doc.lang;
-    const fullWidth = type === 'ticker' || type === 'sparkles';
-    if (fullWidth) { l.x = 0; l.w = doc.width; if (type === 'sparkles') { l.y = 0; l.h = doc.height; } else l.y = Math.round(doc.height * 0.7); }
+    const fullWidth = type === 'ticker' || type === 'sparkles' || type === 'scene3d';
+    if (fullWidth) { l.x = 0; l.w = doc.width; if (type === 'sparkles' || type === 'scene3d') { l.y = 0; l.h = doc.height; } else l.y = Math.round(doc.height * 0.7); }
     else if (!extra.x) { l.x = Math.round((doc.width - l.w) / 2); l.y = Math.round(Math.max(0, Math.min((doc.height - l.h) / 2, doc.height - l.h - 40 * k))); }
     if (type === 'pager') { l.x = Math.round(80 * k); l.y = doc.height - Math.round(120 * k); }
-    change((d) => withSlide(d, slideIdx, (s) => ({ ...s, custom: !!s.template || s.custom, layers: type === 'sparkles' ? [l, ...s.layers] : [...s.layers, l] })));
+    change((d) => withSlide(d, slideIdx, (s) => ({ ...s, custom: !!s.template || s.custom, layers: type === 'sparkles' || type === 'scene3d' ? [l, ...s.layers] : [...s.layers, l] })));
     setSelId(l.id);
     setMenuOpen(null);
   };
@@ -445,6 +452,11 @@ export default function App() {
       {modal === 'assets' && <AssetPicker toast={toast} onClose={() => setModal(null)} onPick={(url) => { assetCb.current?.(url); setModal(null); }} />}
       {modal === 'claude' && <ClaudePanel health={health} docs={docs} onClose={() => setModal(null)} onOpen={openDoc} />}
       {modal === 'lint' && doc && <LintPanel issues={issues} onClose={() => setModal(null)} onGo={(i) => { setSlideIdx(i.slide); setSelId(i.layer); }} />}
+      {modal === 'director' && <DirectorPanel doc={view === 'editor' ? doc : null} slideIdx={slideIdx} toast={toast} initialTask={directorTask} onClose={() => { setModal(null); setDirectorTask(null); }} onOpen={openDoc} />}
+      {modal === 'generate' && <GenerateDialog doc={view === 'editor' ? doc : null} slideIdx={slideIdx} toast={toast} onClose={() => setModal(null)} onPlaced={() => doc && openDoc(doc.id, { keepSlide: true })} />}
+      {modal === 'feedback' && doc && <FeedbackDialog doc={doc} slideIdx={slideIdx} toast={toast} onClose={() => setModal(null)} onTask={(id, watch) => { if (watch) { setDirectorTask(id); setModal('director'); } }} />}
+      {modal === 'settings' && <SettingsDialog toast={toast} onClose={() => setModal(null)} />}
+      {modal === 'brain' && <BrainPanel onClose={() => setModal(null)} onOpenTask={(id) => { setDirectorTask(id); setModal('director'); }} />}
       {preview && (
         <InstaPreview doc={preview.doc} images={images} notes={preview.item?.notes} onClose={() => setPreview(null)}
           onEdit={Object.assign(() => { const p = preview; setPreview(null); if (p.item) applyLibrary(p.item, p.doc.lang); else if (p.doc.id && p.doc.id !== docRef.current?.id) openDoc(p.doc.id); }, { label: preview.item ? 'Use this design' : preview.doc.id === docRef.current?.id ? 'Back to editor' : 'Open in editor' })} />
@@ -462,6 +474,10 @@ export default function App() {
           <span className="hint hide-sm">Instagram posts, carousels, Reels, Stories and animations, on brand.</span>
           <span className="spacer" />
           {view === 'editor' && !doc && <span className="hint">Loading design…</span>}
+          <button className="btn" onClick={() => setModal('director')} title="Give Claude a brief"><Icon name="claude" />Ask Claude</button>
+          <button className="btn icon ghost" onClick={() => setModal('generate')} title="Generate an image"><Icon name="wand" /></button>
+          <button className="btn icon ghost" onClick={() => setModal('brain')} title="What the studio has learned"><Icon name="brain" /></button>
+          <button className="btn icon ghost" onClick={() => setModal('settings')} title="Settings: generators, keys, self-repair"><Icon name="key" /></button>
         </header>
         {docsLoaded || docs.length ? (
           <Gallery docs={docs} images={images} live={live}
@@ -492,7 +508,9 @@ export default function App() {
         <span className="spacer" />
         <button className="btn" onClick={() => setPreview({ doc })} title="Instagram preview"><Icon name="eye" />Preview</button>
         <button className="btn" onClick={() => setModal('lint')} title="Brand check">Check {errs ? <span className="count err">{errs}</span> : warns ? <span className="count warn">{warns}</span> : <span className="count ok">✓</span>}</button>
-        <button className="btn icon" onClick={() => setModal('claude')} title="Claude Code"><span className={`dot${live ? ' live' : ''}`} /></button>
+        <button className="btn" onClick={() => setModal('feedback')} title="Rate this design: a thumbs-down asks why and teaches the studio"><Icon name="thumbUp" size={16} />Rate</button>
+        <button className="btn" onClick={() => setModal('director')} title="Ask Claude to change or extend this design"><Icon name="claude" />Ask Claude</button>
+        <button className="btn icon" onClick={() => setModal('claude')} title="Claude Code connection"><span className={`dot${live ? ' live' : ''}`} /></button>
         <div className="rel">
           <button className="btn primary" onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === 'export' ? null : 'export'); }}><Icon name="download" />Export</button>
           {menuOpen === 'export' && (
@@ -532,6 +550,8 @@ export default function App() {
           <div className="toolbar">
             <button className="tool" onClick={() => addLayer('text')} title="Add text"><Icon name="text" /><span>Text</span></button>
             <button className="tool" onClick={() => addLayer('image')} title="Add image"><Icon name="image" /><span>Image</span></button>
+            <button className="tool" onClick={() => addLayer('scene3d')} title="Add a 3D scene"><Icon name="cube" /><span>3D</span></button>
+            <button className="tool" onClick={() => setModal('generate')} title="Generate an image with the best available AI"><Icon name="wand" /><span>Generate</span></button>
             <span className="sep" />
             {TOOL_GROUPS.map(([label, icon, items]) => (
               <div key={label} className="rel">

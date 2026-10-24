@@ -3,6 +3,7 @@ import { COLORS, GRADIENTS, FONTS, TYPE, ARABIC_LH, THEMES, color as tokenColor,
 import { LOGO_INK, SYMBOL_ROOF, SYMBOL_G, SYMBOL_GEM, LOGO_BOX, LOGO_PARTS } from '../../shared/logo.js';
 import { ICONS } from '../../shared/icons.js';
 import { slideAt } from '../../shared/schema.js';
+import { sceneRuntime } from './scene3d/runtime.js';
 
 // ---------- fonts & images ----------
 export async function loadFonts() {
@@ -16,7 +17,11 @@ export async function loadFonts() {
 }
 
 export class ImageCache {
-  constructor(onLoad) { this.map = new Map(); this.onLoad = onLoad; }
+  constructor(onLoad) {
+    this.map = new Map(); this.onLoad = onLoad;
+    // 3D scene modules and their assets load asynchronously too: redraw when they arrive.
+    if (onLoad) this.off = sceneRuntime.onChange((e) => onLoad(`scene:${e.id || ''}`));
+  }
   get(src) {
     if (!src) return null;
     let e = this.map.get(src);
@@ -40,7 +45,7 @@ export class ImageCache {
       for (const l of s.layers) if (l.src) srcs.push(l.src);
     }
     for (const src of srcs) this.get(src);
-    await Promise.all(srcs.map((s) => this.map.get(s)?.p));
+    await Promise.all([...srcs.map((s) => this.map.get(s)?.p), sceneRuntime.preload(doc).catch(() => null)]);
   }
 }
 
@@ -1402,6 +1407,31 @@ function drawSparkles(c, layer, ctx) {
   }
 }
 
+// ---------- 3D scenes ----------
+function drawScene3D(c, layer, ctx) {
+  const m = c.getTransform();
+  const sx = Math.hypot(m.a, m.b) || 1, sy = Math.hypot(m.c, m.d) || 1;
+  const cv = sceneRuntime.render(layer, { w: layer.w * sx, h: layer.h * sy, t: ctx.t, theme: ctx.theme, lang: ctx.rtl ? 'ar' : 'en', dur: ctx.dur, live: ctx.live });
+  if (cv) {
+    c.save();
+    if (layer.radius) { rr(c, layer.x, layer.y, layer.w, layer.h, layer.radius); c.clip(); }
+    c.drawImage(cv, layer.x, layer.y, layer.w, layer.h);
+    c.restore();
+    return;
+  }
+  if (!ctx.guides) return; // exports and previews never show the placeholder
+  const st = sceneRuntime.status(layer.scene);
+  c.save();
+  c.fillStyle = 'rgba(255,255,255,0.03)';
+  c.fillRect(layer.x, layer.y, layer.w, layer.h);
+  c.fillStyle = st.state === 'error' ? COLORS.lossDark : COLORS.stone;
+  c.font = `500 ${26 * ctx.s}px ${FONTS.latin}`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(st.state === 'error' ? `Scene "${layer.scene}" failed: reported for repair` : `Loading 3D scene "${layer.scene}"…`, layer.x + layer.w / 2, layer.y + layer.h / 2);
+  c.restore();
+}
+
 // ---------- layer dispatch & animation ----------
 const backOut = (p) => 1 + 2.4 * Math.pow(p - 1, 3) + 1.4 * Math.pow(p - 1, 2);
 const TEXT_ONLY = new Set(['words', 'rise']);
@@ -1487,6 +1517,7 @@ function drawLayerBody(c, layer, ctx, st, images) {
     case 'chat': drawChat(c, layer, ctx, st.p, st.raw); break;
     case 'tap': drawTap(c, layer, ctx); break;
     case 'sparkles': drawSparkles(c, layer, ctx); break;
+    case 'scene3d': drawScene3D(c, layer, ctx); break;
     default: break;
   }
 }

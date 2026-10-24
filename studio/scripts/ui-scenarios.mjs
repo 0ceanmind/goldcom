@@ -70,7 +70,7 @@ await scenario('Gallery loads with both tabs and no errors', async () => {
   await page.locator('.seg.big button', { hasText: 'Library' }).click();
   await page.waitForSelector('.gcard');
   const n = await page.locator('.gcard').count();
-  expect(n >= 40, `library shows ${n} cards`);
+  expect(n >= 24, `library shows ${n} cards`);
 });
 
 await scenario('Library filters: category chips, search with and without results', async () => {
@@ -81,7 +81,7 @@ await scenario('Library filters: category chips, search with and without results
   await page.fill('.gsearch', 'zzzz-nothing');
   await page.waitForSelector('.empty');
   await page.fill('.gsearch', '');
-  expect(await page.locator('.gcard').count() >= 40, 'clearing search restores cards');
+  expect(await page.locator('.gcard').count() >= 24, 'clearing search restores cards');
 });
 
 await scenario('Library card plays on hover and opens the Instagram preview in every mode', async () => {
@@ -416,8 +416,39 @@ await scenario('Preview, brand check and Claude panel open from the editor', asy
   await page.locator('.topbar .btn', { hasText: 'Check' }).click();
   await page.waitForSelector('.modal');
   await page.keyboard.press('Escape');
-  await page.locator('.topbar .btn[title="Claude Code"]').click();
+  await page.locator('.topbar .btn[title="Claude Code connection"]').click();
   await page.waitForSelector('.modal');
+  await page.keyboard.press('Escape');
+});
+
+await scenario('Ask Claude, Generate, Rate (with reasons) and the 3D scene picker open from the editor', async () => {
+  await page.locator('.topbar .btn', { hasText: 'Ask Claude' }).click();
+  await page.waitForSelector('.director textarea');
+  await page.keyboard.press('Escape');
+  await page.locator('.toolbar .tool', { hasText: 'Generate' }).click();
+  await page.waitForSelector('.provider-status .pill');
+  await page.keyboard.press('Escape');
+  await page.locator('.topbar .btn', { hasText: 'Rate' }).click();
+  await page.locator('.rate-btn', { hasText: 'Not there yet' }).click();
+  await page.waitForSelector('.chips .chip');
+  await page.keyboard.press('Escape');
+  await page.locator('.toolbar .tool', { hasText: '3D' }).click();
+  await page.waitForSelector('.scene-current');
+  await page.locator('.scene-current').click();
+  await page.waitForSelector('.scene-card');
+  expect(await page.locator('.scene-card').count() >= 10, 'scene picker lists the scenes');
+});
+
+await scenario('Gallery header: settings and what the studio has learned', async () => {
+  await page.goto(`${BASE}/#/`);
+  await page.waitForSelector('.gallery');
+  await page.locator('.topbar .btn[title^="Settings"]').click();
+  await page.waitForSelector('.gen-row');
+  expect(await page.locator('.gen-row').count() >= 5, 'settings lists the generators');
+  await page.keyboard.press('Escape');
+  await page.locator('.topbar .btn[title="What the studio has learned"]').click();
+  await page.waitForSelector('.lesson');
+  expect(await page.locator('.lesson').count() >= 5, 'memory shows the learned rules');
   await page.keyboard.press('Escape');
 });
 
@@ -430,8 +461,8 @@ await scenario('Gallery card menu: duplicate, rename and delete', async () => {
   const before = await api('/api/documents');
   await page.locator('.gcard .btn[title="More"]').first().click();
   await page.locator('.menu button', { hasText: 'Duplicate' }).click();
-  await wait(1200);
-  const after = await api('/api/documents');
+  let after = before;
+  for (let i = 0; i < 40 && after.length === before.length; i++) { await wait(250); after = await api('/api/documents'); }
   expect(after.length === before.length + 1, 'duplicate added a design');
   for (const d of after) if (!before.some((b) => b.id === d.id)) created.add(d.id);
   await page.goto(`${BASE}/#/`);
@@ -439,8 +470,8 @@ await scenario('Gallery card menu: duplicate, rename and delete', async () => {
   await page.fill('.gsearch', 'UI test · base');
   await page.locator('.gcard .btn[title="More"]').first().click();
   await page.locator('.menu button', { hasText: 'Delete' }).click();
-  await wait(1200);
-  const final = await api('/api/documents');
+  let final = after;
+  for (let i = 0; i < 40 && final.length === after.length; i++) { await wait(250); final = await api('/api/documents'); }
   expect(final.length === after.length - 1, 'delete removed a design');
 });
 

@@ -29,6 +29,7 @@ export const LAYER_TYPES = {
   chat: 'Chat',
   tap: 'Tap indicator',
   sparkles: 'Gold sparkles',
+  scene3d: '3D scene',
 };
 
 /** Default properties for each layer type, relative to a 1080 px wide canvas. */
@@ -57,6 +58,7 @@ export function layerDefaults(type) {
     case 'chat': return { ...base, w: 920, h: 640, messages: [{ from: 'them', text: 'Can I send gold to my sister in Sohar?' }, { from: 'me', text: 'Yes. Pick a weight, add her number, and she gets it right away.' }], dir: 'auto', anim: { in: 'type', delay: 0.2, dur: 3 } };
     case 'tap': return { ...base, w: 140, h: 140, anim: { in: 'fade', delay: 0.8, dur: 0.3 }, loop: { type: 'pulse' } };
     case 'sparkles': return { ...base, x: 0, y: 0, w: 1080, h: 1080, count: 26, seed: 7, anim: { in: 'fade', delay: 0, dur: 1 }, loop: { type: 'shimmer' } };
+    case 'scene3d': return { ...base, x: 0, y: 0, w: 1080, h: 1350, scene: 'bar-hero', params: {}, transparent: false, speed: 1, timeOffset: 0, radius: 0, anim: { in: 'none', delay: 0, dur: 0.6 } };
     case 'chart': return { ...base, w: 920, h: 360, points: [44, 45.5, 44.2, 43.1, 44.8, 46, 45.1, 43.9, 44.6, 45.8, 45.2, 44.5, 45.6], trend: 'auto', area: true, grid: true, anim: { in: 'draw', delay: 0.2, dur: 1.2 } };
     default: return base;
   }
