@@ -1,7 +1,7 @@
 // On-brand slide templates. A template turns semantic content ({ title, body, items, screenshot, ... })
 // into positioned layers for any format and language. Used by the editor and by Claude Code (MCP).
 import { layerDefaults, uid } from './schema.js';
-import { TYPE, ARABIC_LH, DISCLAIMER, THEMES } from './brand.js';
+import { TYPE, ARABIC_LH, DISCLAIMER, THEMES, SAFE_ZONES } from './brand.js';
 
 // ---------- layout helpers ----------
 function ctxHelpers(ctx) {
@@ -18,8 +18,8 @@ function ctxHelpers(ctx) {
 /** Rough line estimate so text boxes hug their content. The renderer shrinks text to fit as a safety net. */
 export function estimateText(text = '', role = 'body', width, s = 1, lang = 'en') {
   const t = TYPE[role] || TYPE.body;
-  const size = t.size * s;
   const ar = lang === 'ar';
+  const size = t.size * s * (ar && t.arScale ? t.arScale : 1);
   const avg = (ar ? 0.5 : 0.5) * (t.weight >= 600 ? 1.03 : 1);
   const lh = size * t.lh * (ar ? ARABIC_LH : 1);
   const clean = String(text).replace(/\*/g, '');
@@ -54,7 +54,7 @@ function logoLayer(h, { variant = 'horizontal', width, x, y, mode = 'auto', alig
 }
 
 function pagerLayers(h, ctx, { y, style } = {}) {
-  if (ctx.kind === 'video' || ctx.total <= 1 || ctx.format === 'appstore') return [];
+  if (ctx.noPager) return [];
   const st = style || (ctx.index === 0 ? 'swipe' : 'dots');
   const w = Math.round((st === 'swipe' ? 300 : 260) * h.s);
   const ph = Math.round(40 * h.s);
@@ -90,7 +90,7 @@ function visualLayer(h, ctx, c, box) {
   if (v === 'goldbar' || (v === 'auto' && !c.screenshot && !c.image && !c.device)) {
     const bh = Math.max(80 * h.s, Math.min(box.h, Math.round(520 * h.s)));
     const bw = Math.round(bh * 0.62);
-    return [L('goldbar', { name: 'visual', label: c.barLabel || '1g', sub: 'FINE GOLD\n999.9', x: (h.W - bw) / 2, y: box.y + (box.h - bh) / 2, w: bw, h: bh, rotation: c.tilt ?? -6, anim: anim('scale', 0.3, 0.8) })];
+    return [L('goldbar', { name: 'visual', label: c.barLabel || '1 g', sub: 'FINE GOLD\n999.9', x: (h.W - bw) / 2, y: box.y + (box.h - bh) / 2, w: bw, h: bh, rotation: c.tilt ?? -6, anim: anim('scale', 0.3, 0.8) })];
   }
   if (c.image && !c.screenshot && v !== 'device') {
     return [L('image', { name: 'image', src: c.image, x: box.x ?? h.m, y: box.y, w: box.w ?? h.cw, h: box.h, radius: Math.round(28 * h.s), facet: true, anim: anim('fade-up', 0.3, 0.8) })];
@@ -137,7 +137,7 @@ export const TEMPLATES = {
       if (c.subtitle) blocks.push(['subtitle', textLayer(h, { name: 'subtitle', text: c.subtitle, role: 'body-lg', x: h.m, y: 0, w: textW, color: 'fg2', lang: ctx.lang, delay: 0.25 })]);
       const gap = Math.round(20 * h.s);
       const textH = blocks.reduce((a, [, l]) => a + l.h, 0) + gap * (blocks.length - 1);
-      const pagerSpace = ctx.kind === 'video' ? 0 : Math.round(90 * h.s);
+      const pagerSpace = ctx.noPager ? 0 : Math.round(90 * h.s);
       if (bullion) {
         // Dark top for the visual, light bottom for the Espresso headline.
         let y = h.H - h.m - pagerSpace - textH;
@@ -244,12 +244,12 @@ export const TEMPLATES = {
       out.push(t); y += t.h + 12 * h.s;
       if (c.caption) { const cap = textLayer(h, { name: 'caption', text: c.caption, role: 'body', x: h.m, y, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 0.12 }); out.push(cap); y += cap.h; }
       y += Math.round(48 * h.s);
-      const bottom = h.H - (ctx.kind === 'video' ? h.m : h.m + 80 * h.s) - (c.label === 'yes' ? 40 * h.s : 0);
+      const bottom = h.H - (ctx.noPager ? h.m : h.m + 80 * h.s) - (c.label === 'yes' ? 64 * h.s : 0);
       const dev = deviceLayer(h, ctx, c, { x: h.m, y, w: c.device === 'browser' ? h.cw : h.cw * 0.6, maxH: bottom - y, delay: 0.25 });
       out.push(dev);
       if (c.label === 'yes') {
         const text = ctx.lang === 'ar' ? 'شاشة توضيحية' : 'Illustrative screen';
-        out.push(textLayer(h, { text, role: 'caption', x: h.m, y: dev.y + dev.h + 14 * h.s, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 0.5, a: 'fade' }));
+        out.push(textLayer(h, { name: 'label', text, role: 'caption', x: h.m, y: dev.y + dev.h + 14 * h.s, w: h.cw, align: 'center', color: 'fg', lang: ctx.lang, delay: 0.5, a: 'fade' }));
       }
       out.push(...pagerLayers(h, ctx));
       return out;
@@ -350,13 +350,14 @@ export const TEMPLATES = {
       y += t.h + Math.round(56 * h.s);
       const stacked = !h.wide && h.H / h.W > 1.5;
       const gap = Math.round(28 * h.s);
-      const bottom = h.H - h.m - (ctx.kind === 'video' ? 0 : 90 * h.s);
+      const bottom = h.H - h.m - (ctx.noPager ? 0 : 90 * h.s);
       const cards = [
         { label: c.beforeLabel || (ctx.lang === 'ar' ? 'قبل' : 'Before'), items: c.before || [], fill: 'surface', bullet: 'dash', fg: 'fg2' },
         { label: c.afterLabel || (ctx.lang === 'ar' ? 'مع جولدكم' : 'With Goldcom'), items: c.after || [], fill: 'surface', bullet: 'check', fg: 'auto', accent: true },
       ];
       const cw = stacked ? h.cw : (h.cw - gap) / 2;
-      const ch = stacked ? (bottom - y - gap) / 2 : bottom - y;
+      const need = Math.max(...cards.map((cd) => estimateList(cd.items, 'body', cw - 80 * h.s, h.s, ctx.lang, 'check'))) + 80 * h.s + 60 * h.s;
+      const ch = Math.min(stacked ? (bottom - y - gap) / 2 : bottom - y, Math.max(need, 300 * h.s));
       cards.forEach((card, i) => {
         const cx = stacked ? h.m : h.m + i * (cw + gap);
         const cy = stacked ? y + i * (ch + gap) : y;
@@ -407,7 +408,7 @@ export const TEMPLATES = {
       { key: 'change', label: 'Change (e.g. +0.42%)', type: 'text' },
       { key: 'time', label: 'Timestamp', type: 'text' },
     ],
-    example: { title: 'Know your price before you buy', label: 'Gold 24K · per gram', price: 'OMR 31.204', change: '+0.42%', time: 'Indicative · 14:05' },
+    example: { title: 'Know your price before you buy', label: 'Gold 24K · per gram', price: 'OMR 31.204', change: '+0.42%', time: 'Indicative · 24 Oct 2026 · 14:05' },
     layout(c, ctx) {
       const h = ctxHelpers(ctx);
       const out = [];
@@ -422,13 +423,13 @@ export const TEMPLATES = {
       out.push(textLayer(h, { text: c.label || '', role: 'small', x: ix, y: y + pad, w: iw * 0.6, color: 'fg2', lang: ctx.lang, delay: 0.2 }));
       out.push(textLayer(h, { text: c.time || '', role: 'caption', x: ix + iw * 0.5, y: y + pad + 4 * h.s, w: iw * 0.5, align: 'end', color: 'fg2', lang: ctx.lang, delay: 0.2 }));
       const pr = textLayer(h, { text: c.price || '', role: 'price', x: ix, y: y + pad + 56 * h.s, w: iw * 0.68, lang: 'en', delay: 0.25, name: 'price' });
-      pr.anim = anim('count', 0.25, 1.1); pr.dir = 'ltr'; pr.x = h.X(ix, iw * 0.68); out.push(pr);
+      pr.anim = anim('count', 0.25, 1.1); pr.dir = ctx.lang === 'ar' ? 'rtl' : 'ltr'; pr.x = h.X(ix, iw * 0.68); out.push(pr);
       const up = !String(c.change || '').trim().startsWith('-') && !String(c.change || '').trim().startsWith('−');
       const bw = Math.round(200 * h.s);
       out.push(L('badge', { name: 'change', text: `${up ? '▲' : '▼'} ${c.change || ''}`, variant: up ? 'gain' : 'loss', gem: false, x: h.X(ix + iw - bw, bw), y: y + pad + 70 * h.s, w: bw, h: Math.round(56 * h.s), dir: 'ltr', anim: anim('fade', 0.5) }));
       const chY = y + pad + 200 * h.s;
       out.push(L('chart', { name: 'chart', trend: up ? 'up' : 'down', x: ix, y: chY, w: iw, h: y + cardH - pad - chY, anim: anim('draw', 0.4, 1.4) }));
-      out.push(disclaimerLayer(h, ctx, h.H - h.m - (ctx.kind === 'video' ? 0 : 70 * h.s)));
+      out.push(disclaimerLayer(h, ctx, h.H - h.m - (ctx.noPager ? 0 : 70 * h.s)));
       out.push(...pagerLayers(h, ctx));
       return out;
     },
@@ -451,7 +452,7 @@ export const TEMPLATES = {
       items.push(textLayer(h, { text: c.title || '', role: 'display', x: h.m, y: 0, w: h.cw, color: 'white', lang: ctx.lang, delay: 0.3, name: 'title' }));
       const gap = Math.round(18 * h.s);
       const total = items.reduce((a, l) => a + l.h, 0) + gap * (items.length - 1);
-      let y = h.H - h.m - (ctx.kind === 'video' ? 0 : 90 * h.s) - total;
+      let y = h.H - h.m - (ctx.noPager ? 0 : 90 * h.s) - total;
       for (const l of items) { l.y = y; y += l.h + gap; }
       out.push(...items);
       out.push(logoLayer(h, { width: Math.round(220 * h.s), x: h.m, y: h.m, mode: 'mono-white' }));
@@ -490,12 +491,452 @@ export const TEMPLATES = {
       let y = Math.max(h.m, Math.round((h.H - discSpace - total) / 2));
       for (const l of items) { l.y = y; y += l.h + gaps; }
       const out = [...items];
-      if (c.disclaimer === 'yes') out.push(disclaimerLayer(h, ctx, h.H - h.m - (ctx.kind === 'video' ? 0 : 70 * h.s)));
+      if (c.disclaimer === 'yes') out.push(disclaimerLayer(h, ctx, h.H - h.m - (ctx.noPager ? 0 : 70 * h.s)));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+  'live-price': {
+    name: 'Price board',
+    description: 'Animated gold price board: Indicative badge, price that counts up, change, a drawing chart and a scrolling ticker. Adds the disclaimer.',
+    fields: [
+      { key: 'title', label: 'Title (optional)', type: 'text' },
+      { key: 'live', label: 'Badge (default: Indicative)', type: 'text' },
+      { key: 'label', label: 'Price label', type: 'text' },
+      { key: 'price', label: 'Price (OMR, 3 decimals)', type: 'text' },
+      { key: 'change', label: 'Change (e.g. +0.42%)', type: 'text' },
+      { key: 'time', label: 'Timestamp', type: 'text' },
+      { key: 'ticker', label: 'Ticker items (one per line)', type: 'list' },
+    ],
+    example: { label: 'Gold 24K · per gram', price: 'OMR 31.204', change: '+0.42%', time: '24 Oct 2026 · 14:05', ticker: ['24K · 1 g  OMR 31.204 ▲ +0.42%', '24K · 10 g  OMR 312.040 ▲ +0.42%', '24K · 1 oz  OMR 970.552 ▲ +0.42%'] },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      const lw = Math.round(220 * h.s);
+      const logo = logoLayer(h, { width: lw, x: h.m, y: h.m });
+      out.push(logo);
+      const bw = Math.round(170 * h.s), bh = Math.round(60 * h.s);
+      const animated = ['reel', 'story', 'motion', 'video'].includes(ctx.kind);
+      // Always "Indicative": a posted price is a snapshot, never live (brand hard rule 7).
+      out.push(L('badge', { name: 'live', variant: 'spark', gem: true, text: c.live && !/^(live|مباشر)$/i.test(String(c.live).trim()) ? c.live : (ctx.lang === 'ar' ? 'استرشادي' : 'Indicative'), x: h.X(h.W - h.m - bw, bw), y: logo.y + (logo.h - bh) / 2, w: bw, h: bh, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('pop', 0.1) }));
+      let y = h.m + Math.round(190 * h.s);
+      if (c.title) { const t = textLayer(h, { name: 'title', text: c.title, role: 'h2', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 30 * h.s; }
+      const lab = textLayer(h, { name: 'label', text: c.label || '', role: 'body', x: h.m, y, w: h.cw * 0.6, color: 'fg2', lang: ctx.lang, delay: 0.15 }); out.push(lab);
+      out.push(textLayer(h, { name: 'time', text: c.time || '', role: 'caption', x: h.m + h.cw * 0.5, y: y + 6 * h.s, w: h.cw * 0.5, align: 'end', color: 'fg2', lang: ctx.lang, delay: 0.15 }));
+      y += lab.h + 6 * h.s;
+      const pw = Math.round(h.cw * 0.72);
+      const price = L('text', { name: 'price', text: c.price || '', role: 'price', size: 128, x: h.X(h.m, pw), y, w: pw, h: Math.round(150 * h.s), dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', align: 'start', fit: true, anim: anim('count', 0.25, 1.2) });
+      out.push(price);
+      const up = !/^[-−]/.test(String(c.change || '').trim());
+      const cw2 = Math.round(220 * h.s);
+      out.push(L('badge', { name: 'change', text: `${up ? '▲' : '▼'} ${c.change || ''}`, variant: up ? 'gain' : 'loss', gem: false, x: h.X(h.m + h.cw - cw2, cw2), y: y + 40 * h.s, w: cw2, h: Math.round(62 * h.s), dir: 'ltr', anim: anim('pop', 0.6) }));
+      y += price.h + 40 * h.s;
+      const tickerH = animated && (Array.isArray(c.ticker) ? c.ticker.length : String(c.ticker || '').trim()) ? Math.round(96 * h.s) : 0;
+      const disc = disclaimerLayer(h, ctx, h.H - h.m);
+      const tickerY = disc.y - tickerH - (tickerH ? 36 * h.s : 10 * h.s);
+      out.push(L('chart', { name: 'chart', trend: up ? 'up' : 'down', x: h.m, y, w: h.cw, h: Math.max(120 * h.s, tickerY - y - 40 * h.s), anim: anim('draw', 0.4, 1.6), loop: { type: 'live' } }));
+      const items = Array.isArray(c.ticker) ? c.ticker : String(c.ticker || '').split('\n').filter(Boolean);
+      if (items.length && animated) out.push(L('ticker', { name: 'ticker', items, x: 0, y: tickerY, w: h.W, h: tickerH, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade', 0.8), loop: { type: 'live' } }));
+      out.push(disc);
+      out.push(...pagerLayers(h, ctx, { y: h.m }));
+      return out;
+    },
+  },
+
+  notification: {
+    name: 'Notification',
+    description: 'A push notification drops onto a phone, with a headline above. Shows a real moment in the app (gift received, price alert, order done).',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'body', label: 'Supporting line', type: 'textarea' },
+      { key: 'notifTitle', label: 'Notification title', type: 'text' },
+      { key: 'notifBody', label: 'Notification text', type: 'text' },
+      { key: 'screenshot', label: 'Phone screenshot', type: 'asset' },
+    ],
+    example: { kicker: 'Gifting', title: 'The best kind of *notification*', body: 'Gold gifts arrive the moment they are sent.', notifTitle: 'You received a gold gift', notifBody: 'Aisha sent you 2.5 g of 24K gold.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m;
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 18 * h.s;
+      if (c.body) { const b = textLayer(h, { name: 'body', text: c.body, role: 'body-lg', x: h.m, y, w: h.cw, color: 'fg2', lang: ctx.lang, delay: 0.25 }); out.push(b); y += b.h; }
+      const py = y + 70 * h.s;
+      const phone = deviceLayer(h, ctx, { ...c, device: 'phone' }, { x: h.m, y: py, w: h.cw * 0.62, delay: 0.2 });
+      out.push(phone);
+      const nh = Math.round(200 * h.s);
+      out.push(L('notification', { name: 'notif', title: c.notifTitle || '', body: c.notifBody || '', time: ctx.lang === 'ar' ? 'الآن' : 'now', x: h.m, y: py + phone.w * 0.2, w: h.cw, h: nh, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('drop', 0.9, 0.8), loop: { type: 'float', amount: 0.4 } }));
+      out.push(L('tap', { name: 'tap', x: h.X(h.m + h.cw - 150 * h.s, 120 * h.s), y: py + phone.w * 0.2 + nh * 0.55, w: 120 * h.s, h: 120 * h.s, anim: anim('fade', 1.9, 0.3), loop: { type: 'pulse' } }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  sticker: {
+    name: 'Story sticker',
+    description: 'Instagram-style interactive sticker (poll, quiz, emoji slider, question box or countdown) under a short headline. Best for Stories.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'sticker', label: 'Sticker', type: 'select', options: ['poll', 'quiz', 'slider', 'question', 'countdown'] },
+      { key: 'question', label: 'Sticker question', type: 'text' },
+      { key: 'options', label: 'Options (one per line)', type: 'list' },
+      { key: 'result', label: 'Show poll results % (comma separated, leave empty before voting)', type: 'text' },
+      { key: 'reveal', label: 'Reveal quiz answer', type: 'select', options: ['no', 'yes'] },
+      { key: 'correct', label: 'Quiz correct option (1, 2, 3…)', type: 'text' },
+      { key: 'emoji', label: 'Slider emoji', type: 'text' },
+      { key: 'note', label: 'Note under sticker', type: 'text' },
+      { key: 'native', label: 'Use Instagram\'s own sticker (marks the space, not exported)', type: 'select', options: ['no', 'yes'] },
+    ],
+    example: { kicker: 'Your turn', title: 'Eid gift: what would *you* pick?', sticker: 'poll', question: 'Gold or cash?', options: ['Gold', 'Cash'], note: 'Tap to vote' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [L('sparkles', { name: 'sparkles', x: 0, y: 0, w: h.W, h: h.H * 0.55, count: 18, seed: 11, anim: anim('fade', 0, 1.2), loop: { type: 'shimmer' } })];
+      let y = h.m + Math.round(40 * h.s);
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, align: 'center', color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, align: 'center', lang: ctx.lang, delay: 0.1, a: 'words' }); out.push(t); y += t.h + 70 * h.s;
+      const kind = c.sticker || 'poll';
+      const sw = Math.round(h.cw * 0.86);
+      const opts = Array.isArray(c.options) ? c.options : String(c.options || '').split('\n').filter(Boolean);
+      const shH = Math.round((kind === 'quiz' ? 140 + Math.max(2, opts.length) * 98 : kind === 'countdown' ? 400 : kind === 'poll' ? 360 : 300) * h.s);
+      const result = String(c.result || '').split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n));
+      out.push(L('sticker', { name: 'sticker', guide: c.native === 'yes', kind, question: c.question || '', options: opts, result, showResults: result.length > 0, reveal: c.reveal === 'yes', correct: Math.max(0, (Number(c.correct) || 1) - 1), emoji: c.emoji || '✨', value: Number(c.value) || 0.82, x: (h.W - sw) / 2, y, w: sw, h: Math.min(shH, h.H - y - h.m - 120 * h.s), rotation: -2, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('pop', 0.45, 2.2), loop: { type: 'float', amount: 0.5 } }));
+      if (c.note) out.push(textLayer(h, { name: 'note', text: c.note, role: 'body', x: h.m, y: y + shH + 40 * h.s, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 0.9, a: 'fade' }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  countdown: {
+    name: 'Countdown',
+    description: 'Live countdown to an occasion or launch (National Day, Eid, a new feature). The seconds tick in videos.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'days', label: 'Days', type: 'text' },
+      { key: 'hours', label: 'Hours', type: 'text' },
+      { key: 'minutes', label: 'Minutes', type: 'text' },
+      { key: 'subtitle', label: 'Line under the countdown', type: 'textarea' },
+    ],
+    example: { kicker: 'Coming soon', title: 'Something *new* is on the way', days: '12', hours: '08', minutes: '45', subtitle: 'Turn on notifications so you hear it first.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const items = [];
+      const sym = Math.round(110 * h.s);
+      items.push(L('logo', { name: 'symbol', variant: 'symbol', mode: 'auto', x: (h.W - sym * 0.79) / 2, y: 0, w: Math.round(sym * 0.79), h: sym, anim: anim('assemble', 0, 1.2), loop: { type: 'shimmer' } }));
+      if (c.kicker) items.push(textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y: 0, w: h.cw, align: 'center', color: 'accent', lang: ctx.lang, delay: 0.3 }));
+      items.push(textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y: 0, w: h.cw, align: 'center', lang: ctx.lang, delay: 0.4, a: 'rise' }));
+      items.push(L('countdown', { name: 'countdown', days: Number(c.days) || 0, hours: Number(c.hours) || 0, minutes: Number(c.minutes) || 0, seconds: Number(c.seconds) || 59, x: h.m, y: 0, w: h.cw, h: Math.round(Math.min(260, h.cw * 0.3 / h.s) * h.s), dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade-up', 0.6) }));
+      if (c.subtitle) items.push(textLayer(h, { name: 'subtitle', text: c.subtitle, role: 'body-lg', x: h.m, y: 0, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 0.8 }));
+      const gap = Math.round(40 * h.s);
+      const total = items.reduce((acc, l) => acc + l.h, 0) + gap * (items.length - 1);
+      let y = ctx.theme === 'bullion' ? Math.max(h.m, Math.round(h.H - h.m - (ctx.noPager ? 0 : 80 * h.s) - total)) : Math.max(h.m, Math.round((h.H - total) / 2));
+      for (const l of items) { l.y = y; y += l.h + gap; }
+      if (ctx.theme === 'bullion') items[0].y = Math.min(items[0].y, Math.round(h.H * 0.2));
+      return [L('sparkles', { name: 'sparkles', x: 0, y: 0, w: h.W, h: h.H, count: 22, seed: 4, anim: anim('fade', 0, 1.5), loop: { type: 'shimmer' } }), ...items, ...pagerLayers(h, ctx)];
+    },
+  },
+
+  chat: {
+    name: 'Chat',
+    description: 'A short conversation that types itself out (customer question, gifting chat, support). Lines starting with ">" are Goldcom replies.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'messages', label: 'Messages (one per line, ">" = Goldcom reply)', type: 'list' },
+    ],
+    example: { kicker: 'You asked', title: 'Two questions we hear every day', messages: ['What is the smallest amount I can buy?', '> One gram of 24K gold.', 'And can I hold the actual bar?', '> Yes. You can request collection in the app.'] },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m;
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h2', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 50 * h.s;
+      const msgs = (Array.isArray(c.messages) ? c.messages : String(c.messages || '').split('\n')).filter((m) => (typeof m === 'string' ? m.trim() : m?.text)).map((m) => (typeof m === 'string' ? (m.trim().startsWith('>') ? { from: 'me', text: m.trim().slice(1).trim() } : { from: 'them', text: m.trim() }) : m));
+      const bottom = h.H - h.m - (ctx.noPager ? 0 : 80 * h.s);
+      out.push(L('shape', { name: 'panel', shape: 'rect', fill: 'surface', radius: Math.round(36 * h.s), x: h.m - 20 * h.s, y: y - 30 * h.s, w: h.cw + 40 * h.s, h: bottom - y + 30 * h.s, facet: true, anim: anim('fade', 0.1) }));
+      out.push(L('chat', { name: 'chat', messages: msgs, x: h.m + 20 * h.s, y, w: h.cw - 40 * h.s, h: bottom - y - 40 * h.s, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('type', 0.4, Math.max(2, msgs.length * 1.1)) }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  goal: {
+    name: 'Savings goal',
+    description: 'A progress ring that fills up (e.g. grams saved toward a goal), with a headline and short list.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'value', label: 'Progress (0–100)', type: 'text' },
+      { key: 'label', label: 'Ring label', type: 'text' },
+      { key: 'sub', label: 'Ring sub-label', type: 'text' },
+      { key: 'items', label: 'Points (one per line)', type: 'list' },
+      { key: 'disclaimer', label: 'Risk disclaimer', type: 'select', options: ['no', 'yes'] },
+    ],
+    example: { kicker: 'A simple plan', title: 'Save toward a gift, *gram by gram*', value: '62', label: '6.2 g', sub: 'of 10 g', items: ['Pick a target weight', 'Buy a little at a time', 'Track it in your portfolio'] },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m;
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 50 * h.s;
+      const items = Array.isArray(c.items) ? c.items : String(c.items || '').split('\n').filter(Boolean);
+      const listH = items.length ? Math.round((items.length * 70 + 20) * h.s) : 0;
+      const disc = c.disclaimer === 'yes' ? disclaimerLayer(h, ctx, h.H - h.m - (ctx.noPager ? 0 : 70 * h.s)) : null;
+      if (disc) out.push(disc);
+      const ring = Math.min(h.cw * 0.62, (disc ? disc.y - 30 * h.s : h.H - h.m - (ctx.noPager ? 0 : 90 * h.s)) - y - listH - 50 * h.s);
+      out.push(L('progress', { name: 'ring', style: 'ring', value: Math.max(0, Math.min(100, Number(c.value) || 0)) / 100, label: c.label || '', sub: c.sub || '', x: (h.W - ring) / 2, y, w: ring, h: ring, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('draw', 0.3, 1.8), loop: { type: 'pulse', amount: 0.3 } }));
+      y += ring + 50 * h.s;
+      if (items.length) out.push(L('list', { name: 'items', items, bullet: 'gem', role: 'body-lg', x: h.m, y, w: h.cw, h: listH, dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade-up', 0.9) }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  products: {
+    name: 'Products',
+    description: 'Grid of gold bars with weights and illustrative prices. Product showcase for posts and carousels.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'products', label: 'Products (one per line: weight | price)', type: 'list' },
+      { key: 'note', label: 'Note', type: 'text' },
+      { key: 'disclaimer', label: 'Risk disclaimer', type: 'select', options: ['no', 'yes'] },
+    ],
+    example: { kicker: 'Choose your bar', title: 'From 1 g to 10 g', products: ['1 g | OMR 33.180', '2.5 g | OMR 81.910', '5 g | OMR 162.260', '10 g | OMR 321.400'], note: 'Illustrative prices. The live price is shown in the app.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m;
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 46 * h.s;
+      const rows = (Array.isArray(c.products) ? c.products : String(c.products || '').split('\n')).filter((r) => String(r).trim()).slice(0, 6).map((r) => String(r).split('|').map((x) => x.trim()));
+      const cols = 2, gap = Math.round(24 * h.s);
+      const nRows = Math.ceil(rows.length / cols) || 1;
+      const disc = c.disclaimer === 'yes' ? disclaimerLayer(h, ctx, h.H - h.m - (ctx.noPager ? 0 : 70 * h.s)) : null;
+      const bottom = (disc ? disc.y - 24 * h.s : h.H - h.m - (ctx.noPager ? 0 : 80 * h.s)) - (c.note ? 70 * h.s : 0);
+      if (disc) out.push(disc);
+      const cw = (h.cw - gap) / cols;
+      const ch = Math.min(cw * 1.2, (bottom - y - gap * (nRows - 1)) / nRows);
+      rows.forEach(([wgt, price], i) => {
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx = h.m + col * (cw + gap), cy = y + row * (ch + gap);
+        const d = 0.2 + i * 0.12;
+        out.push(L('shape', { name: `card${i}`, shape: 'rect', fill: 'surface', radius: Math.round(28 * h.s), x: h.X(cx, cw), y: cy, w: cw, h: ch, anim: anim('fade-up', d) }));
+        const bh = ch * 0.5, bw = bh * 0.62;
+        out.push(L('goldbar', { name: `bar${i}`, label: wgt.replace(/\s+/g, ''), sub: '999.9', x: h.X(cx + (cw - bw) / 2, bw), y: cy + ch * 0.08, w: bw, h: bh, anim: anim('pop', d + 0.1, 0.7), loop: { type: 'shimmer', speed: 0.6 + (i % 3) * 0.15 } }));
+        out.push(textLayer(h, { name: `w${i}`, text: ctx.lang === 'ar' ? `سبيكة ${wgt.replace(/\s*g$/i, '').replace(/\s*جرام$/, '')} جرام` : `Gold bar · ${wgt}`, role: 'h3', x: cx + 24 * h.s, y: cy + ch * 0.64, w: cw - 48 * h.s, align: 'center', lang: ctx.lang, delay: d + 0.2 }));
+        if (price) out.push(L('text', { name: `p${i}`, text: price, role: 'body-lg', weight: 700, x: h.X(cx + 24 * h.s, cw - 48 * h.s), y: cy + ch * 0.8, w: cw - 48 * h.s, h: Math.round(56 * h.s), color: 'accent', align: 'center', dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', fit: true, anim: anim('count', d + 0.25, 1) }));
+      });
+      if (c.note) out.push(textLayer(h, { name: 'note', text: c.note, role: 'caption', x: h.m, y: bottom + 24 * h.s, w: h.cw, color: 'fg2', lang: ctx.lang, delay: 0.8, a: 'fade' }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  kinetic: {
+    name: 'Kinetic type',
+    description: 'Big words that land line by line. A strong hook for the first seconds of a Reel, or a bold statement post.',
+    fields: [
+      { key: 'lines', label: 'Lines (one per line, *word* = accent)', type: 'list' },
+      { key: 'caption', label: 'Small line at the bottom', type: 'text' },
+    ],
+    example: { lines: ['Real gold.', 'From your phone.', '*From one gram.*'], caption: 'Goldcom' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const lines = (Array.isArray(c.lines) ? c.lines : String(c.lines || '').split('\n')).filter((l) => String(l).trim()).slice(0, 5);
+      const items = lines.map((ln, i) => {
+        const l = textLayer(h, { name: `line${i}`, text: ln, role: 'display', x: h.m, y: 0, w: h.cw, lang: ctx.lang, delay: 0.15 + i * 0.55, a: 'words' });
+        l.size = 120; const est = estimateText(ln, 'display', h.cw, h.s * 1.15, ctx.lang); l.h = Math.round(est.lines * 120 * h.s * (ctx.lang === 'ar' ? 1.25 : 1.08) + 8 * h.s);
+        l.anim = { ...l.anim, dur: 0.7 };
+        return l;
+      });
+      const gap = Math.round(4 * h.s);
+      const total = items.reduce((acc, l) => acc + l.h, 0) + gap * Math.max(0, items.length - 1);
+      let y = Math.round((h.H - total) / 2);
+      for (const l of items) { l.y = y; y += l.h + gap; }
+      const out = [...items];
+      if (c.caption) out.push(textLayer(h, { name: 'caption', text: c.caption, role: 'overline', x: h.m, y: h.H - h.m - 40 * h.s - (ctx.noPager ? 0 : 70 * h.s), w: h.cw, color: 'accent', lang: ctx.lang, delay: 0.3 + lines.length * 0.55, a: 'fade' }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  'logo-sting': {
+    name: 'Logo reveal',
+    description: 'The Goldcom logo assembles piece by piece with a light sweep, then the tagline appears. Use as an intro or outro.',
+    fields: [{ key: 'tagline', label: 'Tagline', type: 'text' }],
+    example: { tagline: 'Real gold, from your phone' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const lw = Math.round((h.wide ? 300 : 440) * h.s);
+      const logo = logoLayer(h, { variant: 'stacked', width: lw, align: 'center', y: 0 });
+      logo.anim = anim('assemble', 0.1, 1.8); logo.loop = { type: 'shimmer', speed: 0.8 };
+      const tag = c.tagline ? textLayer(h, { name: 'tagline', text: c.tagline, role: 'h3', x: h.m, y: 0, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 1.7, a: 'rise' }) : null;
+      const total = logo.h + (tag ? tag.h + 50 * h.s : 0);
+      logo.y = Math.round((h.H - total) / 2);
+      if (tag) tag.y = logo.y + logo.h + 50 * h.s;
+      return [L('sparkles', { name: 'sparkles', x: 0, y: 0, w: h.W, h: h.H, count: 30, seed: 9, anim: anim('fade', 0.8, 1.5), loop: { type: 'shimmer' } }), logo, ...(tag ? [tag] : []), ...pagerLayers(h, ctx)];
+    },
+  },
+
+  greeting: {
+    name: 'Greeting',
+    description: 'Occasion greeting (Eid, Ramadan, National Day, weddings) with sparkles, the gold symbol and the logo.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Greeting', type: 'textarea' },
+      { key: 'body', label: 'Line', type: 'textarea' },
+    ],
+    example: { kicker: 'From all of us at Goldcom', title: 'Eid Mubarak', body: 'May your days be bright and your family close.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const items = [];
+      const sym = Math.round(150 * h.s);
+      items.push(L('logo', { name: 'symbol', variant: 'symbol', mode: 'auto', x: (h.W - sym * 0.79) / 2, y: 0, w: Math.round(sym * 0.79), h: sym, anim: anim('assemble', 0, 1.4), loop: { type: 'float', amount: 0.6 } }));
+      if (c.kicker) items.push(textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y: 0, w: h.cw, align: 'center', color: 'accent', lang: ctx.lang, delay: 0.6 }));
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'display', x: h.m, y: 0, w: h.cw, align: 'center', lang: ctx.lang, delay: 0.8, a: 'blur' });
+      t.anim = anim('blur', 0.8, 1.1); t.loop = { type: 'shimmer', speed: 0.5 };
+      items.push(t);
+      if (c.body) items.push(textLayer(h, { name: 'body', text: c.body, role: 'body-lg', x: h.m, y: 0, w: h.cw, align: 'center', color: 'fg2', lang: ctx.lang, delay: 1.3 }));
+      const gap = Math.round(36 * h.s);
+      const total = items.reduce((acc, l) => acc + l.h, 0) + gap * (items.length - 1);
+      const logoSpace = 60 * h.s + (ctx.noPager ? 0 : 70 * h.s);
+      let y = ctx.theme === 'bullion' ? Math.round(h.H - h.m - logoSpace - total) : Math.round((h.H - total) / 2) - Math.round(40 * h.s);
+      for (const l of items) { l.y = y; y += l.h + gap; }
+      if (ctx.theme === 'bullion') items[0].y = Math.min(items[0].y, Math.round(h.H * 0.18));
+      // The symbol at the top is the brand mark here: no second logo (brand §3.4).
+      return [L('sparkles', { name: 'sparkles', x: 0, y: 0, w: h.W, h: h.H, count: 40, seed: 3, anim: anim('fade', 0, 2), loop: { type: 'shimmer' } }), ...items, ...pagerLayers(h, ctx)];
+    },
+  },
+
+  fact: {
+    name: 'Fact',
+    description: '"Did you know" card: a big fact, a plain explanation and a source line. Only use facts you can back up.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'fact', label: 'The fact (big)', type: 'textarea' },
+      { key: 'body', label: 'Explanation', type: 'textarea' },
+      { key: 'source', label: 'Source / note', type: 'text' },
+    ],
+    example: { kicker: 'Did you know?', fact: '24K gold is at least *99.9%* pure', body: 'That is why bars and coins are 24K. Jewellery is usually 18K to 22K, mixed with other metals so it holds its shape.', source: 'Investment bars are often 999.9 fine (99.99%).' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const items = [];
+      items.push(L('gem', { name: 'gem', x: h.X(h.m, 48 * h.s), y: 0, w: 48 * h.s, h: 48 * h.s, anim: anim('pop', 0), loop: { type: 'spin', speed: 0.4 } }));
+      if (c.kicker) items.push(textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y: 0, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0.1 }));
+      items.push(textLayer(h, { name: 'fact', text: c.fact || '', role: 'display', x: h.m, y: 0, w: h.cw, lang: ctx.lang, delay: 0.2, a: 'rise' }));
+      if (c.body) items.push(textLayer(h, { name: 'body', text: c.body, role: 'body-lg', x: h.m, y: 0, w: h.cw, color: 'fg2', lang: ctx.lang, delay: 0.5 }));
+      const gap = Math.round(34 * h.s);
+      const total = items.reduce((acc, l) => acc + l.h, 0) + gap * (items.length - 1);
+      let y = Math.round((h.H - total) / 2);
+      for (const l of items) { l.y = y; y += l.h + gap; }
+      const out = [...items];
+      if (c.source) out.push(textLayer(h, { name: 'source', text: c.source, role: 'caption', x: h.m, y: h.H - h.m - 30 * h.s - (ctx.noPager ? 0 : 80 * h.s), w: h.cw, color: 'fg2', lang: ctx.lang, delay: 0.8, a: 'fade' }));
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  faq: {
+    name: 'Q&A',
+    description: 'One customer question and a clear, short answer. Good for FAQ carousels and Stories.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'question', label: 'Question', type: 'textarea' },
+      { key: 'answer', label: 'Answer', type: 'textarea' },
+    ],
+    example: { kicker: 'You asked', question: 'Can I collect my gold as a real bar?', answer: 'Yes. Request collection in the app and pick it up as a physical, certified bar.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m + Math.round(30 * h.s);
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 24 * h.s; }
+      const q = textLayer(h, { name: 'question', text: c.question || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'words' }); out.push(q); y += q.h + 60 * h.s;
+      const pad = Math.round(48 * h.s);
+      const ans = textLayer(h, { name: 'answer', text: c.answer || '', role: 'body-lg', x: h.m + pad, y: y + pad, w: h.cw - pad * 2, lang: ctx.lang, delay: 0.7 });
+      out.push(L('shape', { name: 'card', shape: 'rect', fill: 'surface', radius: Math.round(32 * h.s), facet: true, x: h.m, y, w: h.cw, h: ans.h + pad * 2, anim: anim('fade-up', 0.55) }));
+      out.push(ans);
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  myth: {
+    name: 'Myth vs fact',
+    description: 'Clears up a common misconception: a myth card, then the fact card.',
+    fields: [
+      { key: 'title', label: 'Headline (optional)', type: 'text' },
+      { key: 'myth', label: 'Myth', type: 'textarea' },
+      { key: 'fact', label: 'Fact', type: 'textarea' },
+    ],
+    example: { title: 'Myth or fact?', myth: 'You need a lot of money to own gold.', fact: 'You can start with one gram and add more whenever you like.' },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      const pad = Math.round(48 * h.s);
+      const inner = h.cw - pad * 2;
+      const cards = [['myth', c.myth, ctx.lang === 'ar' ? 'خرافة' : 'Myth', 'lossDark', 0.15], ['fact', c.fact, ctx.lang === 'ar' ? 'حقيقة' : 'Fact', 'gainDark', 0.9]].map(([key, text, label, col, d], i) => {
+        const est = estimateText(text || '', 'h3', inner, h.s, ctx.lang);
+        return { key, text, label, col, d, i, th: est.h, ch: pad * 2 + 90 * h.s + est.h };
+      });
+      const title = c.title ? textLayer(h, { name: 'title', text: c.title, role: 'h2', x: h.m, y: 0, w: h.cw, lang: ctx.lang, delay: 0, a: 'rise' }) : null;
+      const gap = Math.round(30 * h.s);
+      const total = (title ? title.h + 50 * h.s : 0) + cards.reduce((acc, cd) => acc + cd.ch, 0) + gap;
+      const avail = h.H - h.m * 2 - (ctx.noPager ? 0 : 80 * h.s);
+      let y = h.m + Math.max(0, (avail - total) * 0.42);
+      if (title) { title.y = y; out.push(title); y += title.h + 50 * h.s; }
+      for (const { key, text, label, col, d, i, th, ch } of cards) {
+        out.push(L('shape', { name: `${key}Card`, shape: 'rect', fill: 'surface', stroke: i ? 'accent' : '', radius: Math.round(32 * h.s), facet: !!i, x: h.m, y, w: h.cw, h: ch, anim: anim(i ? 'pop' : 'fade-up', d) }));
+        out.push(L('icon', { name: `${key}Icon`, icon: i ? 'check' : 'x', tile: false, color: col, x: h.X(h.m + pad, 56 * h.s), y: y + pad, w: 56 * h.s, h: 56 * h.s, anim: anim('pop', d + 0.1) }));
+        out.push(textLayer(h, { name: `${key}Label`, text: label, role: 'overline', x: h.m + pad + 80 * h.s, y: y + pad + 14 * h.s, w: inner - 80 * h.s, color: i ? 'accent' : 'fg2', lang: ctx.lang, delay: d + 0.1 }));
+        out.push(L('text', { name: key, text: text || '', role: 'h3', x: h.X(h.m + pad, inner), y: y + pad + 90 * h.s, w: inner, h: th, color: i ? 'auto' : 'fg2', dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', fit: true, anim: anim('fade-up', d + 0.2) }));
+        y += ch + gap;
+      }
+      out.push(...pagerLayers(h, ctx));
+      return out;
+    },
+  },
+
+  karat: {
+    name: 'Karat guide',
+    description: 'Gold purity explained with filling bars: karat, purity % and where it is used.',
+    fields: [
+      { key: 'kicker', label: 'Kicker', type: 'text' },
+      { key: 'title', label: 'Headline', type: 'textarea' },
+      { key: 'rows', label: 'Rows (one per line: karat | purity % | note)', type: 'list' },
+    ],
+    example: { kicker: 'Gold guide', title: 'What the karat number means', rows: ['24K | 99.9 | Bars and coins', '22K | 91.6 | Traditional jewellery', '21K | 87.5 | Everyday jewellery', '18K | 75.0 | Fine jewellery with stones'] },
+    layout(c, ctx) {
+      const h = ctxHelpers(ctx);
+      const out = [];
+      let y = h.m;
+      if (c.kicker) { const k = textLayer(h, { name: 'kicker', text: c.kicker, role: 'overline', x: h.m, y, w: h.cw, color: 'accent', lang: ctx.lang, delay: 0 }); out.push(k); y += k.h + 14 * h.s; }
+      const t = textLayer(h, { name: 'title', text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, a: 'rise' }); out.push(t); y += t.h + 56 * h.s;
+      const rows = (Array.isArray(c.rows) ? c.rows : String(c.rows || '').split('\n')).filter((r) => String(r).trim()).slice(0, 6).map((r) => String(r).split('|').map((x) => x.trim()));
+      const bottom = h.H - h.m - (ctx.noPager ? 0 : 80 * h.s);
+      const rowH = Math.min(190 * h.s, (bottom - y) / Math.max(1, rows.length));
+      rows.forEach(([k, pct, note], i) => {
+        const ry = y + i * rowH;
+        out.push(L('progress', { name: `bar${i}`, style: 'bar', value: (Number(pct) || 0) / 100, label: k, sub: `${pct}%`, x: h.m, y: ry, w: h.cw, h: Math.round(rowH * 0.5), dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('draw', 0.3 + i * 0.2, 1.2) }));
+        if (note) out.push(textLayer(h, { name: `note${i}`, text: note, role: 'small', x: h.m, y: ry + rowH * 0.56, w: h.cw, color: 'fg2', lang: ctx.lang, delay: 0.5 + i * 0.2 }));
+      });
       out.push(...pagerLayers(h, ctx));
       return out;
     },
   },
 };
+
+/** Height a list will need, so short lists can be centred instead of leaving a gap below. */
+function estimateList(items, role, w, s, lang, bullet) {
+  const t = TYPE[role] || TYPE.body;
+  const size = t.size * s;
+  const lh = size * t.lh * (lang === 'ar' ? ARABIC_LH : 1);
+  const gap = size * (bullet === 'number' ? 1 : 0.75);
+  const indent = size * (bullet === 'number' ? 2.1 : 1.7);
+  return Math.ceil(items.reduce((acc, it) => acc + Math.max(estimateText(it, role, w - indent, s, lang).lines * lh, bullet === 'number' ? size * 1.5 : 0), 0) + gap * Math.max(0, items.length - 1) + size * 0.4);
+}
 
 function listLayout(c, ctx, bullet) {
   const h = ctxHelpers(ctx);
@@ -505,7 +946,9 @@ function listLayout(c, ctx, bullet) {
   const t = textLayer(h, { text: c.title || '', role: 'h1', x: h.m, y, w: h.cw, lang: ctx.lang, delay: 0.1, name: 'title' }); out.push(t);
   y += t.h + Math.round(64 * h.s);
   const items = Array.isArray(c.items) ? c.items : String(c.items || '').split('\n').filter(Boolean);
-  out.push(L('list', { name: 'items', items, bullet, role: items.length > 4 ? 'body' : 'body-lg', x: h.m, y, w: h.cw, h: h.H - y - h.m - (ctx.kind === 'video' ? 0 : 90 * h.s), dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade-up', 0.25) }));
+  const role = items.length > 4 ? 'body' : 'body-lg';
+  const avail = h.H - y - h.m - (ctx.noPager ? 0 : 90 * h.s);
+  out.push(L('list', { name: 'items', items, bullet, role, x: h.m, y, w: h.cw, h: Math.min(avail, estimateList(items, role, h.cw, h.s, ctx.lang, bullet)), dir: ctx.lang === 'ar' ? 'rtl' : 'ltr', anim: anim('fade-up', 0.25) }));
   out.push(...pagerLayers(h, ctx));
   return out;
 }
@@ -513,20 +956,77 @@ function listLayout(c, ctx, bullet) {
 export const TEMPLATE_IDS = Object.keys(TEMPLATES);
 
 /** Build layers for a slide from its template + content. */
-export function applyTemplate(slide, doc, index, total) {
+const CENTERED = new Set(['list', 'steps', 'faq', 'feature', 'code', 'comparison']);
+
+export function applyTemplate(slide, doc, index, total, band = 0) {
   const tpl = TEMPLATES[slide.template];
   if (!tpl) return slide;
   const content = { ...(slide.content || {}) };
-  const ctx = { W: doc.width, H: doc.height, lang: content.lang || doc.lang || 'ar', theme: slide.theme, index, total, kind: doc.kind, format: doc.format };
-  let layers = tpl.layout(content, ctx).map((l) => ({ ...l, x: Math.round(l.x), y: Math.round(l.y), w: Math.round(l.w), h: Math.round(l.h) }));
+  const W = doc.width, H = doc.height;
+  const noPager = doc.kind !== 'carousel' || total <= 1 || doc.format === 'appstore';
+  // 9:16 Reels and Stories: lay out inside the Instagram safe area, then shift down.
+  const tallIG = H / W > 1.7 && (doc.kind === 'reel' || doc.kind === 'story');
+  const zone = tallIG ? SAFE_ZONES[doc.kind === 'reel' ? 'reel' : 'story'] : null;
+  const k = Math.min(W, H) / 1080;
+  const top = (zone ? Math.round(Math.max(0, zone.top * k - 80 * k)) : 0) + band;
+  const bottom = zone ? Math.round(Math.max(0, zone.bottom * k - 80 * k)) : 0;
+  const ctx = { W, H: H - top - bottom, lang: content.lang || doc.lang || 'ar', theme: slide.theme, index, total, kind: doc.kind, format: doc.format, noPager };
+  let layers = tpl.layout(content, ctx).map((l) => {
+    const full = l.bleed === 'full' || (l.x <= 0 && l.y <= 0 && l.w >= W && l.h >= ctx.H);
+    const out = full ? { ...l, y: 0, h: H } : { ...l, y: l.y + top };
+    return { ...out, x: Math.round(out.x), y: Math.round(out.y), w: Math.round(out.w), h: Math.round(out.h) };
+  });
   // Keep the pager clear of devices or images that bleed off the bottom: move it to the top-end corner.
   const pager = layers.find((l) => l.type === 'pager');
   if (pager && layers.some((l) => l !== pager && ['phone', 'browser', 'image', 'goldbar'].includes(l.type) && l.y + l.h > pager.y - 10 && l.x < pager.x + pager.w && l.x + l.w > pager.x)) {
-    const m = Math.round(80 * Math.min(doc.width, doc.height) / 1080);
+    const m = Math.round(80 * k);
     const rtl = ctx.lang === 'ar';
     const logo = layers.find((l) => l.type === 'logo' && l.y < m * 2.5);
     const y = logo ? Math.round(logo.y + (logo.h - pager.h) / 2) : m;
-    layers = layers.map((l) => (l === pager ? { ...l, x: rtl ? m : doc.width - m - l.w, y, align: 'end' } : l));
+    layers = layers.map((l) => (l === pager ? { ...l, x: rtl ? m : W - m - l.w, y, align: 'end' } : l));
+  }
+  // Short content on text-led templates is centred on the canvas instead of hugging the top.
+  if (CENTERED.has(slide.template) && !(slide.template === 'feature' && (content.screenshot || content.image || (content.device && content.device !== 'none')))) {
+    const movable = layers.filter((l) => l.type !== 'pager' && l.type !== 'sparkles' && !(l.y <= 0 && l.h >= H));
+    if (movable.length) {
+      const y0 = Math.min(...movable.map((l) => l.y));
+      const y1 = Math.max(...movable.map((l) => l.y + l.h));
+      const safeTop = top + Math.round(80 * k), safeBottom = H - bottom - Math.round((noPager ? 80 : 160) * k);
+      const used = y1 - y0;
+      if (used < (safeBottom - safeTop) * 0.72) {
+        const target = safeTop + (safeBottom - safeTop - used) * 0.42;
+        const shift = Math.round(Math.max(0, target - y0));
+        if (shift > 0) layers = layers.map((l) => (movable.includes(l) ? { ...l, y: l.y + shift } : l));
+      }
+    }
+  }
+  // Single posts, Story frames and animated posts carry a small logo so they are never unbranded in the feed.
+  // Corner order follows the reading start (top-right in Arabic, brand §9.2); Reels and Stories keep it out of the UI zones.
+  if (['post', 'story', 'motion'].includes(doc.kind) && slide.brandMark !== false && !layers.some((l) => l.type === 'logo')) {
+    const m = Math.round(80 * k);
+    const rtl = ctx.lang === 'ar';
+    const zTop = zone ? Math.round(zone.top * k + 10 * k) : Math.round(m * 0.6);
+    const zBot = zone ? H - Math.round(zone.bottom * k + 20 * k) : H - Math.round(m * 0.6);
+    const hits = (r, pad) => layers.some((l) => l.type !== 'sparkles' && !(l.y <= 0 && l.h >= H) && l.x < r.x + r.w + pad && l.x + l.w > r.x - pad && l.y < r.y + r.h + pad && l.y + l.h > r.y - pad);
+    const corners = (lw, lh, inset) => {
+      const start = rtl ? W - inset - lw : inset, end = rtl ? inset : W - inset - lw;
+      return [{ x: start, y: zTop }, { x: end, y: zTop }, { x: start, y: zBot - lh }, { x: end, y: zBot - lh }].map((p) => ({ ...p, w: lw, h: lh }));
+    };
+    const hw = Math.round(170 * k), hh = Math.round(hw * 541 / 1364);
+    let spot = corners(hw, hh, m).find((r) => !hits(r, 20 * k));
+    let variant = 'horizontal';
+    // Crowded layouts: fall back to the symbol, tucked closer to the edge.
+    if (!spot) { const sw = Math.round(56 * k), sh = Math.round(sw * 540 / 427); spot = corners(sw, sh, Math.round(m * 0.55)).find((r) => !hits(r, 8 * k)); variant = 'symbol'; }
+    // Still nothing free: lay the slide out again with a band reserved at the top for the logo.
+    if (!spot && !band) return applyTemplate(slide, doc, index, total, Math.round(hh + 40 * k));
+    if (spot) layers.push({ ...layerDefaults('logo'), id: uid('l'), name: 'brandmark', variant, mode: 'auto', x: Math.round(spot.x), y: Math.round(spot.y), w: spot.w, h: spot.h, anim: { in: 'fade', delay: 0.4, dur: 0.6 } });
+  }
+  // Extra layers stored on the slide (relative coordinates) survive every re-layout.
+  for (const e of slide.extras || []) {
+    const base = layerDefaults(e.type);
+    const rel = (v, dim) => (typeof v === 'number' && v <= 1.5 ? Math.round(v * dim) : v);
+    const l = { ...base, ...e, id: uid('l'), x: rel(e.x ?? 0, W), y: rel(e.y ?? 0, H), w: rel(e.w ?? 1, W), h: rel(e.h ?? 1, H), extra: true };
+    if (e.under) layers.unshift(l); else layers.push(l);
   }
   return { ...slide, layers, custom: false };
 }
@@ -579,8 +1079,22 @@ export const EXAMPLES_AR = {
   quote: { quote: 'اشتريت أول جرام لابنتي، واستغرق الأمر أقل من دقيقة.', author: 'عائشة', role: 'شهادة توضيحية' },
   comparison: { title: 'الذهب بالطريقة التقليدية مقابل جولدكم', beforeLabel: 'قبل', before: ['زيارة عدة محلات', 'أسعار غير واضحة', 'تخزينه في المنزل'], afterLabel: 'مع جولدكم', after: ['اشترِ من جوالك', 'أسعار مباشرة استرشادية', 'احتفظ به، أهدِه أو استلمه'] },
   code: { kicker: 'خلف الكواليس', title: 'جرام واحد بطلب واحد', code: "const order = await goldcom.buy({\n  grams: 1,\n  purity: '999.9',\n});", filename: 'buy.ts', caption: 'مثال برمجي توضيحي.' },
-  price: { title: 'اعرف سعرك قبل أن تشتري', label: 'ذهب عيار 24 · للجرام', price: 'OMR 31.204', change: '+0.42%', time: 'استرشادي · 14:05' },
+  price: { title: 'اعرف سعرك قبل أن تشتري', label: 'ذهب عيار 24 · للجرام', price: '31.204 ر.ع.', change: '+0.42%', time: 'استرشادي · 24 أكتوبر 2026 · 14:05' },
   image: { kicker: 'هدايا العيد', title: 'هدية تدوم' },
+  'live-price': { label: 'ذهب عيار 24 · للجرام', price: '31.204 ر.ع.', change: '+0.42%', time: '24 أكتوبر 2026 · 14:05', ticker: ['عيار 24 · 1 جرام  31.204 ر.ع. ▲ +0.42%', 'عيار 24 · 10 جرام  312.040 ر.ع. ▲ +0.42%', 'عيار 24 · 1 أونصة  970.552 ر.ع. ▲ +0.42%'] },
+  notification: { kicker: 'الإهداء', title: 'أجمل *إشعار* قد يصلك', body: 'هدايا الذهب تصل لحظة إرسالها.', notifTitle: 'وصلتك هدية ذهب', notifBody: 'أرسلت لك عائشة 2.5 جرام ذهب عيار 24.' },
+  sticker: { kicker: 'دورك', title: 'هدية العيد: ماذا *تختار*؟', sticker: 'poll', question: 'ذهب أم نقود؟', options: ['ذهب', 'نقود'], note: 'اضغط للتصويت' },
+  countdown: { kicker: 'قريبًا', title: 'شيء *جديد* في الطريق', days: '12', hours: '08', minutes: '45', subtitle: 'فعّل الإشعارات لتكون أول من يعرف.' },
+  chat: { kicker: 'سألتمونا', title: 'سؤالان يصلاننا كل يوم', messages: ['ما أقل كمية أستطيع شراءها؟', '> جرام واحد من ذهب عيار 24.', 'وهل أستطيع استلام السبيكة نفسها؟', '> نعم، اطلب الاستلام من التطبيق.'] },
+  goal: { kicker: 'خطة بسيطة', title: 'ادّخر لهدية، *جرامًا بعد جرام*', value: '62', label: '6.2 جرام', sub: 'من 10 جرام', items: ['حدد الوزن الذي تريده', 'اشترِ على دفعات صغيرة', 'تابع ذهبك في محفظتك'] },
+  products: { kicker: 'اختر سبيكتك', title: 'من 1 جرام إلى 10 جرام', products: ['1 g | OMR 33.180', '2.5 g | OMR 81.910', '5 g | OMR 162.260', '10 g | OMR 321.400'], note: 'أسعار توضيحية. السعر المباشر يظهر في التطبيق.' },
+  kinetic: { lines: ['ذهب حقيقي.', 'من جوالك.', '*من جرام واحد.*'], caption: 'جولدكم' },
+  'logo-sting': { tagline: 'ذهب حقيقي، من جوالك' },
+  greeting: { kicker: 'من أسرة جولدكم', title: 'عيد مبارك', body: 'كل عام وأنتم بخير، وأيامكم عامرة بالفرح.' },
+  fact: { kicker: 'هل تعلم؟', fact: 'نقاوة ذهب عيار 24 لا تقل عن *99.9%*', body: 'لهذا تُصنع السبائك والعملات من عيار 24، بينما تُخلط المجوهرات عادةً بمعادن أخرى لتحافظ على شكلها.', source: 'السبائك الاستثمارية غالبًا بنقاوة 999.9 (أي 99.99%).' },
+  faq: { kicker: 'سألتمونا', question: 'هل أستطيع استلام ذهبي سبيكةً حقيقية؟', answer: 'نعم. اطلب الاستلام من التطبيق واستلمها سبيكة معتمدة.' },
+  myth: { title: 'خرافة أم حقيقة؟', myth: 'امتلاك الذهب يحتاج إلى مبلغ كبير.', fact: 'تستطيع البدء بجرام واحد، والإضافة متى شئت.' },
+  karat: { kicker: 'دليل الذهب', title: 'ماذا يعني رقم العيار؟', rows: ['عيار 24 | 99.9 | السبائك والعملات', 'عيار 22 | 91.6 | المشغولات التقليدية', 'عيار 21 | 87.5 | مجوهرات الاستخدام اليومي', 'عيار 18 | 75.0 | المجوهرات المرصّعة بالأحجار'] },
   cta: { title: 'ابدأ قصتك مع الذهب اليوم', subtitle: 'حمّل جولدكم من App Store و Google Play.', button: 'حمّل التطبيق', link: 'goldcom.om', disclaimer: 'yes' },
 };
 

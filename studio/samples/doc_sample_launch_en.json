@@ -9,11 +9,15 @@
   "format": "feed-portrait",
   "width": 1080,
   "height": 1350,
+  "caption": {
+    "text": "",
+    "hashtags": []
+  },
   "createdAt": "2026-10-23T12:00:09.000Z",
   "updatedAt": "2026-10-23T12:00:09.000Z",
   "slides": [
     {
-      "id": "s_t1s1bi655h",
+      "id": "s_t4skbd5k2p",
       "template": "cover",
       "content": {
         "kicker": "New on Goldcom",
@@ -22,15 +26,17 @@
         "visual": "device",
         "device": "phone"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_8ov5f4o55h",
+          "id": "l_1eab5gck2p",
           "type": "logo",
           "x": 80,
           "y": 80,
@@ -48,7 +54,7 @@
           "name": "logo"
         },
         {
-          "id": "l_qun4e9055h",
+          "id": "l_49dpjusk2q",
           "type": "phone",
           "x": 80,
           "y": 772,
@@ -68,7 +74,7 @@
           "name": "device"
         },
         {
-          "id": "l_rkwxzvl55h",
+          "id": "l_j5ekliak2q",
           "type": "text",
           "x": 80,
           "y": 270,
@@ -92,7 +98,7 @@
           "name": "kicker"
         },
         {
-          "id": "l_l5oj41455h",
+          "id": "l_ga8q27xk2q",
           "type": "text",
           "x": 80,
           "y": 325,
@@ -116,7 +122,7 @@
           "name": "title"
         },
         {
-          "id": "l_ikj6gha55h",
+          "id": "l_9b211qjk2q",
           "type": "text",
           "x": 80,
           "y": 586,
@@ -140,7 +146,7 @@
           "name": "subtitle"
         },
         {
-          "id": "l_bmjlks355h",
+          "id": "l_d1z1irpk2q",
           "type": "pager",
           "x": 700,
           "y": 110,
@@ -160,22 +166,24 @@
       ]
     },
     {
-      "id": "s_pts8a0c55h",
+      "id": "s_mawdy7ik2p",
       "template": "statement",
       "content": {
         "kicker": "The problem",
         "title": "Buying gold should not feel *complicated*.",
         "body": "Prices change, purity is hard to judge and storage is inconvenient."
       },
+      "extras": null,
       "theme": "charcoal",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_dczxi7w55h",
+          "id": "l_3hvouyek2q",
           "type": "gem",
           "x": 80,
           "y": 434,
@@ -192,7 +200,7 @@
           "name": "gem"
         },
         {
-          "id": "l_j81whd955h",
+          "id": "l_5onguwvk2q",
           "type": "text",
           "x": 80,
           "y": 510,
@@ -216,7 +224,7 @@
           "name": "kicker"
         },
         {
-          "id": "l_3x9gjqr55h",
+          "id": "l_8peifofk2q",
           "type": "text",
           "x": 80,
           "y": 577,
@@ -240,7 +248,7 @@
           "name": "title"
         },
         {
-          "id": "l_j3otfl255h",
+          "id": "l_lyo2rovk2q",
           "type": "text",
           "x": 80,
           "y": 801,
@@ -264,7 +272,7 @@
           "name": "body"
         },
         {
-          "id": "l_i26jooh55h",
+          "id": "l_0l15qwek2q",
           "type": "pager",
           "x": 80,
           "y": 1230,
@@ -283,7 +291,7 @@
       ]
     },
     {
-      "id": "s_88t7pky55h",
+      "id": "s_m7c5rvlk2p",
       "template": "feature",
       "content": {
         "icon": "gift",
@@ -292,15 +300,17 @@
         "body": "Choose a weight, add a message and your gift arrives instantly.",
         "device": "phone"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_80q57zo55h",
+          "id": "l_43d6bmhk2q",
           "type": "icon",
           "x": 80,
           "y": 80,
@@ -319,7 +329,7 @@
           "name": "icon"
         },
         {
-          "id": "l_mzxocbw55h",
+          "id": "l_ospgppvk2q",
           "type": "text",
           "x": 80,
           "y": 232,
@@ -343,7 +353,7 @@
           "name": "kicker"
         },
         {
-          "id": "l_gey5s8j55i",
+          "id": "l_10p42ngk2q",
           "type": "text",
           "x": 80,
           "y": 281,
@@ -367,7 +377,7 @@
           "name": "title"
         },
         {
-          "id": "l_jzf0a3h55i",
+          "id": "l_os13k90k2q",
           "type": "text",
           "x": 80,
           "y": 493,
@@ -391,7 +401,7 @@
           "name": "body"
         },
         {
-          "id": "l_aijzbb755i",
+          "id": "l_4mruxrmk2q",
           "type": "phone",
           "x": 80,
           "y": 669,
@@ -411,7 +421,7 @@
           "name": "device"
         },
         {
-          "id": "l_vuj1f1355i",
+          "id": "l_kv6rrjak2q",
           "type": "pager",
           "x": 740,
           "y": 80,
@@ -431,7 +441,7 @@
       ]
     },
     {
-      "id": "s_7b0uf1u55h",
+      "id": "s_3l09slgk2p",
       "template": "screenshot",
       "content": {
         "title": "Browse live gold prices",
@@ -439,15 +449,17 @@
         "device": "phone",
         "label": "yes"
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_z2swndr55i",
+          "id": "l_v10v4d8k2r",
           "type": "text",
           "x": 80,
           "y": 80,
@@ -471,7 +483,7 @@
           "name": "title"
         },
         {
-          "id": "l_ljiuorw55i",
+          "id": "l_zuqqlk6k2r",
           "type": "text",
           "x": 80,
           "y": 170,
@@ -495,12 +507,12 @@
           "name": "caption"
         },
         {
-          "id": "l_mjp7gs655i",
+          "id": "l_5m3xx5pk2r",
           "type": "phone",
-          "x": 328,
+          "x": 333,
           "y": 271,
-          "w": 425,
-          "h": 879,
+          "w": 414,
+          "h": 855,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -515,12 +527,12 @@
           "name": "device"
         },
         {
-          "id": "l_kej7yvd55i",
+          "id": "l_fymz38ck2r",
           "type": "text",
           "x": 80,
-          "y": 1164,
+          "y": 1140,
           "w": 920,
-          "h": 31,
+          "h": 38,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -530,15 +542,16 @@
           },
           "text": "Illustrative screen",
           "role": "caption",
-          "color": "fg2",
+          "color": "fg",
           "accent": "auto",
           "align": "center",
           "valign": "top",
           "dir": "ltr",
-          "fit": true
+          "fit": true,
+          "name": "label"
         },
         {
-          "id": "l_9bxx75p55i",
+          "id": "l_p5uoovyk2r",
           "type": "pager",
           "x": 80,
           "y": 1230,
@@ -557,7 +570,7 @@
       ]
     },
     {
-      "id": "s_b7k2ch855h",
+      "id": "s_dvjgz0wk2p",
       "template": "steps",
       "content": {
         "kicker": "How it works",
@@ -568,18 +581,20 @@
           "Hold, gift, sell or collect"
         ]
       },
+      "extras": null,
       "theme": "cream",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_an707p655i",
+          "id": "l_nkr1wu0k2r",
           "type": "text",
           "x": 80,
-          "y": 120,
+          "y": 308,
           "w": 920,
           "h": 35,
           "rotation": 0,
@@ -600,10 +615,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_5gmdvnb55i",
+          "id": "l_beyxhzgk2r",
           "type": "text",
           "x": 80,
-          "y": 169,
+          "y": 357,
           "w": 920,
           "h": 192,
           "rotation": 0,
@@ -624,12 +639,12 @@
           "name": "title"
         },
         {
-          "id": "l_oebqdg255i",
+          "id": "l_oorva1ok2r",
           "type": "list",
           "x": 80,
-          "y": 425,
+          "y": 613,
           "w": 920,
-          "h": 755,
+          "h": 263,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -649,7 +664,7 @@
           "name": "items"
         },
         {
-          "id": "l_rvue28355i",
+          "id": "l_d1tl5kfk2r",
           "type": "pager",
           "x": 80,
           "y": 1230,
@@ -668,24 +683,26 @@
       ]
     },
     {
-      "id": "s_nzypukj55h",
+      "id": "s_0iwrc2lk2p",
       "template": "price",
       "content": {
         "title": "Know your price before you buy",
         "label": "Gold 24K · per gram",
         "price": "OMR 31.204",
         "change": "+0.42%",
-        "time": "Indicative · 14:05"
+        "time": "Indicative · 24 Oct 2026 · 14:05"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_ykn5rp255i",
+          "id": "l_wxxg5odk2r",
           "type": "text",
           "x": 80,
           "y": 80,
@@ -709,7 +726,7 @@
           "name": "title"
         },
         {
-          "id": "l_t8mk24m55i",
+          "id": "l_jpr5r6sk2r",
           "type": "shape",
           "x": 80,
           "y": 328,
@@ -730,7 +747,7 @@
           "name": "card"
         },
         {
-          "id": "l_7xorqd355i",
+          "id": "l_rw3dlq6k2r",
           "type": "text",
           "x": 124,
           "y": 372,
@@ -753,12 +770,12 @@
           "fit": true
         },
         {
-          "id": "l_6cwadfz55j",
+          "id": "l_ydfu4dbk2r",
           "type": "text",
           "x": 540,
           "y": 376,
           "w": 416,
-          "h": 31,
+          "h": 38,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -766,7 +783,7 @@
             "delay": 0.2,
             "dur": 0.6
           },
-          "text": "Indicative · 14:05",
+          "text": "Indicative · 24 Oct 2026 · 14:05",
           "role": "caption",
           "color": "fg2",
           "accent": "auto",
@@ -776,7 +793,7 @@
           "fit": true
         },
         {
-          "id": "l_6r2kmzr55j",
+          "id": "l_kte42jgk2r",
           "type": "text",
           "x": 124,
           "y": 428,
@@ -800,7 +817,7 @@
           "name": "price"
         },
         {
-          "id": "l_ewihz6655j",
+          "id": "l_12rh8r2k2r",
           "type": "badge",
           "x": 756,
           "y": 442,
@@ -820,7 +837,7 @@
           "name": "change"
         },
         {
-          "id": "l_d9mj8h355j",
+          "id": "l_h86aodyk2r",
           "type": "chart",
           "x": 124,
           "y": 572,
@@ -834,19 +851,19 @@
             "dur": 1.4
           },
           "points": [
-            30,
-            34,
-            31,
-            38,
-            36,
-            44,
+            40,
+            42,
             41,
-            49,
+            44,
+            43,
+            42,
+            45,
+            44,
             46,
-            54,
-            52,
-            60,
-            64
+            45,
+            47,
+            46,
+            48
           ],
           "trend": "up",
           "area": true,
@@ -854,12 +871,12 @@
           "name": "chart"
         },
         {
-          "id": "l_2bm13q955j",
+          "id": "l_zlp35puk2r",
           "type": "text",
           "x": 80,
-          "y": 1141,
+          "y": 1095,
           "w": 920,
-          "h": 59,
+          "h": 105,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -878,7 +895,7 @@
           "name": "disclaimer"
         },
         {
-          "id": "l_rjd4pzv55j",
+          "id": "l_7sh23kpk2r",
           "type": "pager",
           "x": 80,
           "y": 1230,
@@ -897,7 +914,7 @@
       ]
     },
     {
-      "id": "s_k41x93255h",
+      "id": "s_m7apjxak2p",
       "template": "cta",
       "content": {
         "title": "Start your gold story today",
@@ -906,15 +923,17 @@
         "link": "goldcom.om",
         "disclaimer": "yes"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_wxscruy55j",
+          "id": "l_tkoo4sak2r",
           "type": "logo",
           "x": 390,
           "y": 142,
@@ -932,7 +951,7 @@
           "name": "logo"
         },
         {
-          "id": "l_mh0i5cs55j",
+          "id": "l_fl5aqkvk2r",
           "type": "text",
           "x": 80,
           "y": 466,
@@ -956,7 +975,7 @@
           "name": "title"
         },
         {
-          "id": "l_2knit6g55j",
+          "id": "l_npw1tm2k2r",
           "type": "text",
           "x": 80,
           "y": 694,
@@ -980,7 +999,7 @@
           "name": "subtitle"
         },
         {
-          "id": "l_qd2iwfw55j",
+          "id": "l_e1xff4tk2r",
           "type": "button",
           "x": 294,
           "y": 846,
@@ -999,7 +1018,7 @@
           "name": "button"
         },
         {
-          "id": "l_bimggkq55j",
+          "id": "l_vpoapmtk2r",
           "type": "text",
           "x": 80,
           "y": 986,
@@ -1023,12 +1042,12 @@
           "name": "link"
         },
         {
-          "id": "l_ft5o7gx55j",
+          "id": "l_x2iu7kfk2r",
           "type": "text",
           "x": 80,
-          "y": 1141,
+          "y": 1095,
           "w": 920,
-          "h": 59,
+          "h": 105,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -1047,7 +1066,7 @@
           "name": "disclaimer"
         },
         {
-          "id": "l_w487j8v55j",
+          "id": "l_429j3czk2r",
           "type": "pager",
           "x": 80,
           "y": 1230,

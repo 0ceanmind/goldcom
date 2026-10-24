@@ -60,8 +60,8 @@ export const TYPE = {
   'body-lg': { size: 38, lh: 1.45, weight: 400, track: 0 },
   body: { size: 32, lh: 1.5, weight: 400, track: 0 },
   small: { size: 26, lh: 1.45, weight: 400, track: 0 },
-  caption: { size: 20, lh: 1.4, weight: 500, track: 0.01 },
-  overline: { size: 24, lh: 1.3, weight: 600, track: 0.08, upper: true },
+  caption: { size: 24, lh: 1.4, weight: 500, track: 0.01 }, // disclaimers and price labels: keep readable on a phone
+  overline: { size: 24, lh: 1.3, weight: 600, track: 0.08, upper: true, arScale: 1.3 }, // Arabic has no capitals, so it needs more size to match
   stat: { size: 200, lh: 1, weight: 700, track: -0.03 },
   price: { size: 72, lh: 1.1, weight: 700, track: -0.01, tnum: true },
   mono: { size: 26, lh: 1.6, weight: 400, track: 0, mono: true },
@@ -69,12 +69,29 @@ export const TYPE = {
 export const ARABIC_LH = 1.18; // Arabic needs taller line-height
 
 export const FORMATS = {
-  'feed-portrait': { label: 'Feed portrait 4:5', w: 1080, h: 1350 },
-  square: { label: 'Square 1:1', w: 1080, h: 1080 },
-  story: { label: 'Story / Reel 9:16', w: 1080, h: 1920 },
-  linkedin: { label: 'LinkedIn 1.91:1', w: 1200, h: 627 },
-  video: { label: 'Video 16:9', w: 1920, h: 1080 },
-  appstore: { label: 'App Store 6.7"', w: 1290, h: 2796 },
+  'feed-portrait': { label: 'Instagram post 4:5', w: 1080, h: 1350, group: 'Instagram' },
+  square: { label: 'Instagram post 1:1', w: 1080, h: 1080, group: 'Instagram' },
+  story: { label: 'Reel / Story 9:16', w: 1080, h: 1920, group: 'Instagram' },
+  linkedin: { label: 'LinkedIn 1.91:1', w: 1200, h: 627, group: 'Other' },
+  video: { label: 'Video 16:9', w: 1920, h: 1080, group: 'Other' },
+  appstore: { label: 'App Store 6.7"', w: 1290, h: 2796, group: 'Other' },
+};
+
+// What a document is for. Decides playback, preview chrome and exports.
+export const KINDS = {
+  carousel: { label: 'Carousel', hint: 'Swipeable slides (static or animated)', sequence: false },
+  post: { label: 'Post', hint: 'A single feed image', sequence: false },
+  motion: { label: 'Animated post', hint: 'One slide with looping motion (MP4/GIF)', sequence: false },
+  story: { label: 'Story', hint: 'Separate 9:16 frames, each its own video', sequence: false },
+  reel: { label: 'Reel', hint: 'One continuous 9:16 video with transitions', sequence: true },
+  video: { label: 'Video', hint: 'One continuous video in any format', sequence: true },
+};
+export const isSequence = (kind) => !!KINDS[kind]?.sequence;
+
+// Instagram UI safe zones (px at 1080 wide) used by the editor overlay and the auditor.
+export const SAFE_ZONES = {
+  reel: { top: 220, bottom: 420, right: 140, left: 60 },
+  story: { top: 250, bottom: 260, right: 60, left: 60 },
 };
 
 export const THEMES = {
@@ -109,13 +126,36 @@ export const ANIMATIONS = {
   'slide-start': 'Slide from start',
   'slide-end': 'Slide from end',
   scale: 'Scale in',
-  draw: 'Draw (charts, lines)',
+  pop: 'Pop (spring)',
+  blur: 'Blur to sharp',
+  rise: 'Line reveal (text)',
+  words: 'Word by word (text)',
+  drop: 'Drop in (notifications)',
+  draw: 'Draw (charts, progress, lines)',
   count: 'Count up (numbers)',
   type: 'Typewriter',
+  assemble: 'Assemble (logo)',
   gleam: 'Gleam (success only)',
 };
 
-export const TRANSITIONS = { fade: 'Fade', slide: 'Slide', wipe: 'Facet wipe (45°)', none: 'Cut' };
+export const EXITS = { none: 'None', fade: 'Fade out', 'fade-down': 'Fade down', 'fade-up': 'Fade up', scale: 'Shrink' };
+
+// Continuous motion that keeps running after the entrance: this is what makes designs feel live.
+export const LOOPS = {
+  none: 'None',
+  float: 'Float',
+  pulse: 'Pulse',
+  breathe: 'Breathe (opacity)',
+  shimmer: 'Shimmer (light sweep)',
+  spin: 'Spin',
+  tick: 'Live tick (numbers)',
+  scroll: 'Scroll screenshot (phone/browser)',
+  live: 'Live data (charts)',
+};
+
+export const BG_MOTION = { none: 'Still', drift: 'Drifting pattern', zoom: 'Slow zoom (photo)' };
+
+export const TRANSITIONS = { fade: 'Fade', slide: 'Slide', wipe: 'Facet wipe (45°)', zoom: 'Zoom through', none: 'Cut' };
 
 export const DISCLAIMER = {
   en: 'Gold prices change and the value of your holdings can go down as well as up. Prices shown are indicative; the final price is confirmed at checkout. This is not financial advice.',

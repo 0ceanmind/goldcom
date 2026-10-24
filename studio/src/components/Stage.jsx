@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { renderSlide, renderFrame } from '../render/renderer.js';
 import { docDuration, slideAt } from '../../shared/schema.js';
+import { SAFE_ZONES } from '../../shared/brand.js';
 import { Icon } from './ui.jsx';
 
 const KEEP_ASPECT = new Set(['logo', 'phone', 'goldbar', 'gem', 'icon', 'browser']);
@@ -17,7 +18,7 @@ export function createClock() {
   return clock;
 }
 
-export default function Stage({ doc, slideIdx, selId, onSelect, onBegin, onLive, onEnd, images, imagesVersion, clock, mode, onEditText }) {
+export default function Stage({ doc, slideIdx, selId, onSelect, onBegin, onLive, onEnd, images, imagesVersion, clock, mode, onEditText, zones, onToggleZones }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const [zoom, setZoom] = useState(0.5);
@@ -49,9 +50,9 @@ export default function Stage({ doc, slideIdx, selId, onSelect, onBegin, onLive,
     if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
     const c = cv.getContext('2d');
     const t = clock.time;
-    if (t === null) renderSlide(c, doc, slideIdx, { t: Infinity, images, scale });
+    if (t === null) renderSlide(c, doc, slideIdx, { t: Infinity, images, scale, guides: true });
     else if (mode === 'video') { c.setTransform(1, 0, 0, 1, 0, 0); renderFrame(c, doc, t, { images, scale }); }
-    else renderSlide(c, doc, slideIdx, { t, images, scale });
+    else renderSlide(c, doc, slideIdx, { t, images, scale, guides: true });
   }, [doc, slideIdx, zoom, images, clock, mode, W, H]);
 
   useEffect(() => { draw(); }, [draw, imagesVersion]);
@@ -140,12 +141,14 @@ export default function Stage({ doc, slideIdx, selId, onSelect, onBegin, onLive,
             {guides.map((g, i) => <div key={i} className="guide" style={g.v ? { left: g.at * zoom, top: 0, bottom: 0, width: 1 } : { top: g.at * zoom, left: 0, right: 0, height: 1 }} />)}
           </div>
         )}
+        {zones && <SafeZones doc={doc} zoom={zoom} />}
       </div>
       <div className="zoom" onPointerDown={(e) => e.stopPropagation()}>
         <button className="btn icon sm ghost" onClick={() => { setAutoFit(false); setZoom((z) => Math.max(0.1, z / 1.2)); }} aria-label="Zoom out"><Icon name="zoomOut" /></button>
         <span>{Math.round(zoom * 100)}%</span>
         <button className="btn icon sm ghost" onClick={() => { setAutoFit(false); setZoom((z) => Math.min(3, z * 1.2)); }} aria-label="Zoom in"><Icon name="zoomIn" /></button>
-        <button className="btn icon sm ghost" onClick={() => { setAutoFit(true); fit(); }} aria-label="Fit"><Icon name="fit" /></button>
+        <button className="btn icon sm ghost" onClick={() => { setAutoFit(true); fit(); }} aria-label="Fit" title="Fit to screen"><Icon name="fit" /></button>
+        <button className={`btn icon sm ghost${zones ? ' on' : ''}`} onClick={onToggleZones} aria-label="Instagram guides" title="Instagram guides: safe zones and 3:4 grid crop"><Icon name="zones" /></button>
       </div>
     </div>
   );
@@ -193,4 +196,34 @@ export function Timeline({ doc, mode, slideIdx, clock, onSeekSlide }) {
       <span className="time">{fmt(t ?? 0)} / {fmt(total)}</span>
     </div>
   );
+}
+
+/** Instagram overlays: UI safe zones on Reels/Stories, 3:4 profile-grid crop on 4:5 and 1:1 posts. */
+function SafeZones({ doc, zoom }) {
+  const W = doc.width, H = doc.height, k = Math.min(W, H) / 1080;
+  if (H / W > 1.7) {
+    const z = SAFE_ZONES[doc.kind === 'story' ? 'story' : 'reel'];
+    const label = doc.kind === 'story' ? 'Story' : 'Reel';
+    return (
+      <div className="zones" aria-hidden="true">
+        <div className="zone" style={{ top: 0, height: z.top * k * zoom }}><span>{label} header</span></div>
+        <div className="zone" style={{ bottom: 0, height: z.bottom * k * zoom }}><span>{label} caption and buttons</span></div>
+        {doc.kind !== 'story' && <div className="zone side" style={{ top: z.top * k * zoom, bottom: z.bottom * k * zoom, right: 0, width: z.right * k * zoom }} />}
+      </div>
+    );
+  }
+  if (doc.format === 'feed-portrait' || doc.format === 'square') {
+    const vis = Math.min(W, H * 0.75);
+    const side = ((W - vis) / 2) * zoom;
+    const visH = Math.min(H, W / 0.75);
+    const tb = ((H - visH) / 2) * zoom;
+    return (
+      <div className="zones" aria-hidden="true">
+        {side > 0.5 && <><div className="crop" style={{ left: 0, width: side, top: 0, bottom: 0 }} /><div className="crop" style={{ right: 0, width: side, top: 0, bottom: 0 }} /></>}
+        {tb > 0.5 && <><div className="crop" style={{ top: 0, height: tb, left: 0, right: 0 }} /><div className="crop" style={{ bottom: 0, height: tb, left: 0, right: 0 }} /></>}
+        <span className="crop-label">3:4 profile grid</span>
+      </div>
+    );
+  }
+  return null;
 }

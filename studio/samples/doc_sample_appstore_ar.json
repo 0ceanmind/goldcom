@@ -9,26 +9,32 @@
   "format": "appstore",
   "width": 1290,
   "height": 2796,
+  "caption": {
+    "text": "",
+    "hashtags": []
+  },
   "createdAt": "2026-10-23T12:00:06.000Z",
   "updatedAt": "2026-10-23T12:00:06.000Z",
   "slides": [
     {
-      "id": "s_a8v9q9m55m",
+      "id": "s_osl12wwk2u",
       "template": "cover",
       "content": {
         "title": "تصفح أسعار الذهب الفورية",
         "visual": "device",
         "device": "phone"
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_j4fb9wu55m",
+          "id": "l_273388vk2u",
           "type": "logo",
           "x": 895,
           "y": 96,
@@ -46,12 +52,12 @@
           "name": "logo"
         },
         {
-          "id": "l_4n9zahv55m",
+          "id": "l_oug54ajk2u",
           "type": "phone",
-          "x": 186,
+          "x": 160,
           "y": 299,
-          "w": 918,
-          "h": 1897,
+          "w": 971,
+          "h": 2005,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -66,10 +72,10 @@
           "name": "device"
         },
         {
-          "id": "l_czgvjuo55m",
+          "id": "l_wo2ji42k2u",
           "type": "text",
           "x": 96,
-          "y": 2256,
+          "y": 2364,
           "w": 1098,
           "h": 336,
           "rotation": 0,
@@ -92,7 +98,7 @@
       ]
     },
     {
-      "id": "s_53ee58f55m",
+      "id": "s_undfo52k2u",
       "template": "cover",
       "content": {
         "title": "في جولدكم تسوق بأمان",
@@ -100,15 +106,17 @@
         "device": "phone",
         "placeholder": "browse"
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_5106c8b55m",
+          "id": "l_7cum440k2u",
           "type": "logo",
           "x": 895,
           "y": 96,
@@ -126,12 +134,12 @@
           "name": "logo"
         },
         {
-          "id": "l_gl9wg4355m",
+          "id": "l_5f8c4a7k2u",
           "type": "phone",
-          "x": 186,
+          "x": 160,
           "y": 299,
-          "w": 918,
-          "h": 1897,
+          "w": 971,
+          "h": 2005,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -146,10 +154,10 @@
           "name": "device"
         },
         {
-          "id": "l_nrn0wl355m",
+          "id": "l_u2zrqwzk2u",
           "type": "text",
           "x": 96,
-          "y": 2256,
+          "y": 2364,
           "w": 1098,
           "h": 336,
           "rotation": 0,
@@ -172,22 +180,24 @@
       ]
     },
     {
-      "id": "s_rn7nnua55m",
+      "id": "s_6th8hrlk2u",
       "template": "cover",
       "content": {
         "title": "أهدِ من تحب ذهبًا حقيقيًا",
         "visual": "goldbar",
-        "barLabel": "5g"
+        "barLabel": "5 g"
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_ouzzuai55m",
+          "id": "l_s97absfk2u",
           "type": "logo",
           "x": 895,
           "y": 96,
@@ -205,10 +215,10 @@
           "name": "logo"
         },
         {
-          "id": "l_hrty2f055m",
+          "id": "l_vceix1uk2u",
           "type": "goldbar",
           "x": 453,
-          "y": 937,
+          "y": 991,
           "w": 385,
           "h": 621,
           "rotation": -6,
@@ -218,15 +228,15 @@
             "delay": 0.3,
             "dur": 0.8
           },
-          "label": "5g",
+          "label": "5 g",
           "sub": "FINE GOLD\n999.9",
           "name": "visual"
         },
         {
-          "id": "l_z5uhr9255m",
+          "id": "l_46cobark2u",
           "type": "text",
           "x": 96,
-          "y": 2256,
+          "y": 2364,
           "w": 1098,
           "h": 336,
           "rotation": 0,

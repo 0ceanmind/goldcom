@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TEMPLATES, applyTemplate, exampleFor } from '../../shared/templates.js';
-import { FORMATS, THEMES } from '../../shared/brand.js';
+import { FORMATS, THEMES, KINDS } from '../../shared/brand.js';
 import { STARTERS } from '../../shared/starters.js';
 import { createDocument, createSlide, normalizeDocument } from '../../shared/schema.js';
 import { api } from '../api.js';
@@ -38,7 +38,7 @@ export function NewDocDialog({ onClose, onCreate, images }) {
           </div>
           <div className="row">
             <Field label="Format"><Select value={format} onChange={setFormat} options={Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, `${f.label} · ${f.w}×${f.h}`]))} /></Field>
-            <Field label="Type"><Select value={kind} onChange={setKind} options={{ carousel: 'Carousel / post', post: 'Single post', video: 'Video / animation' }} /></Field>
+            <Field label="Type"><Select value={kind} onChange={(v) => { setKind(v); if ((v === 'reel' || v === 'story') && format !== 'story') setFormat('story'); }} options={Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v.label]))} /></Field>
           </div>
           <div className="grid-cards" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${format === 'linkedin' || format === 'video' ? 200 : 120}px, 1fr))` }}>
             {preview.slides.map((s, i) => <div key={s.id} className="tcard" style={{ cursor: 'default' }}><SlideThumb doc={preview} index={i} width={200} images={images} /></div>)}

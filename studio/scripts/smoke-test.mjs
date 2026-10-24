@@ -20,7 +20,7 @@ let ok = 0;
 const check = (cond, msg) => { if (!cond) throw new Error(`FAIL: ${msg}`); ok++; console.log(`  ✓ ${msg}`); };
 
 const tools = (await client.listTools()).tools.map((t) => t.name);
-check(['studio_guide', 'create_design', 'edit_slide', 'capture_screenshot', 'render_preview', 'export_pngs'].every((t) => tools.includes(t)), `tools registered (${tools.length})`);
+check(['studio_guide', 'create_design', 'edit_slide', 'capture_screenshot', 'render_preview', 'export_pngs', 'list_library', 'create_from_library', 'set_caption'].every((t) => tools.includes(t)), `tools registered (${tools.length})`);
 const prompts = (await client.listPrompts()).prompts.map((p) => p.name);
 check(prompts.includes('project_carousel'), 'prompts registered');
 
@@ -56,6 +56,33 @@ check(saved.saved.length === 4 && fs.statSync(saved.saved[0]).size > 10000, 'exp
 const moved = json(await call('update_design', { id: created.id, lang: 'ar', order: [0, 2, 1, 3] }));
 check(moved.lang === 'ar' && moved.slides[1].template === 'list', 'update_design reorders and switches language');
 
+// Instagram kinds, captions and the library
+const reel = json(await call('create_design', {
+  name: 'Smoke test · reel', format: 'feed-portrait', kind: 'reel', lang: 'ar', open: false,
+  caption: { text: 'الذهب من جوالك.', hashtags: ['#جولدكم', 'ذهب'] }, notes: 'Update the price before posting',
+  slides: [{ template: 'kinetic', content: { title: 'ذهب حقيقي. من جرام واحد.' } }, { template: 'countdown', content: { title: 'العيد بعد' } }, { template: 'logo-sting' }],
+}));
+check(reel.format === 'story' && reel.kind === 'reel', 'reel kind forces the 9:16 format');
+const reelDoc = json(await call('get_design', { id: reel.id }));
+check(reelDoc.caption?.hashtags?.length === 2 && reelDoc.notes, 'create_design stores caption and notes');
+const cap = json(await call('set_caption', { id: reel.id, text: 'Real gold, from 1 g.', hashtags: ['Goldcom'] }));
+check(cap.caption.hashtags[0] === '#Goldcom', 'set_caption normalises hashtags');
+
+const lib = json(await call('list_library'));
+check(lib.length >= 40 && ['post', 'carousel', 'reel', 'story', 'motion'].every((c) => lib.some((i) => i.category === c)), `list_library returns ${lib.length} items in every category`);
+const stories = json(await call('list_library', { category: 'story' }));
+check(stories.every((i) => i.category === 'story'), 'list_library filters by category');
+const fromLib = json(await call('create_from_library', { item_id: stories[0].id, lang: 'en', open: false }));
+check(fromLib.id && fromLib.slides.length > 0, `create_from_library → ${stories[0].id}`);
+
+// Bad input is refused with a clear message instead of crashing
+const refused = async (name, args) => { const r = await client.callTool({ name, arguments: args }); return r.isError; };
+check(await refused('create_from_library', { item_id: 'nope' }), 'unknown library item is refused');
+check(await refused('edit_slide', { id: created.id, index: 99, content: { title: 'x' } }), 'out-of-range slide index is refused');
+check(await refused('create_design', { name: 'x', format: 'feed-portrait', slides: [{ template: 'not-a-template' }], open: false }), 'unknown template is refused');
+check(await refused('get_design', { id: 'doc_missing' }), 'missing design is refused');
+
+for (const id of [reel.id, fromLib.id]) await call('delete_design', { id });
 await call('delete_design', { id: created.id });
 fs.rmSync(out, { recursive: true, force: true });
 console.log(`\n${ok} checks passed.`);

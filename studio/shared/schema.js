@@ -21,6 +21,14 @@ export const LAYER_TYPES = {
   gem: 'Gem',
   shape: 'Shape',
   pager: 'Carousel pager',
+  ticker: 'Price ticker',
+  notification: 'Push notification',
+  sticker: 'Story sticker',
+  countdown: 'Countdown',
+  progress: 'Progress',
+  chat: 'Chat',
+  tap: 'Tap indicator',
+  sparkles: 'Gold sparkles',
 };
 
 /** Default properties for each layer type, relative to a 1080 px wide canvas. */
@@ -34,14 +42,22 @@ export function layerDefaults(type) {
     case 'phone': return { ...base, w: 420, h: 868, src: '', placeholder: 'home', lang: 'en', statusBar: true, anim: { in: 'fade-up', delay: 0.15, dur: 0.8 } };
     case 'browser': return { ...base, w: 920, h: 620, src: '', url: 'goldcom.om', anim: { in: 'fade-up', delay: 0.15, dur: 0.8 } };
     case 'code': return { ...base, w: 920, h: 420, code: "const gold = await goldcom.buy({\n  grams: 1,\n  purity: '999.9',\n});", lang: 'js', title: 'buy.js' };
-    case 'goldbar': return { ...base, w: 220, h: 355, label: '1g', sub: 'FINE GOLD\n999.9', anim: { in: 'scale', delay: 0.1, dur: 0.7 } };
-    case 'chart': return { ...base, w: 920, h: 360, points: [30, 34, 31, 38, 36, 44, 41, 49, 46, 54, 52, 60, 64], trend: 'auto', area: true, grid: true, anim: { in: 'draw', delay: 0.2, dur: 1.2 } };
+    case 'goldbar': return { ...base, w: 220, h: 355, label: '1 g', sub: 'FINE GOLD\n999.9', anim: { in: 'scale', delay: 0.1, dur: 0.7 } };
     case 'button': return { ...base, w: 360, h: 104, text: 'Buy gold', variant: 'auto', dir: 'auto' };
     case 'badge': return { ...base, w: 260, h: 56, text: 'Verified', variant: 'spark', gem: true, dir: 'auto' };
     case 'icon': return { ...base, w: 120, h: 120, icon: 'gift', color: 'auto', tile: true };
     case 'gem': return { ...base, w: 48, h: 48, fill: 'goldLeaf', anim: { in: 'scale', delay: 0, dur: 0.5 } };
     case 'shape': return { ...base, w: 600, h: 400, shape: 'rect', fill: 'graphite', radius: 32, stroke: '', facet: false, anim: { in: 'fade', delay: 0, dur: 0.5 } };
     case 'pager': return { ...base, w: 300, h: 40, style: 'dots', anim: { in: 'none', delay: 0, dur: 0.4 } };
+    case 'ticker': return { ...base, x: 0, w: 1080, h: 96, items: ['24K · 1 g  31.204 ▲ +0.42%', '24K · 10 g  312.040 ▲ +0.42%', '24K · 1 oz  970.552 ▲ +0.42%'], speed: 90, dir: 'auto', anim: { in: 'fade', delay: 0.2, dur: 0.5 }, loop: { type: 'live' } };
+    case 'notification': return { ...base, w: 920, h: 190, app: 'Goldcom', title: 'Your gold gift has arrived', body: 'Aisha sent you 2.5 g of 24K gold.', time: 'now', dir: 'auto', anim: { in: 'drop', delay: 0.3, dur: 0.7 } };
+    case 'sticker': return { ...base, w: 640, h: 360, kind: 'poll', question: 'Gold or cash for Eid?', options: ['Gold', 'Cash'], result: [], showResults: false, reveal: false, correct: 0, emoji: '✨', value: 0.8, placeholder: '', days: 25, hours: 6, minutes: 30, seconds: 12, dir: 'auto', anim: { in: 'pop', delay: 0.3, dur: 0.6 } };
+    case 'countdown': return { ...base, w: 920, h: 240, days: 25, hours: 6, minutes: 30, seconds: 12, labels: 'auto', live: true, dir: 'auto', anim: { in: 'fade-up', delay: 0.2, dur: 0.6 } };
+    case 'progress': return { ...base, w: 460, h: 460, style: 'ring', value: 0.62, label: '6.2 g', sub: 'of 10 g', anim: { in: 'draw', delay: 0.2, dur: 1.4 } };
+    case 'chat': return { ...base, w: 920, h: 640, messages: [{ from: 'them', text: 'Can I send gold to my sister in Sohar?' }, { from: 'me', text: 'Yes. Pick a weight, add her number, and she gets it right away.' }], dir: 'auto', anim: { in: 'type', delay: 0.2, dur: 3 } };
+    case 'tap': return { ...base, w: 140, h: 140, anim: { in: 'fade', delay: 0.8, dur: 0.3 }, loop: { type: 'pulse' } };
+    case 'sparkles': return { ...base, x: 0, y: 0, w: 1080, h: 1080, count: 26, seed: 7, anim: { in: 'fade', delay: 0, dur: 1 }, loop: { type: 'shimmer' } };
+    case 'chart': return { ...base, w: 920, h: 360, points: [40, 42, 41, 44, 43, 42, 45, 44, 46, 45, 47, 46, 48], trend: 'auto', area: true, grid: true, anim: { in: 'draw', delay: 0.2, dur: 1.2 } };
     default: return base;
   }
 }
@@ -51,8 +67,10 @@ export function createSlide(partial = {}) {
     id: uid('s'),
     template: null,
     content: null,
+    extras: null,
     theme: 'onyx',
     pattern: 'top',
+    bgMotion: 'none',
     bg: null,
     duration: 4,
     transition: 'fade',
@@ -62,7 +80,7 @@ export function createSlide(partial = {}) {
   };
 }
 
-export function createDocument({ name = 'Untitled', format = 'feed-portrait', kind = 'carousel', lang = 'ar', slides = [], source = null } = {}) {
+export function createDocument({ name = 'Untitled', format = 'feed-portrait', kind = 'carousel', lang = 'ar', slides = [], source = null, caption = null } = {}) {
   const f = FORMATS[format] || FORMATS['feed-portrait'];
   const now = new Date().toISOString();
   return {
@@ -76,6 +94,7 @@ export function createDocument({ name = 'Untitled', format = 'feed-portrait', ki
     lang,
     fps: 30,
     source,
+    caption: caption || { text: '', hashtags: [] },
     createdAt: now,
     updatedAt: now,
     slides,
@@ -92,11 +111,14 @@ export function normalizeDocument(doc) {
     fps: 30,
     source: null,
     ...doc,
+    caption: { text: '', hashtags: [], ...(doc.caption || {}) },
     width: doc.width || f.w,
     height: doc.height || f.h,
   };
   out.slides = (doc.slides || []).map((s) => {
     const slide = createSlide({ ...s, id: s.id || uid('s') });
+    const dur = Number(slide.duration);
+    slide.duration = Number.isFinite(dur) ? Math.min(60, Math.max(0.5, dur)) : 4;
     if (!THEMES[slide.theme]) slide.theme = 'onyx';
     slide.layers = (s.layers || []).map((l) => ({ ...layerDefaults(l.type), ...l, id: l.id || uid('l'), anim: { ...layerDefaults(l.type).anim, ...(l.anim || {}) } }));
     return slide;

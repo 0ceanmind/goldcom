@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "kind": "video",
+  "kind": "reel",
   "lang": "ar",
   "fps": 30,
   "source": null,
@@ -9,29 +9,35 @@
   "format": "story",
   "width": 1080,
   "height": 1920,
+  "caption": {
+    "text": "",
+    "hashtags": []
+  },
   "createdAt": "2026-10-23T12:00:08.000Z",
   "updatedAt": "2026-10-23T12:00:08.000Z",
   "slides": [
     {
-      "id": "s_4zqexvl55k",
+      "id": "s_ygpx9tzk2s",
       "template": "statement",
       "content": {
         "kicker": "هدية العيد",
         "title": "هدية *تدوم*.",
         "body": "أهدِ من تحب ذهبًا حقيقيًا."
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 3.5,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_1vwwqjk55k",
+          "id": "l_w76eklsk2s",
           "type": "gem",
           "x": 956,
-          "y": 1370,
+          "y": 1018,
           "w": 44,
           "h": 44,
           "rotation": 0,
@@ -45,12 +51,12 @@
           "name": "gem"
         },
         {
-          "id": "l_mrvkufd55k",
+          "id": "l_noaks0xk2s",
           "type": "text",
           "x": 80,
-          "y": 1446,
+          "y": 1094,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -69,10 +75,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_wpo5g6z55k",
+          "id": "l_xf07nk6k2s",
           "type": "text",
           "x": 80,
-          "y": 1519,
+          "y": 1179,
           "w": 920,
           "h": 118,
           "rotation": 0,
@@ -93,10 +99,10 @@
           "name": "title"
         },
         {
-          "id": "l_oig0ry355k",
+          "id": "l_ldqxptak2s",
           "type": "text",
           "x": 80,
-          "y": 1669,
+          "y": 1329,
           "w": 920,
           "h": 71,
           "rotation": 0,
@@ -119,27 +125,29 @@
       ]
     },
     {
-      "id": "s_tsslyzp55k",
+      "id": "s_j4ibt00k2s",
       "template": "cover",
       "content": {
         "kicker": "الإهداء",
         "title": "أرسل الذهب *في ثوانٍ*",
         "subtitle": "اختر الوزن وأضف رسالتك.",
         "visual": "goldbar",
-        "barLabel": "5g"
+        "barLabel": "5 g"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "wipe",
       "custom": false,
       "layers": [
         {
-          "id": "l_g434z2a55k",
+          "id": "l_eopjbgdk2s",
           "type": "logo",
           "x": 750,
-          "y": 80,
+          "y": 220,
           "w": 250,
           "h": 99,
           "rotation": 0,
@@ -154,10 +162,10 @@
           "name": "logo"
         },
         {
-          "id": "l_ft34ttj55k",
+          "id": "l_xljaygok2s",
           "type": "goldbar",
           "x": 379,
-          "y": 1047,
+          "y": 953,
           "w": 322,
           "h": 520,
           "rotation": -6,
@@ -167,17 +175,17 @@
             "delay": 0.3,
             "dur": 0.8
           },
-          "label": "5g",
+          "label": "5 g",
           "sub": "FINE GOLD\n999.9",
           "name": "visual"
         },
         {
-          "id": "l_qqsz20p55k",
+          "id": "l_usgomlkk2s",
           "type": "text",
           "x": 80,
-          "y": 270,
+          "y": 410,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -196,10 +204,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_za4k9xj55k",
+          "id": "l_7qekfjgk2s",
           "type": "text",
           "x": 80,
-          "y": 331,
+          "y": 483,
           "w": 920,
           "h": 281,
           "rotation": 0,
@@ -220,10 +228,10 @@
           "name": "title"
         },
         {
-          "id": "l_zu8uzq755k",
+          "id": "l_8p1yxstk2s",
           "type": "text",
           "x": 80,
-          "y": 632,
+          "y": 784,
           "w": 920,
           "h": 71,
           "rotation": 0,
@@ -246,7 +254,7 @@
       ]
     },
     {
-      "id": "s_e2wkh0r55k",
+      "id": "s_60lqonfk2s",
       "template": "cta",
       "content": {
         "title": "أهدِ من تحب ذهبًا حقيقيًا",
@@ -254,18 +262,20 @@
         "link": "goldcom.om",
         "disclaimer": "no"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_arddcbh55k",
+          "id": "l_hb4lr6tk2s",
           "type": "logo",
           "x": 390,
-          "y": 567,
+          "y": 467,
           "w": 300,
           "h": 288,
           "rotation": 0,
@@ -280,10 +290,10 @@
           "name": "logo"
         },
         {
-          "id": "l_eqf4x6755k",
+          "id": "l_wt9w79vk2s",
           "type": "text",
           "x": 80,
-          "y": 891,
+          "y": 791,
           "w": 920,
           "h": 224,
           "rotation": 0,
@@ -304,10 +314,10 @@
           "name": "title"
         },
         {
-          "id": "l_7ii38mw55k",
+          "id": "l_8yektvlk2s",
           "type": "button",
           "x": 360,
-          "y": 1151,
+          "y": 1051,
           "w": 360,
           "h": 104,
           "rotation": 0,
@@ -323,10 +333,10 @@
           "name": "button"
         },
         {
-          "id": "l_iygx6k955k",
+          "id": "l_g8cdofgk2s",
           "type": "text",
           "x": 80,
-          "y": 1291,
+          "y": 1191,
           "w": 920,
           "h": 62,
           "rotation": 0,

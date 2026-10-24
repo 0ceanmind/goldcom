@@ -9,31 +9,37 @@
   "format": "feed-portrait",
   "width": 1080,
   "height": 1350,
+  "caption": {
+    "text": "",
+    "hashtags": []
+  },
   "createdAt": "2026-10-23T12:00:07.000Z",
   "updatedAt": "2026-10-23T12:00:07.000Z",
   "slides": [
     {
-      "id": "s_l2m9djg55l",
+      "id": "s_ow7k1w8k2t",
       "template": "price",
       "content": {
         "title": "سعر الذهب اليوم",
         "label": "ذهب عيار 24 · للجرام",
-        "price": "OMR 31.204",
+        "price": "31.204 ر.ع.",
         "change": "+0.42%",
-        "time": "استرشادي · 14:05"
+        "time": "استرشادي · 24 أكتوبر 2026 · 14:05"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_tnxiraj55l",
+          "id": "l_xs26dedk2u",
           "type": "text",
           "x": 80,
-          "y": 80,
+          "y": 187,
           "w": 920,
           "h": 118,
           "rotation": 0,
@@ -54,12 +60,12 @@
           "name": "title"
         },
         {
-          "id": "l_t52flsi55l",
+          "id": "l_x4so92vk2u",
           "type": "shape",
           "x": 80,
-          "y": 254,
+          "y": 361,
           "w": 920,
-          "h": 760,
+          "h": 709,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -75,10 +81,10 @@
           "name": "card"
         },
         {
-          "id": "l_utx7jeo55l",
+          "id": "l_uh8rzpjk2u",
           "type": "text",
           "x": 457,
-          "y": 298,
+          "y": 405,
           "w": 499,
           "h": 49,
           "rotation": 0,
@@ -98,12 +104,12 @@
           "fit": true
         },
         {
-          "id": "l_rs9ze7l55l",
+          "id": "l_b3bij4nk2u",
           "type": "text",
           "x": 124,
-          "y": 302,
+          "y": 409,
           "w": 416,
-          "h": 37,
+          "h": 44,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -111,7 +117,7 @@
             "delay": 0.2,
             "dur": 0.6
           },
-          "text": "استرشادي · 14:05",
+          "text": "استرشادي · 24 أكتوبر 2026 · 14:05",
           "role": "caption",
           "color": "fg2",
           "accent": "auto",
@@ -121,10 +127,10 @@
           "fit": true
         },
         {
-          "id": "l_eqjs32455l",
+          "id": "l_rt9v3mjk2u",
           "type": "text",
           "x": 390,
-          "y": 354,
+          "y": 461,
           "w": 566,
           "h": 90,
           "rotation": 0,
@@ -134,21 +140,21 @@
             "delay": 0.25,
             "dur": 1.1
           },
-          "text": "OMR 31.204",
+          "text": "31.204 ر.ع.",
           "role": "price",
           "color": "auto",
           "accent": "auto",
           "align": "start",
           "valign": "top",
-          "dir": "ltr",
+          "dir": "rtl",
           "fit": true,
           "name": "price"
         },
         {
-          "id": "l_f1pwqxh55l",
+          "id": "l_owb6hayk2u",
           "type": "badge",
           "x": 124,
-          "y": 368,
+          "y": 475,
           "w": 200,
           "h": 56,
           "rotation": 0,
@@ -165,12 +171,12 @@
           "name": "change"
         },
         {
-          "id": "l_80cucoz55l",
+          "id": "l_22h1jbnk2u",
           "type": "chart",
           "x": 124,
-          "y": 498,
+          "y": 605,
           "w": 832,
-          "h": 472,
+          "h": 421,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -179,19 +185,19 @@
             "dur": 1.4
           },
           "points": [
-            30,
-            34,
-            31,
-            38,
-            36,
-            44,
+            40,
+            42,
             41,
-            49,
+            44,
+            43,
+            42,
+            45,
+            44,
             46,
-            54,
-            52,
-            60,
-            64
+            45,
+            47,
+            46,
+            48
           ],
           "trend": "up",
           "area": true,
@@ -199,12 +205,12 @@
           "name": "chart"
         },
         {
-          "id": "l_t2qf2b355l",
+          "id": "l_tp1thzqk2u",
           "type": "text",
           "x": 80,
-          "y": 1130,
+          "y": 1147,
           "w": 920,
-          "h": 70,
+          "h": 123,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -221,6 +227,24 @@
           "dir": "rtl",
           "fit": true,
           "name": "disclaimer"
+        },
+        {
+          "id": "l_8b9zavmk2u",
+          "type": "logo",
+          "x": 830,
+          "y": 48,
+          "w": 170,
+          "h": 67,
+          "rotation": 0,
+          "opacity": 1,
+          "anim": {
+            "in": "fade",
+            "delay": 0.4,
+            "dur": 0.6
+          },
+          "variant": "horizontal",
+          "mode": "auto",
+          "name": "brandmark"
         }
       ]
     }

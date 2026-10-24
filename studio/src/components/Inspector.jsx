@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { TEMPLATES } from '../../shared/templates.js';
-import { THEMES, TYPE, ANIMATIONS, TRANSITIONS, COLORS, isArabic } from '../../shared/brand.js';
+import { THEMES, TYPE, ANIMATIONS, TRANSITIONS, COLORS, LOOPS, EXITS, BG_MOTION, isArabic } from '../../shared/brand.js';
 import { LAYER_TYPES } from '../../shared/schema.js';
 import { ICON_NAMES } from '../../shared/icons.js';
 import { Icon, Field, Num, TextIn, Select, ColorPick } from './ui.jsx';
@@ -13,7 +13,7 @@ const THEME_SWATCH = {
   sand: '#E8CC73',
 };
 
-export default function Inspector({ doc, slideIdx, layer, api, focusText }) {
+export default function Inspector({ doc, slideIdx, layer, api, focusText, issues = [] }) {
   const [tab, setTab] = useState('slide');
   useEffect(() => { if (layer) setTab('layer'); }, [layer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const slide = doc.slides[slideIdx];
@@ -24,11 +24,13 @@ export default function Inspector({ doc, slideIdx, layer, api, focusText }) {
         <button className={tab === 'slide' ? 'on' : ''} onClick={() => setTab('slide')}>Slide</button>
         <button className={tab === 'layer' ? 'on' : ''} onClick={() => setTab('layer')}>Layer</button>
         <button className={tab === 'layers' ? 'on' : ''} onClick={() => setTab('layers')}>Layers <span className="count">{slide.layers.length}</span></button>
+        <button className={tab === 'caption' ? 'on' : ''} onClick={() => setTab('caption')}>Caption</button>
       </div>
       <div className="scroll">
         {tab === 'slide' && <SlidePanel doc={doc} slide={slide} api={api} />}
         {tab === 'layer' && (layer ? <LayerPanel layer={layer} api={api} doc={doc} focusText={focusText} /> : <div className="empty">Select a layer on the canvas, or add one from the toolbar.</div>)}
         {tab === 'layers' && <LayerList slide={slide} selId={layer?.id} api={api} />}
+        {tab === 'caption' && <CaptionPanel doc={doc} api={api} issues={issues} />}
       </div>
     </aside>
   );
@@ -42,6 +44,7 @@ function SlidePanel({ doc, slide, api }) {
   const setC = (key, value, opts) => api.setContent({ ...content, [key]: value }, opts);
   return (
     <>
+      {doc.notes && <div className="section"><div className="note" style={{ margin: 0 }}><b>Before posting:</b> {doc.notes}</div></div>}
       <div className="section">
         <h4>Theme</h4>
         <div className="themes">
@@ -86,9 +89,10 @@ function SlidePanel({ doc, slide, api }) {
       <div className="section">
         <h4>Motion</h4>
         <div className="row">
-          <Field label="Duration (s)"><Num label="S" value={slide.duration} step={0.5} min={1} onChange={(v) => api.updateSlide({ duration: v })} /></Field>
+          <Field label="Duration (s)"><Num label="S" value={slide.duration} step={0.5} min={1} max={60} onChange={(v) => api.updateSlide({ duration: v })} /></Field>
           <Field label="Transition in"><Select value={slide.transition} onChange={(v) => api.updateSlide({ transition: v })} options={TRANSITIONS} /></Field>
         </div>
+        <Field label="Background motion"><Select value={slide.bgMotion || 'none'} onChange={(v) => api.updateSlide({ bgMotion: v })} options={BG_MOTION} /></Field>
         <button className="btn sm" onClick={() => api.staggerAnimations()}>Auto-animate layers</button>
       </div>
     </>
@@ -148,7 +152,7 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
               <Field label="Text (wrap a word in *asterisks* for the accent colour)"><TextIn multiline rows={3} value={l.text} rtl={rtl} onChange={(v, o) => up({ text: v }, o)} /></Field>
               <div className="row">
                 <Field label="Style"><Select value={l.role} onChange={(v) => up({ role: v, size: undefined })} options={Object.keys(TYPE)} /></Field>
-                <Field label="Size override (px)"><Num label="PX" value={l.size ?? ''} onChange={(v) => up({ size: v || undefined })} /></Field>
+                <Field label="Size override (px)"><Num label="PX" value={l.size ?? ''} onChange={(v) => up({ size: v > 0 ? Math.min(v, 1000) : undefined })} /></Field>
               </div>
               <div className="row">
                 <Field label="Align"><Select value={l.align} onChange={(v) => up({ align: v })} options={{ start: 'Start', center: 'Centre', end: 'End' }} /></Field>
@@ -186,7 +190,7 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
             <>
               <div className="row">
                 <Field label="Fit"><Select value={l.fit} onChange={(v) => up({ fit: v })} options={{ cover: 'Cover', contain: 'Contain' }} /></Field>
-                <Field label="Radius"><Num label="R" value={l.radius} onChange={(v) => up({ radius: v })} /></Field>
+                <Field label="Radius"><Num label="R" value={l.radius} min={0} onChange={(v) => up({ radius: v })} /></Field>
               </div>
               <label className="check"><input type="checkbox" checked={!!l.facet} onChange={(e) => up({ facet: e.target.checked })} />Facet corner (45° chamfer)</label>
               <label className="check"><input type="checkbox" checked={!!l.scrim} onChange={(e) => up({ scrim: e.target.checked })} />Dark scrim for text</label>
@@ -227,7 +231,7 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
           {(l.type === 'button' || l.type === 'badge') && (
             <>
               <Field label="Label"><TextIn value={l.text} rtl={isArabic(l.text)} onChange={(v, o) => up({ text: v }, o)} /></Field>
-              <Field label="Style"><Select value={l.variant} onChange={(v) => up({ variant: v })} options={l.type === 'button' ? { auto: 'Auto (by theme)', spark: 'Spark', charcoal: 'Charcoal', outline: 'Outline' } : { spark: 'Spark', gain: 'Gain', loss: 'Loss', info: 'Info', outline: 'Outline' }} /></Field>
+              <Field label="Style"><Select value={l.variant} onChange={(v) => up({ variant: v })} options={l.type === 'button' ? { auto: 'Auto (by theme)', spark: 'Spark', charcoal: 'Charcoal', outline: 'Outline' } : { spark: 'Spark', live: 'LIVE (pulsing)', gain: 'Gain', loss: 'Loss', info: 'Info', outline: 'Outline' }} /></Field>
               {l.type === 'badge' && <label className="check"><input type="checkbox" checked={!!l.gem} onChange={(e) => up({ gem: e.target.checked })} />Gem marker</label>}
             </>
           )}
@@ -243,7 +247,7 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
             <>
               <div className="row">
                 <Field label="Shape"><Select value={l.shape} onChange={(v) => up({ shape: v })} options={{ rect: 'Rectangle', circle: 'Ellipse', line: 'Line' }} /></Field>
-                <Field label="Radius"><Num label="R" value={l.radius} onChange={(v) => up({ radius: v })} /></Field>
+                <Field label="Radius"><Num label="R" value={l.radius} min={0} onChange={(v) => up({ radius: v })} /></Field>
               </div>
               <label className="check"><input type="checkbox" checked={!!l.facet} onChange={(e) => up({ facet: e.target.checked })} />Facet corner (45° chamfer)</label>
               <Field label="Fill"><ColorPick value={l.fill} onChange={(v) => up({ fill: v })} /></Field>
@@ -251,6 +255,67 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
             </>
           )}
           {l.type === 'pager' && <Field label="Style"><Select value={l.style} onChange={(v) => up({ style: v })} options={{ dots: 'Dots', count: '01 / 08', swipe: 'Swipe hint' }} /></Field>}
+          {l.type === 'ticker' && (
+            <>
+              <Field label="Items (one per line, ▲/▼ colours the change)"><TextIn multiline rows={5} rtl={rtl} value={(l.items || []).join('\n')} onChange={(v, o) => up({ items: v.split('\n') }, o)} /></Field>
+              <Field label="Speed (px/s)"><Num label="PX" value={l.speed ?? 90} min={0} onChange={(v) => up({ speed: Math.max(0, v) })} /></Field>
+            </>
+          )}
+          {l.type === 'notification' && (
+            <>
+              <Field label="App name"><TextIn value={l.app} onChange={(v, o) => up({ app: v }, o)} /></Field>
+              <Field label="Title"><TextIn value={l.title} rtl={isArabic(l.title)} onChange={(v, o) => up({ title: v }, o)} /></Field>
+              <Field label="Text"><TextIn multiline rows={2} value={l.body} rtl={isArabic(l.body)} onChange={(v, o) => up({ body: v }, o)} /></Field>
+              <Field label="Time"><TextIn value={l.time} onChange={(v, o) => up({ time: v }, o)} /></Field>
+            </>
+          )}
+          {l.type === 'sticker' && (
+            <>
+              <Field label="Sticker"><Select value={l.kind} onChange={(v) => up({ kind: v })} options={{ poll: 'Poll', quiz: 'Quiz', slider: 'Emoji slider', question: 'Question box', countdown: 'Countdown' }} /></Field>
+              <Field label="Question"><TextIn value={l.question} rtl={isArabic(l.question)} onChange={(v, o) => up({ question: v }, o)} /></Field>
+              {(l.kind === 'poll' || l.kind === 'quiz') && <Field label="Options (one per line)"><TextIn multiline rows={3} rtl={isArabic((l.options || []).join(' '))} value={(l.options || []).join('\n')} onChange={(v, o) => up({ options: v.split('\n') }, o)} /></Field>}
+              {l.kind === 'poll' && <Field label="Results % after voting (comma separated, empty = not voted)"><TextIn value={(l.result || []).join(', ')} onChange={(v, o) => { const r = v.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n)); up({ result: r, showResults: r.length > 0 }, o); }} /></Field>}
+              {l.kind === 'quiz' && (
+                <div className="row">
+                  <Field label="Correct option"><Num label="#" value={(l.correct ?? 0) + 1} min={1} onChange={(v) => up({ correct: Math.max(0, Math.round(v) - 1) })} /></Field>
+                  <Field label="Answer"><label className="check"><input type="checkbox" checked={!!l.reveal} onChange={(e) => up({ reveal: e.target.checked })} />Reveal</label></Field>
+                </div>
+              )}
+              {l.kind === 'slider' && (
+                <div className="row">
+                  <Field label="Emoji"><TextIn value={l.emoji} onChange={(v, o) => up({ emoji: v }, o)} /></Field>
+                  <Field label="Position %"><Num label="%" value={Math.round((l.value ?? 0.8) * 100)} min={0} max={100} onChange={(v) => up({ value: Math.max(0, Math.min(1, v / 100)) })} /></Field>
+                </div>
+              )}
+              {l.kind === 'question' && <Field label="Placeholder"><TextIn value={l.placeholder} rtl={isArabic(l.placeholder)} onChange={(v, o) => up({ placeholder: v }, o)} /></Field>}
+              {l.kind === 'countdown' && <CountdownFields l={l} up={up} />}
+            </>
+          )}
+          {l.type === 'countdown' && (
+            <>
+              <CountdownFields l={l} up={up} />
+              <label className="check"><input type="checkbox" checked={l.live !== false} onChange={(e) => up({ live: e.target.checked })} />Tick down in videos</label>
+              <Field label="Labels (comma separated, empty = automatic)"><TextIn value={l.labels === 'auto' ? '' : l.labels} onChange={(v, o) => up({ labels: v.trim() ? v : 'auto' }, o)} /></Field>
+            </>
+          )}
+          {l.type === 'progress' && (
+            <>
+              <div className="row">
+                <Field label="Style"><Select value={l.style} onChange={(v) => up({ style: v })} options={{ ring: 'Ring', bar: 'Bar' }} /></Field>
+                <Field label="Progress %"><Num label="%" value={Math.round((l.value ?? 0) * 100)} min={0} max={100} onChange={(v) => up({ value: Math.max(0, Math.min(1, v / 100)) })} /></Field>
+              </div>
+              <Field label="Label"><TextIn value={l.label} rtl={isArabic(l.label)} onChange={(v, o) => up({ label: v }, o)} /></Field>
+              <Field label="Sub-label"><TextIn value={l.sub} rtl={isArabic(l.sub)} onChange={(v, o) => up({ sub: v }, o)} /></Field>
+            </>
+          )}
+          {l.type === 'chat' && <Field label="Messages (one per line, start with &gt; for Goldcom replies)"><TextIn multiline rows={6} rtl={isArabic((l.messages || []).map((m) => m.text).join(' '))} value={(l.messages || []).map((m) => `${m.from === 'me' ? '> ' : ''}${m.text}`).join('\n')} onChange={(v, o) => up({ messages: v.split('\n').map((ln) => (ln.trim().startsWith('>') ? { from: 'me', text: ln.trim().slice(1).trim() } : { from: 'them', text: ln })) }, o)} /></Field>}
+          {l.type === 'sparkles' && (
+            <div className="row">
+              <Field label="Count"><Num label="#" value={l.count} min={0} max={120} onChange={(v) => up({ count: Math.max(0, Math.min(120, Math.round(v))) })} /></Field>
+              <Field label="Pattern seed"><Num label="S" value={l.seed} onChange={(v) => up({ seed: v })} /></Field>
+            </div>
+          )}
+          {l.type === 'tap' && <p className="hint">A tap ripple. Place it over a button or notification to show where to touch.</p>}
         </div>
       </div>
 
@@ -259,8 +324,8 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
         <div className="row4">
           <Num label="X" value={l.x} onChange={(v) => up({ x: v })} />
           <Num label="Y" value={l.y} onChange={(v) => up({ y: v })} />
-          <Num label="W" value={l.w} onChange={(v) => up({ w: v })} />
-          <Num label="H" value={l.h} onChange={(v) => up({ h: v })} />
+          <Num label="W" value={l.w} min={1} onChange={(v) => up({ w: v })} />
+          <Num label="H" value={l.h} min={1} onChange={(v) => up({ h: v })} />
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <Num label="°" value={l.rotation || 0} onChange={(v) => up({ rotation: l.type === 'logo' ? 0 : v })} />
@@ -281,12 +346,20 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
           <Num label="T" value={l.anim?.dur ?? 0.6} step={0.05} min={0.1} onChange={(v) => up({ anim: { ...l.anim, dur: v } })} />
         </div>
         <p className="hint" style={{ marginTop: 6 }}>D = delay, T = duration (seconds). Press Play below the canvas to preview.</p>
+        <div className="row" style={{ marginTop: 10 }}>
+          <Field label="Live motion (loop)"><Select value={l.loop?.type || 'none'} onChange={(v) => up({ loop: v === 'none' ? null : { ...(l.loop || {}), type: v } })} options={LOOPS} /></Field>
+          <Field label="Speed"><Num label="×" value={l.loop?.speed ?? 1} step={0.1} min={0.1} onChange={(v) => up({ loop: { ...(l.loop || { type: 'float' }), speed: v } })} /></Field>
+        </div>
+        <div className="row">
+          <Field label="Exit before slide ends"><Select value={l.anim?.out || 'none'} onChange={(v) => up({ anim: { ...l.anim, out: v } })} options={EXITS} /></Field>
+          <Field label="Exit time (s)"><Num label="T" value={l.anim?.outDur ?? 0.45} step={0.05} min={0.1} onChange={(v) => up({ anim: { ...l.anim, outDur: v } })} /></Field>
+        </div>
       </div>
     </>
   );
 }
 
-const LAYER_ICON = { text: 'text', list: 'list', logo: 'gem', image: 'image', phone: 'phone', browser: 'globe', code: 'code', goldbar: 'bar', chart: 'chart', button: 'square', badge: 'square', icon: 'sparkle', gem: 'gem', shape: 'square', pager: 'more' };
+const LAYER_ICON = { text: 'text', list: 'list', logo: 'gem', image: 'image', phone: 'phone', browser: 'globe', code: 'code', goldbar: 'bar', chart: 'chart', button: 'square', badge: 'square', icon: 'sparkle', gem: 'gem', shape: 'square', pager: 'more', ticker: 'chart', notification: 'bell', sticker: 'check', countdown: 'clock', progress: 'clock', chat: 'comment', tap: 'sparkle', sparkles: 'star' };
 
 function LayerList({ slide, selId, api }) {
   const layers = [...slide.layers].reverse();
@@ -312,6 +385,39 @@ function LayerList({ slide, selId, api }) {
       {!layers.length && <p className="hint">No layers yet.</p>}
       <p className="hint" style={{ marginTop: 12 }}>Shortcuts: Delete removes · arrows nudge (Shift = 10 px) · Ctrl/Cmd+D duplicates · Ctrl/Cmd+Z undo.</p>
       <p className="hint">Colours on the canvas always come from the Goldcom palette: {Object.keys(COLORS).length} brand tokens.</p>
+    </div>
+  );
+}
+
+function CountdownFields({ l, up }) {
+  return (
+    <div className="row4">
+      <Num label="D" value={l.days ?? 0} min={0} onChange={(v) => up({ days: Math.max(0, Math.round(v)) })} />
+      <Num label="H" value={l.hours ?? 0} min={0} max={23} onChange={(v) => up({ hours: Math.max(0, Math.min(23, Math.round(v))) })} />
+      <Num label="M" value={l.minutes ?? 0} min={0} max={59} onChange={(v) => up({ minutes: Math.max(0, Math.min(59, Math.round(v))) })} />
+      <Num label="S" value={l.seconds ?? 0} min={0} max={59} onChange={(v) => up({ seconds: Math.max(0, Math.min(59, Math.round(v))) })} />
+    </div>
+  );
+}
+
+function CaptionPanel({ doc, api, issues }) {
+  const cap = doc.caption || { text: '', hashtags: [] };
+  const text = cap.text || '';
+  const tags = cap.hashtags || [];
+  const total = text.length + tags.join(' ').length + (tags.length ? 2 : 0);
+  const capIssues = issues.filter((i) => i.message.startsWith('Caption') || /hashtag|caption/i.test(i.message));
+  const full = [text, tags.join(' ')].filter(Boolean).join('\n\n');
+  return (
+    <div className="section">
+      <h4>Instagram caption {full && <button className="btn sm" onClick={() => navigator.clipboard?.writeText(full)}>Copy</button>}</h4>
+      <TextIn multiline rows={8} value={text} rtl={isArabic(text)} placeholder={doc.lang === 'ar' ? 'اكتب وصف المنشور…' : 'Write the caption…'} onChange={(v, o) => api.setCaption({ text: v }, o)} />
+      <div className="cap-meta"><span className={total > 2200 ? 'bad' : ''}>{total} / 2,200</span><span>Hook in the first line: it is all people see before "more".</span></div>
+      <Field label="Hashtags (space separated)">
+        <TextIn value={tags.join(' ')} onChange={(v, o) => api.setCaption({ hashtags: v.split(/\s+/).filter(Boolean).map((h) => (h.startsWith('#') ? h : `#${h}`)) }, o)} />
+      </Field>
+      <div className="cap-meta"><span className={tags.length > 30 ? 'bad' : tags.length > 6 ? 'warn' : ''}>{tags.length} hashtag{tags.length === 1 ? '' : 's'}</span><span>3–5 relevant ones work best.</span></div>
+      {capIssues.map((i, k) => <div key={k} className={`issue ${i.level}`} style={{ cursor: 'default' }}><i /><div>{i.message}</div></div>)}
+      <p className="hint" style={{ marginTop: 12 }}>The caption is saved with the design, shown in the Instagram preview, included in ZIP exports and checked against the brand claims rules.</p>
     </div>
   );
 }

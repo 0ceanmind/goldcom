@@ -1,6 +1,7 @@
 // One-time setup: connects Goldcom Studio to Claude Code.
 //  - registers the goldcom-studio MCP server (user scope = available in every project)
 //  - installs the /goldcom-studio skill into ~/.claude/skills
+//  - installs the goldcom-auditor agent into ~/.claude/agents
 // Usage: npm run connect [-- --scope project|user|local] [-- --print]
 import fs from 'node:fs';
 import os from 'node:os';
@@ -47,6 +48,15 @@ if (!printOnly) {
   fs.mkdirSync(skillDst, { recursive: true });
   for (const f of fs.readdirSync(skillSrc)) fs.copyFileSync(path.join(skillSrc, f), path.join(skillDst, f));
   say(`  ✓ Skill installed → ${skillDst}`);
+  // The auditor reviews every design. Point its brand references at this repo so it works from any project.
+  const agentSrc = path.join(root, '..', '.claude', 'agents', 'goldcom-auditor.md');
+  if (fs.existsSync(agentSrc)) {
+    const agentDst = path.join(os.homedir(), '.claude', 'agents', 'goldcom-auditor.md');
+    const brandDir = path.join(root, '..', 'brand').split(path.sep).join('/');
+    fs.mkdirSync(path.dirname(agentDst), { recursive: true });
+    fs.writeFileSync(agentDst, fs.readFileSync(agentSrc, 'utf8').replace(/`brand\//g, `\`${brandDir}/`));
+    say(`  ✓ Auditor agent installed → ${agentDst}`);
+  }
 }
 
 say(`
@@ -55,5 +65,6 @@ say(`
        (Claude also starts it automatically when it needs it.)
     2. Restart Claude Code, open any project and try:
          /goldcom-studio make an Arabic carousel about this project
-         /goldcom-studio 20-second 9:16 launch video in English
+         /goldcom-studio 20-second Instagram Reel in English
+         /goldcom-studio a Story with a poll about gifting gold
 `);

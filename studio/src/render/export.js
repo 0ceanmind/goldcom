@@ -44,7 +44,30 @@ export async function exportZip(doc, images, onProgress) {
     onProgress?.((i + 1) / doc.slides.length);
   }
   files['document.json'] = new TextEncoder().encode(JSON.stringify(doc, null, 2));
+  const cap = captionText(doc);
+  if (cap) files['caption.txt'] = new TextEncoder().encode(cap);
   downloadBlob(new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' }), `${slug(doc.name)}-carousel.zip`);
+}
+
+export function captionText(doc) {
+  const c = doc.caption || {};
+  const tags = (c.hashtags || []).filter(Boolean).join(' ');
+  return [c.text || '', tags].filter((x) => x.trim()).join('\n\n');
+}
+
+/** Every slide as its own animated MP4 (Instagram Stories, or animated carousel slides), zipped. */
+export async function exportSlideVideosZip(doc, images, onProgress) {
+  const files = {};
+  const n = doc.slides.length;
+  for (let i = 0; i < n; i++) {
+    const r = await exportVideo(doc, images, { mode: 'slide', index: i, download: false, onProgress: (p) => onProgress?.((i + p) / n) });
+    files[`${slug(doc.name)}-${String(i + 1).padStart(2, '0')}.${r.container}`] = new Uint8Array(await r.blob.arrayBuffer());
+  }
+  const cap = captionText(doc);
+  if (cap) files['caption.txt'] = new TextEncoder().encode(cap);
+  const blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
+  downloadBlob(blob, `${slug(doc.name)}-${doc.kind === 'story' ? 'story-frames' : 'animated-slides'}.zip`);
+  return { container: 'zip', bytes: blob.size, frames: n };
 }
 
 export function exportJson(doc) {
@@ -76,7 +99,7 @@ async function pickCodec(width, height, fps, bitrate) {
  * Render frames to a video file.
  * mode 'sequence' plays all slides with transitions; mode 'slide' animates one slide (index) for its duration.
  */
-export async function exportVideo(doc, images, { mode = 'sequence', index = 0, onProgress, signal } = {}) {
+export async function exportVideo(doc, images, { mode = 'sequence', index = 0, onProgress, signal, download = true } = {}) {
   await images.preload(doc);
   const fps = doc.fps || 30;
   const width = doc.width % 2 ? doc.width + 1 : doc.width;
@@ -95,7 +118,7 @@ export async function exportVideo(doc, images, { mode = 'sequence', index = 0, o
   const pick = await pickCodec(width, height, fps, bitrate);
   const name = `${slug(doc.name)}${mode === 'slide' ? `-slide-${index + 1}` : ''}`;
 
-  if (!pick) return recordRealtime(cv, draw, frames, fps, name, onProgress);
+  if (!pick) return recordRealtime(cv, draw, frames, fps, name, onProgress, download);
 
   const target = pick.container === 'mp4' ? new Mp4Target() : new WebmTarget();
   const muxer = pick.container === 'mp4'
@@ -121,11 +144,11 @@ export async function exportVideo(doc, images, { mode = 'sequence', index = 0, o
   onProgress?.(1);
   const type = pick.container === 'mp4' ? 'video/mp4' : 'video/webm';
   const blob = new Blob([target.buffer], { type });
-  downloadBlob(blob, `${name}.${pick.container}`);
-  return { container: pick.container, codec: pick.codec, bytes: blob.size, frames };
+  if (download) downloadBlob(blob, `${name}.${pick.container}`);
+  return { container: pick.container, codec: pick.codec, bytes: blob.size, frames, blob, filename: `${name}.${pick.container}` };
 }
 
-async function recordRealtime(cv, draw, frames, fps, name, onProgress) {
+async function recordRealtime(cv, draw, frames, fps, name, onProgress, download = true) {
   const stream = cv.captureStream(fps);
   const type = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t)) || 'video/webm';
   const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 12e6 });
@@ -147,8 +170,8 @@ async function recordRealtime(cv, draw, frames, fps, name, onProgress) {
   await done;
   const ext = type.includes('mp4') ? 'mp4' : 'webm';
   const blob = new Blob(chunks, { type });
-  downloadBlob(blob, `${name}.${ext}`);
-  return { container: ext, codec: type, bytes: blob.size, frames };
+  if (download) downloadBlob(blob, `${name}.${ext}`);
+  return { container: ext, codec: type, bytes: blob.size, frames, blob, filename: `${name}.${ext}` };
 }
 
 export async function exportGif(doc, images, { mode = 'sequence', index = 0, maxWidth = 540, fps = 15, onProgress } = {}) {

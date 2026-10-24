@@ -26,33 +26,52 @@ If the project has a UI:
 4. Stop any server you started when you are done.
 Existing images in the repo (screenshots, logos, diagrams) can be imported with `add_asset({ path })`.
 
-## 4. Plan the story
+## 4. Start from the library when it fits
+`list_library` returns ready-made, audited Instagram designs (posts, carousels, Reels, Stories, animated posts, a video). When the request matches one (a price update, a gift idea, a how-it-works carousel, a poll Story…), call `create_from_library` and adapt it with `edit_slide` and `set_caption` instead of starting from nothing.
+
+## 5. Plan the story
+Goldcom posts mostly on **Instagram**. Pick the kind first:
+- `post` (4:5 feed image) · `carousel` (swipeable 4:5 slides) · `motion` (one animated 4:5 slide, exported as MP4) · `reel` (one 9:16 video) · `story` (separate 9:16 frames).
+- Reels and Stories use format `story`. Templates keep text out of the Instagram interface (Reels: top 220 px, bottom 420 px; Stories: top 250 px, bottom 260 px). Feed posts are cropped to 3:4 on the profile grid, so keep text off the side edges.
+
 Use one idea per slide and titles of 8 words or fewer. Default recipes:
 
 **Project carousel (7 slides, feed-portrait):** `cover` (promise + screenshot) → `statement` (problem) → `feature` × 2 (with screenshots) → `list` or `code` (what is inside / how it works) → `stat` (only with real proof) or `comparison` → `cta`.
 
-**Launch video (15–25 s, story 9:16, kind "video"):** `statement` 3 s (hook) → `cover` 4 s (product + device) → `feature` 4 s → `screenshot` 4 s → `cta` 4 s. Vary transitions: fade, slide, wipe.
+**Reel (15–25 s, kind "reel"):** `kinetic` 3 s (hook, words land one by one) → `cover` or `notification` 4 s → `feature`/`screenshot` 4 s → `goal`, `chat` or `live-price` 4 s → `cta` 4 s → optional `logo-sting`. Vary transitions: fade, slide, wipe, zoom. Use `bgMotion: "drift"` on dark slides.
 
-**Single post:** one `cover`, `stat`, `quote` or `price` slide with kind "post".
+**Story (3–5 frames, kind "story"):** a hook frame, a `sticker` frame (poll, quiz, slider, question or countdown) with `native: "yes"` so the user adds Instagram's own tappable sticker on top, then a `cta` frame. Mention the sticker in `notes`.
+
+**Single post:** one `cover`, `stat`, `quote`, `fact`, `myth`, `karat` or `price` slide with kind "post" (or "motion" for an animated version).
 
 **App-store set:** format "appstore", `cover` slides on theme "bullion", one message per screenshot.
 
 Theme rhythm: mostly `onyx`/`charcoal`, one `cream` slide for contrast, `bullion` for one campaign moment, and end on `onyx`.
 
-## 5. Write the copy
+### Make it feel live
+The live templates are what make Goldcom content feel current rather than static: `live-price` (animated price board, always badged Indicative and dated; never call a posted price "live"), `notification`, `countdown`, `chat`, `goal`, `kinetic`, `logo-sting`, `sticker`. Use at least one in every Reel and animated post. Never show invented results: no poll percentages, user counts or testimonials. Prices are illustrative, so add `notes: "Update the price before posting"`.
+
+## 6. Write the copy
 - Language: **Arabic (`lang: "ar"`) by default** for Goldcom's Omani audience, or English when the user asks or the audience is international. Write Arabic natively in Modern Standard Arabic, not as a translation, and say that new Arabic copy should be reviewed by a native speaker.
 - Voice: fact first, then feeling. Calm, precise and warm. No hype, no urgency, no exclamation marks in buttons.
+- Sound human. Never use filler such as "unlock", "elevate", "seamless", "journey", "game-changer", "empower", "dive in", "whether you're… or…", "it's not just X, it's Y". Prefer concrete nouns and real numbers, and don't reuse the same CTA on every design.
 - Use `*one or two words*` in a title for the gold accent.
 - Claims: never "guaranteed", "risk-free", "best price" or "fully regulated". Amber claims (insured, licensed, Sharia-certified, vault) only with wording the user has approved.
 - Any price, return, "invest" or "save" → disclaimer (use the `price` template, or `cta` with `disclaimer: "yes"`).
+- Caption: the first line is the hook, then one or two short lines, at most one emoji and 3–5 relevant hashtags. Pass it as `caption` to `create_design` or set it with `set_caption`.
 - For projects that are not about gold: keep the Goldcom identity (logo, colours, type, voice) but do not add gold claims.
 
-## 6. Build, check, refine
-1. `create_design` with name, format, kind, lang and slides. It opens the studio in the browser.
+## 7. Build, check, refine
+1. `create_design` with name, format, kind, lang, slides, caption and notes. It opens the studio in the browser.
 2. Read the returned `brand_check` and fix every `[error]` and `[warn]` with `edit_slide`.
 3. `render_preview` and look at every slide: text fit, hierarchy, screenshot crop, theme rhythm, Arabic direction. Refine with `edit_slide` (content is merged; `template` and `theme` can change).
 4. If the user has hand-edited a slide, `edit_slide` only updates text and media. Do not pass `force_layout` without asking.
 5. Optional: `export_pngs({ out_dir: "marketing/carousel" })` saves full-size PNGs into the project.
 
-## 7. Hand over
-Reply briefly with: the studio link, the slide list (one line each), which screenshots you captured, any claims or Arabic copy that needs human sign-off, and how to export (Export menu → PNG, ZIP, MP4 or GIF).
+## 8. Audit (required)
+Every design is reviewed by the **goldcom-auditor** agent before you hand it over. Launch it with the Task/Agent tool (`subagent_type: "goldcom-auditor"`), giving it the design id(s) and the rendered PNG paths. It checks visual consistency, claims, Instagram readiness, and whether the copy sounds robotic or like AI filler in English and Arabic.
+- Fix every **blocker** and **should fix** item, re-render, and run the auditor again until the verdict is PASS or PASS WITH FIXES with only nice-to-haves left.
+- If the agent is not installed, run `npm run connect` in the studio folder, or do the same review yourself against its checklist and say so.
+
+## 9. Hand over
+Reply briefly with: the studio link, the slide list (one line each), the auditor's verdict, which screenshots you captured, any claims or Arabic copy that needs human sign-off, anything in `notes` (prices to update, native stickers to add), and how to export (Export menu → PNG, ZIP, MP4 or GIF; the **Preview** button shows it in an Instagram phone mock-up first).

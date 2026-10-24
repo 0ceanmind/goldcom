@@ -9,11 +9,15 @@
   "format": "feed-portrait",
   "width": 1080,
   "height": 1350,
+  "caption": {
+    "text": "",
+    "hashtags": []
+  },
   "createdAt": "2026-10-23T12:00:10.000Z",
   "updatedAt": "2026-10-23T12:00:10.000Z",
   "slides": [
     {
-      "id": "s_gw7576v55b",
+      "id": "s_1ru3n8dk2j",
       "template": "cover",
       "content": {
         "kicker": "جديد من جولدكم",
@@ -22,15 +26,17 @@
         "visual": "device",
         "device": "phone"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_sey290p55c",
+          "id": "l_zyckdo2k2k",
           "type": "logo",
           "x": 750,
           "y": 80,
@@ -48,10 +54,10 @@
           "name": "logo"
         },
         {
-          "id": "l_kza5dg555c",
+          "id": "l_pgzdzswk2l",
           "type": "phone",
           "x": 80,
-          "y": 838,
+          "y": 850,
           "w": 920,
           "h": 1901,
           "rotation": 0,
@@ -68,12 +74,12 @@
           "name": "device"
         },
         {
-          "id": "l_46ounm255c",
+          "id": "l_qevxyavk2k",
           "type": "text",
           "x": 80,
           "y": 270,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -92,10 +98,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_9ucqxld55c",
+          "id": "l_zbkhqomk2k",
           "type": "text",
           "x": 80,
-          "y": 331,
+          "y": 343,
           "w": 920,
           "h": 281,
           "rotation": 0,
@@ -116,10 +122,10 @@
           "name": "title"
         },
         {
-          "id": "l_ovxvuxt55c",
+          "id": "l_r6hfh9gk2k",
           "type": "text",
           "x": 80,
-          "y": 632,
+          "y": 644,
           "w": 920,
           "h": 136,
           "rotation": 0,
@@ -140,7 +146,7 @@
           "name": "subtitle"
         },
         {
-          "id": "l_cp4rit355c",
+          "id": "l_0myg907k2l",
           "type": "pager",
           "x": 80,
           "y": 110,
@@ -160,25 +166,27 @@
       ]
     },
     {
-      "id": "s_6u1xdee55b",
+      "id": "s_j8pm03jk2j",
       "template": "statement",
       "content": {
         "kicker": "التحدي",
         "title": "شراء الذهب لا يجب أن يكون *معقدًا*.",
         "body": "الأسعار تتغير، والتحقق من النقاء صعب، والتخزين غير مريح."
       },
+      "extras": null,
       "theme": "charcoal",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_eowc75t55d",
+          "id": "l_hcnx5oyk2l",
           "type": "gem",
           "x": 956,
-          "y": 405,
+          "y": 399,
           "w": 44,
           "h": 44,
           "rotation": 0,
@@ -192,12 +200,12 @@
           "name": "gem"
         },
         {
-          "id": "l_qatp9zh55d",
+          "id": "l_3marfbck2l",
           "type": "text",
           "x": 80,
-          "y": 481,
+          "y": 475,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -216,10 +224,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_0ikdgjp55d",
+          "id": "l_68mv97zk2l",
           "type": "text",
           "x": 80,
-          "y": 554,
+          "y": 560,
           "w": 920,
           "h": 224,
           "rotation": 0,
@@ -240,10 +248,10 @@
           "name": "title"
         },
         {
-          "id": "l_3aeeq6i55d",
+          "id": "l_24txy24k2l",
           "type": "text",
           "x": 80,
-          "y": 810,
+          "y": 816,
           "w": 920,
           "h": 136,
           "rotation": 0,
@@ -264,7 +272,7 @@
           "name": "body"
         },
         {
-          "id": "l_glb4uq755d",
+          "id": "l_kfehnmdk2l",
           "type": "pager",
           "x": 740,
           "y": 1230,
@@ -283,7 +291,7 @@
       ]
     },
     {
-      "id": "s_6m1qfxw55b",
+      "id": "s_smn86oqk2j",
       "template": "feature",
       "content": {
         "icon": "gift",
@@ -292,15 +300,17 @@
         "body": "اختر الوزن، أضف رسالتك، وتصل هديتك فورًا.",
         "device": "phone"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_8b09e4955d",
+          "id": "l_mjg76fxk2l",
           "type": "icon",
           "x": 888,
           "y": 80,
@@ -319,12 +329,12 @@
           "name": "icon"
         },
         {
-          "id": "l_2jptc5s55d",
+          "id": "l_cfwb5bqk2l",
           "type": "text",
           "x": 80,
           "y": 232,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -343,10 +353,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_flnmm5955d",
+          "id": "l_h1xu11ek2l",
           "type": "text",
           "x": 80,
-          "y": 287,
+          "y": 299,
           "w": 920,
           "h": 224,
           "rotation": 0,
@@ -367,10 +377,10 @@
           "name": "title"
         },
         {
-          "id": "l_esi27cx55d",
+          "id": "l_hc6xco3k2m",
           "type": "text",
           "x": 80,
-          "y": 531,
+          "y": 543,
           "w": 920,
           "h": 71,
           "rotation": 0,
@@ -391,10 +401,10 @@
           "name": "body"
         },
         {
-          "id": "l_a3a86cs55d",
+          "id": "l_jxaba2qk2m",
           "type": "phone",
           "x": 80,
-          "y": 662,
+          "y": 674,
           "w": 920,
           "h": 1901,
           "rotation": 0,
@@ -411,7 +421,7 @@
           "name": "device"
         },
         {
-          "id": "l_eln22h155d",
+          "id": "l_bla2s0tk2m",
           "type": "pager",
           "x": 80,
           "y": 80,
@@ -431,7 +441,7 @@
       ]
     },
     {
-      "id": "s_2u878kz55b",
+      "id": "s_lnne7f1k2j",
       "template": "screenshot",
       "content": {
         "title": "تصفح أسعار الذهب الفورية",
@@ -439,15 +449,17 @@
         "device": "phone",
         "label": "yes"
       },
+      "extras": null,
       "theme": "bullion",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_6rwzezk55d",
+          "id": "l_40m1ukwk2m",
           "type": "text",
           "x": 80,
           "y": 80,
@@ -471,7 +483,7 @@
           "name": "title"
         },
         {
-          "id": "l_kvkn9ob55d",
+          "id": "l_h3wxxqfk2m",
           "type": "text",
           "x": 80,
           "y": 183,
@@ -495,12 +507,12 @@
           "name": "caption"
         },
         {
-          "id": "l_yq4l4q955d",
+          "id": "l_fcqo5utk2m",
           "type": "phone",
-          "x": 333,
+          "x": 339,
           "y": 293,
-          "w": 415,
-          "h": 857,
+          "w": 403,
+          "h": 833,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -515,12 +527,12 @@
           "name": "device"
         },
         {
-          "id": "l_bxwrais55e",
+          "id": "l_twl2lb8k2m",
           "type": "text",
           "x": 80,
-          "y": 1164,
+          "y": 1140,
           "w": 920,
-          "h": 37,
+          "h": 44,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -530,15 +542,16 @@
           },
           "text": "شاشة توضيحية",
           "role": "caption",
-          "color": "fg2",
+          "color": "fg",
           "accent": "auto",
           "align": "center",
           "valign": "top",
           "dir": "rtl",
-          "fit": true
+          "fit": true,
+          "name": "label"
         },
         {
-          "id": "l_90z2f3h55e",
+          "id": "l_5s0y0d5k2m",
           "type": "pager",
           "x": 740,
           "y": 1230,
@@ -557,7 +570,7 @@
       ]
     },
     {
-      "id": "s_gor8lqd55b",
+      "id": "s_5wp7empk2j",
       "template": "steps",
       "content": {
         "kicker": "كيف تعمل",
@@ -568,20 +581,22 @@
           "احتفظ بها، أهدِها، بِعها أو استلمها"
         ]
       },
+      "extras": null,
       "theme": "cream",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_76d5lnr55e",
+          "id": "l_twk6dk3k2m",
           "type": "text",
           "x": 80,
-          "y": 120,
+          "y": 277,
           "w": 920,
-          "h": 41,
+          "h": 53,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -600,10 +615,10 @@
           "name": "kicker"
         },
         {
-          "id": "l_0ts4rm555e",
+          "id": "l_uoj7murk2m",
           "type": "text",
           "x": 80,
-          "y": 175,
+          "y": 344,
           "w": 920,
           "h": 224,
           "rotation": 0,
@@ -624,12 +639,12 @@
           "name": "title"
         },
         {
-          "id": "l_1u1t5k455e",
+          "id": "l_6bheig9k2m",
           "type": "list",
           "x": 80,
-          "y": 463,
+          "y": 632,
           "w": 920,
-          "h": 717,
+          "h": 287,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -649,7 +664,7 @@
           "name": "items"
         },
         {
-          "id": "l_z9nvatj55e",
+          "id": "l_07e1iizk2m",
           "type": "pager",
           "x": 740,
           "y": 1230,
@@ -668,24 +683,26 @@
       ]
     },
     {
-      "id": "s_y6thfq255b",
+      "id": "s_xpr6nl3k2j",
       "template": "price",
       "content": {
         "title": "اعرف سعرك قبل أن تشتري",
         "label": "ذهب عيار 24 · للجرام",
-        "price": "OMR 31.204",
+        "price": "31.204 ر.ع.",
         "change": "+0.42%",
-        "time": "استرشادي · 14:05"
+        "time": "استرشادي · 24 أكتوبر 2026 · 14:05"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_wb940uo55e",
+          "id": "l_jwr4uhmk2n",
           "type": "text",
           "x": 80,
           "y": 80,
@@ -709,7 +726,7 @@
           "name": "title"
         },
         {
-          "id": "l_2f6jkqo55e",
+          "id": "l_bxa2amuk2n",
           "type": "shape",
           "x": 80,
           "y": 360,
@@ -730,7 +747,7 @@
           "name": "card"
         },
         {
-          "id": "l_w25z4s355e",
+          "id": "l_dywd7tjk2n",
           "type": "text",
           "x": 457,
           "y": 404,
@@ -753,12 +770,12 @@
           "fit": true
         },
         {
-          "id": "l_j2hiswu55e",
+          "id": "l_rezxhdck2n",
           "type": "text",
           "x": 124,
           "y": 408,
           "w": 416,
-          "h": 37,
+          "h": 44,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -766,7 +783,7 @@
             "delay": 0.2,
             "dur": 0.6
           },
-          "text": "استرشادي · 14:05",
+          "text": "استرشادي · 24 أكتوبر 2026 · 14:05",
           "role": "caption",
           "color": "fg2",
           "accent": "auto",
@@ -776,7 +793,7 @@
           "fit": true
         },
         {
-          "id": "l_w2fnq8o55e",
+          "id": "l_6mg7d03k2n",
           "type": "text",
           "x": 390,
           "y": 460,
@@ -789,18 +806,18 @@
             "delay": 0.25,
             "dur": 1.1
           },
-          "text": "OMR 31.204",
+          "text": "31.204 ر.ع.",
           "role": "price",
           "color": "auto",
           "accent": "auto",
           "align": "start",
           "valign": "top",
-          "dir": "ltr",
+          "dir": "rtl",
           "fit": true,
           "name": "price"
         },
         {
-          "id": "l_bibyaqd55e",
+          "id": "l_t7tuvepk2n",
           "type": "badge",
           "x": 124,
           "y": 474,
@@ -820,7 +837,7 @@
           "name": "change"
         },
         {
-          "id": "l_p7k1sia55e",
+          "id": "l_rydqcp6k2n",
           "type": "chart",
           "x": 124,
           "y": 604,
@@ -834,19 +851,19 @@
             "dur": 1.4
           },
           "points": [
-            30,
-            34,
-            31,
-            38,
-            36,
-            44,
+            40,
+            42,
             41,
-            49,
+            44,
+            43,
+            42,
+            45,
+            44,
             46,
-            54,
-            52,
-            60,
-            64
+            45,
+            47,
+            46,
+            48
           ],
           "trend": "up",
           "area": true,
@@ -854,12 +871,12 @@
           "name": "chart"
         },
         {
-          "id": "l_1epf8l055e",
+          "id": "l_mgj3s23k2n",
           "type": "text",
           "x": 80,
-          "y": 1130,
+          "y": 1077,
           "w": 920,
-          "h": 70,
+          "h": 123,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -878,7 +895,7 @@
           "name": "disclaimer"
         },
         {
-          "id": "l_3o9wxck55e",
+          "id": "l_eie01llk2n",
           "type": "pager",
           "x": 740,
           "y": 1230,
@@ -897,7 +914,7 @@
       ]
     },
     {
-      "id": "s_m690uef55b",
+      "id": "s_eatgulxk2j",
       "template": "cta",
       "content": {
         "title": "ابدأ قصتك مع الذهب اليوم",
@@ -906,15 +923,17 @@
         "link": "goldcom.om",
         "disclaimer": "yes"
       },
+      "extras": null,
       "theme": "onyx",
       "pattern": "top",
+      "bgMotion": "none",
       "bg": null,
       "duration": 4,
       "transition": "fade",
       "custom": false,
       "layers": [
         {
-          "id": "l_mizlrmj55e",
+          "id": "l_vai9s7lk2n",
           "type": "logo",
           "x": 390,
           "y": 144,
@@ -932,7 +951,7 @@
           "name": "logo"
         },
         {
-          "id": "l_85komyy55e",
+          "id": "l_qrg14yzk2n",
           "type": "text",
           "x": 80,
           "y": 468,
@@ -956,7 +975,7 @@
           "name": "title"
         },
         {
-          "id": "l_ixj8yi355e",
+          "id": "l_tsw7jguk2n",
           "type": "text",
           "x": 80,
           "y": 728,
@@ -980,7 +999,7 @@
           "name": "subtitle"
         },
         {
-          "id": "l_avwmd4j55e",
+          "id": "l_7cu59i6k2n",
           "type": "button",
           "x": 338,
           "y": 835,
@@ -999,7 +1018,7 @@
           "name": "button"
         },
         {
-          "id": "l_lsdmb9s55f",
+          "id": "l_rxkzpcuk2n",
           "type": "text",
           "x": 80,
           "y": 975,
@@ -1023,12 +1042,12 @@
           "name": "link"
         },
         {
-          "id": "l_7fxdr9e55f",
+          "id": "l_c2mx3gmk2n",
           "type": "text",
           "x": 80,
-          "y": 1130,
+          "y": 1077,
           "w": 920,
-          "h": 70,
+          "h": 123,
           "rotation": 0,
           "opacity": 1,
           "anim": {
@@ -1047,7 +1066,7 @@
           "name": "disclaimer"
         },
         {
-          "id": "l_83oq9pz55f",
+          "id": "l_esdlvr5k2n",
           "type": "pager",
           "x": 740,
           "y": 1230,

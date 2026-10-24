@@ -30,10 +30,18 @@ const UI_ICONS = {
   upload: ['M12 16V5', 'm7 10 5-5 5 5', 'M5 20h14'],
   camera: ['M4 8h3l2-3h6l2 3h3v11H4z', 'M9 13a3 3 0 1 0 6 0a3 3 0 1 0-6 0'],
   gem: ['M12 3 21 12 12 21 3 12Z'],
+  more: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01'],
+  comment: ['M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.3A8.5 8.5 0 1 1 20.5 11.5Z'],
+  send: ['M21 3 10.5 13.5', 'M21 3l-6.5 18-4-7.5L3 9.5 21 3Z'],
+  bookmark: ['M6 3.5h12v17l-6-4.5-6 4.5z'],
+  back: ['M15 5l-7 7 7 7'],
+  grid: ['M4 4h7v7H4z', 'M13 4h7v7h-7z', 'M4 13h7v7H4z', 'M13 13h7v7h-7z'],
+  film: ['M4 4h16v16H4z', 'M8 4v16', 'M16 4v16', 'M4 9h4', 'M4 15h4', 'M16 9h4', 'M16 15h4'],
+  zones: ['M3 3h18v18H3z', 'M3 8h18', 'M3 16h18'],
   bar: ['M7 4h10l2 16H5L7 4Z', 'M9 9h6'],
 };
 
-export function Icon({ name, size, stroke = 1.75, fill }) {
+export function Icon({ name, size = 20, stroke = 1.75, fill }) {
   const paths = UI_ICONS[name] || ICONS[name] || ICONS.sparkle;
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill={fill || 'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -53,7 +61,13 @@ export function Num({ label, value, onChange, step = 1, min, max }) {
     <div className="num">
       <span>{label}</span>
       <input className="input" type="number" step={step} min={min} max={max} value={v === '' || v === null || v === undefined || !Number.isFinite(+v) ? '' : Math.round(v * 100) / 100}
-        onChange={(e) => { setV(e.target.value); if (e.target.value !== '' && Number.isFinite(+e.target.value)) onChange(+e.target.value); }} />
+        onChange={(e) => { const raw = e.target.value; setV(raw); if (raw !== '' && Number.isFinite(+raw) && (min === undefined || +raw >= min) && (max === undefined || +raw <= max)) onChange(+raw); }}
+        onBlur={() => {
+          // Out-of-range or empty values are clamped (or reset) when the field loses focus.
+          if (v === '' || !Number.isFinite(+v)) { setV(value); return; }
+          const c = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, +v));
+          if (c !== +v) { setV(c); onChange(c); }
+        }} />
     </div>
   );
 }

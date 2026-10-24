@@ -11,7 +11,8 @@ import {
   STUDIO_ROOT, listDocuments, getDocument, saveDocument, deleteDocument, createFromSpec, saveAsset, saveAssetFromPath,
 } from '../server/store.mjs';
 import { TEMPLATE_IDS, templateCatalog, applyTemplate, applyAllTemplates, patchContent } from '../shared/templates.js';
-import { THEMES, FORMATS, TRANSITIONS, DISCLAIMER } from '../shared/brand.js';
+import { THEMES, FORMATS, TRANSITIONS, DISCLAIMER, KINDS, SAFE_ZONES, BG_MOTION } from '../shared/brand.js';
+import { LIBRARY, LIBRARY_CATEGORIES, libraryItem, buildLibraryDoc } from '../shared/library.js';
 import { createSlide, normalizeDocument } from '../shared/schema.js';
 import { lintDocument } from '../shared/lint.js';
 
@@ -82,13 +83,15 @@ function openBrowser(url) {
 const slideSchema = z.object({
   template: z.enum(TEMPLATE_IDS).describe('Template id. See studio_guide for fields.'),
   theme: z.enum(Object.keys(THEMES)).optional().describe('onyx (dark, default) | charcoal | bullion (campaign gradient) | cream (light) | sand (light gold)'),
-  content: z.record(z.string(), z.any()).describe('Template fields, e.g. { kicker, title, subtitle, body, items[], screenshot, device, icon, stat, label, code, button, link, disclaimer }. Wrap a word in *asterisks* for the gold accent.'),
+  content: z.record(z.string(), z.any()).default({}).describe('Template fields, e.g. { kicker, title, subtitle, body, items[], screenshot, device, icon, stat, label, code, button, link, disclaimer }. Wrap a word in *asterisks* for the gold accent. Can be omitted for logo-sting.'),
   duration: z.number().min(1).max(30).optional().describe('Seconds (video/animation). Default 4.'),
-  transition: z.enum(Object.keys(TRANSITIONS)).optional().describe('Transition into this slide in video mode.'),
+  transition: z.enum(Object.keys(TRANSITIONS)).optional().describe('Transition into this slide in reels/videos.'),
+  bgMotion: z.enum(Object.keys(BG_MOTION)).optional().describe('none | drift (pattern drifts at 45°, feels live) | zoom (slow photo zoom)'),
 });
+const captionSchema = z.object({ text: z.string().describe('Instagram caption. First line is the hook. Natural, specific, no hype. Max 2,200 chars incl. hashtags.'), hashtags: z.array(z.string()).max(30).optional().describe('3–5 relevant hashtags, e.g. ["#Goldcom", "#ذهب"]') });
 
 function buildSlides(specs) {
-  return specs.map((s) => createSlide({ template: s.template, theme: s.theme || 'onyx', content: s.content || {}, duration: s.duration || 4, transition: s.transition || 'fade', pattern: 'top', layers: [] }));
+  return specs.map((s) => createSlide({ template: s.template, theme: s.theme || 'onyx', content: s.content || {}, duration: s.duration || 4, transition: s.transition || 'fade', bgMotion: s.bgMotion || 'none', pattern: 'top', layers: [] }));
 }
 
 // ---------- server ----------
@@ -114,14 +117,31 @@ server.registerTool('studio_guide', {
     '2. Get live visuals: if the project has a UI, start its dev server and call capture_screenshot (device phone for mobile/responsive apps, desktop for web apps). Use the returned url as content.screenshot.',
     '3. Plan a narrative of 5–10 slides: cover → problem (statement) → features (feature/screenshot) → proof (stat/list/code) → cta. One idea per slide, titles ≤ 8 words.',
     '4. Write copy following the brand voice below. Default language is Arabic (lang "ar") for Omani audiences unless the user asks for English. Write Arabic natively, not as a translation, and mention that new Arabic copy should get native review.',
-    '5. Call create_design. Read its brand_check, then fix issues with edit_slide. Call render_preview to look at the slides and refine.',
-    '6. Give the user the studio URL. They can edit every word and layer there and export PNG/ZIP/MP4/GIF. export_pngs can also save the PNGs straight into the project.',
+    '5. Call create_design with a caption (hook first line, 3–5 hashtags). Read its brand_check, then fix issues with edit_slide. Call render_preview to look at the slides and refine.',
+    '6. Audit: run the goldcom-auditor agent (Task tool, subagent_type "goldcom-auditor") on the design id. It checks design consistency and whether the copy sounds robotic or like AI filler, in English and Arabic. Fix every blocker and should-fix, then re-render.',
+    '7. Give the user the studio URL. They can edit every word and layer there, preview it inside an Instagram mock-up, and export PNG/ZIP/MP4/GIF. export_pngs can also save the PNGs straight into the project.',
+    '',
+    '## Copy that sounds human',
+    '- Banned filler: unlock, elevate, seamless, journey, game-changer, revolutionize, empower, "in today\'s world", "whether you\'re… or…", "look no further", "dive in", "it\'s not just X, it\'s Y", stacked adjectives, vague futures ("the future of gold").',
+    '- One idea per slide. Concrete nouns and numbers. Short, plain sentences. Vary CTAs across slides and designs.',
+    '- Arabic: natural Modern Standard Arabic as written in the Gulf, never word-for-word English. Watch gender agreement, use جرام / جولدكم / عيار consistently, and write prices as "31.204 ر.ع.".',
     '',
     '## Formats',
     ...Object.entries(FORMATS).map(([k, f]) => `- ${k}: ${f.label} (${f.w}x${f.h})`),
     '',
-    '## Kinds',
-    '- carousel: swipeable slides with a pager (Instagram/LinkedIn). post: single image. video: slides play in sequence with transitions and entrance animations (export MP4).',
+    '## Kinds (Instagram first)',
+    ...Object.entries(KINDS).map(([k, v]) => `- ${k}: ${v.label}. ${v.hint}.`),
+    `- Reels and Stories are 9:16 (format "story"). Templates keep text out of the Instagram UI: Reels top ${SAFE_ZONES.reel.top}px / bottom ${SAFE_ZONES.reel.bottom}px, Stories top ${SAFE_ZONES.story.top}px / bottom ${SAFE_ZONES.story.bottom}px.`,
+    '- Feed posts are best at 4:5 (feed-portrait). The profile grid crops them to 3:4, so keep text away from the side edges.',
+    '',
+    '## Making it feel live',
+    '- Use the live templates: live-price (price board: price counts up, chart draws, ticker scrolls, always badged Indicative with the date; never call a posted price "live"), notification (push notification drops onto a phone), sticker (poll/quiz/slider/question/countdown), countdown (ticking digits), chat (types itself out), goal (ring fills), kinetic (words land one by one), logo-sting (logo assembles).',
+    '- bgMotion "drift" on dark slides adds slow 45° pattern movement. Vary transitions in reels: fade, slide, wipe, zoom.',
+    '- For Stories with polls, quizzes, sliders, question boxes or countdowns, set content.native = "yes" so the studio marks the space for Instagram\'s own (tappable) sticker instead of baking a fake one into the image. Mention it in notes.',
+    '- Never show invented results (poll %, user numbers, testimonials). Prices in designs are illustrative: say so, and add notes: "Update the price before posting".',
+    '',
+    '## Library',
+    '- list_library shows ready-made, audited designs. create_from_library copies one (then edit_slide to adapt it). Start there when the request matches a library item.',
     '',
     '## Themes (per slide)',
     ...Object.entries(THEMES).map(([k, t]) => `- ${k}: ${t.label}`),
@@ -155,7 +175,7 @@ server.registerTool('get_design', {
 }, async ({ id, full }) => {
   const doc = await getDocument(id);
   if (full) return text(doc);
-  return text({ ...summary(doc), slides: doc.slides.map((s, i) => ({ index: i, template: s.template, theme: s.theme, custom: s.custom, duration: s.duration, transition: s.transition, content: s.content, layers: s.layers.map((l) => `${l.type}${l.name ? `:${l.name}` : ''}`) })) });
+  return text({ ...summary(doc), caption: doc.caption, notes: doc.notes || null, slides: doc.slides.map((s, i) => ({ index: i, template: s.template, theme: s.theme, custom: s.custom, duration: s.duration, transition: s.transition, content: s.content, layers: s.layers.map((l) => `${l.type}${l.name ? `:${l.name}` : ''}`) })) });
 });
 
 server.registerTool('create_design', {
@@ -164,14 +184,18 @@ server.registerTool('create_design', {
   inputSchema: {
     name: z.string().describe('Design name, e.g. "Acme dashboard · launch carousel"'),
     format: z.enum(Object.keys(FORMATS)).default('feed-portrait'),
-    kind: z.enum(['carousel', 'post', 'video']).default('carousel'),
+    kind: z.enum(Object.keys(KINDS)).default('carousel').describe('carousel | post | motion (animated post) | story (separate 9:16 frames) | reel (one 9:16 video) | video'),
     lang: z.enum(['ar', 'en']).default('ar').describe('Document language: ar = Arabic RTL (Goldcom default), en = English'),
     slides: z.array(slideSchema).min(1).max(20),
     project: z.string().optional().describe('Project this design is about (defaults to the current folder name)'),
     open: z.boolean().optional().describe('Open the studio in the browser (default true)'),
+    caption: captionSchema.optional(),
+    notes: z.string().optional().describe('Anything the user must do before posting (e.g. update prices, add a native sticker).'),
   },
-}, async ({ name, format, kind, lang, slides, project: proj, open = true }) => {
-  const doc = await createFromSpec({ name, format, kind, lang, slides: slides.map((s) => ({ ...s, pattern: 'top' })), source: { type: 'claude-code', project: proj || project(), cwd: process.cwd(), lastWriter: 'claude-code', createdAt: new Date().toISOString() } });
+}, async ({ name, format, kind, lang, slides, project: proj, open = true, caption, notes }) => {
+  if ((kind === 'reel' || kind === 'story') && format !== 'story') format = 'story';
+  let doc = await createFromSpec({ name, format, kind, lang, slides: slides.map((s) => ({ ...s, pattern: 'top' })), source: { type: 'claude-code', project: proj || project(), cwd: process.cwd(), lastWriter: 'claude-code', createdAt: new Date().toISOString() } });
+  if (caption || notes) doc = await saveDocument({ ...doc, caption: caption ? { text: caption.text, hashtags: caption.hashtags || [] } : doc.caption, notes: notes || doc.notes });
   const up = await ensureStudio();
   if (up && open) openBrowser(designUrl(doc.id));
   return text({ ...summary(doc), studio: up ? 'running' : `not running. Start it with: cd ${STUDIO_ROOT} && npm run studio` });
@@ -228,7 +252,7 @@ server.registerTool('update_design', {
   title: 'Update design',
   description: 'Rename, change format/kind/language, or reorder slides (order = new order of current indexes). Template slides re-layout automatically.',
   inputSchema: {
-    id: z.string(), name: z.string().optional(), format: z.enum(Object.keys(FORMATS)).optional(), kind: z.enum(['carousel', 'post', 'video']).optional(),
+    id: z.string(), name: z.string().optional(), format: z.enum(Object.keys(FORMATS)).optional(), kind: z.enum(Object.keys(KINDS)).optional(),
     lang: z.enum(['ar', 'en']).optional(), order: z.array(z.number().int().min(0)).optional(),
   },
 }, async ({ id, name, format, kind, lang, order }) => {
@@ -335,6 +359,38 @@ server.registerTool('export_pngs', {
   return text({ saved: files });
 });
 
+server.registerTool('list_library', {
+  title: 'List library designs',
+  description: 'Ready-made, audited Goldcom Instagram designs (posts, carousels, reels, stories, animated posts, videos). Use create_from_library to copy one.',
+  inputSchema: { category: z.enum(Object.keys(LIBRARY_CATEGORIES)).optional() },
+}, async ({ category }) => text(LIBRARY.filter((i) => !category || i.category === category).map((i) => ({ id: i.id, category: i.category, kind: i.kind, format: i.format, name: i.name, tags: i.tags, notes: i.notes || null, slides: i.build('en').slides.map((s) => s.template) }))));
+
+server.registerTool('create_from_library', {
+  title: 'Create design from library',
+  description: 'Copy a library design into an editable design in Arabic or English. Adapt it afterwards with edit_slide and set_caption.',
+  inputSchema: { item_id: z.string(), lang: z.enum(['ar', 'en']).default('ar'), name: z.string().optional(), open: z.boolean().optional() },
+}, async ({ item_id, lang, name, open = true }) => {
+  const item = libraryItem(item_id);
+  if (!item) return fail(`No library item "${item_id}". Call list_library.`);
+  const d = buildLibraryDoc(item, lang);
+  if (name) d.name = name;
+  d.source = { type: 'claude-code', project: project(), cwd: process.cwd(), lastWriter: 'claude-code', library: item_id, createdAt: new Date().toISOString() };
+  const saved = await saveDocument(d);
+  const up = await ensureStudio();
+  if (up && open) openBrowser(designUrl(saved.id));
+  return text({ ...summary(saved), caption: saved.caption, notes: saved.notes || null });
+});
+
+server.registerTool('set_caption', {
+  title: 'Set Instagram caption',
+  description: 'Set the caption and hashtags of a design (shown in the Instagram preview and included in exports).',
+  inputSchema: { id: z.string(), text: z.string(), hashtags: z.array(z.string()).max(30).optional(), notes: z.string().optional() },
+}, async ({ id, text: captionText, hashtags, notes }) => {
+  const doc = await getDocument(id);
+  const saved = await saveDocument(stamp({ ...doc, caption: { text: captionText, hashtags: (hashtags || doc.caption?.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`)) }, ...(notes !== undefined ? { notes } : {}) }));
+  return text({ id: saved.id, caption: saved.caption, brand_check: summary(saved).brand_check });
+});
+
 server.registerTool('brand_check', {
   title: 'Brand check',
   description: 'Run the Goldcom brand checks (claims register, name spelling, disclaimers, logo use, OMR format) on a design.',
@@ -357,7 +413,7 @@ server.registerPrompt('project_carousel', {
   description: 'Design an on-brand Goldcom carousel about the current project.',
   argsSchema: { language: z.string().optional().describe('ar or en (default ar)'), slides: z.string().optional().describe('Number of slides, default 7'), format: z.string().optional().describe('feed-portrait | square | story | linkedin') },
 }, ({ language, slides, format }) => ({
-  messages: [{ role: 'user', content: { type: 'text', text: `Use the goldcom-studio tools to design a ${slides || 7}-slide ${format || 'feed-portrait'} carousel about this project in ${language === 'en' ? 'English' : 'Arabic'}. Call studio_guide first, study the project, capture live screenshots if it has a UI, then create_design, check brand_check and render_preview, refine, and give me the studio link.` } }],
+  messages: [{ role: 'user', content: { type: 'text', text: `Use the goldcom-studio tools to design a ${slides || 7}-slide ${format || 'feed-portrait'} Instagram carousel about this project in ${language === 'en' ? 'English' : 'Arabic'}. Call studio_guide first, study the project, capture live screenshots if it has a UI, then create_design with a caption, check brand_check and render_preview, run the goldcom-auditor agent on it, fix what it finds, and give me the studio link.` } }],
 }));
 
 server.registerPrompt('project_video', {
@@ -365,7 +421,7 @@ server.registerPrompt('project_video', {
   description: 'Design a short animated video (9:16 by default) about the current project.',
   argsSchema: { language: z.string().optional(), seconds: z.string().optional(), format: z.string().optional() },
 }, ({ language, seconds, format }) => ({
-  messages: [{ role: 'user', content: { type: 'text', text: `Use the goldcom-studio tools to design a ${seconds || 20}-second ${format || 'story'} video (kind "video") about this project in ${language === 'en' ? 'English' : 'Arabic'}. Call studio_guide first. Use 4–6 slides with durations that add up to the target, vary transitions (fade, slide, wipe), then render_preview, refine and give me the studio link so I can export the MP4.` } }],
+  messages: [{ role: 'user', content: { type: 'text', text: `Use the goldcom-studio tools to design a ${seconds || 20}-second Instagram Reel (kind "reel", format "${format || 'story'}") about this project in ${language === 'en' ? 'English' : 'Arabic'}. Call studio_guide first. Open with a kinetic hook, use 4–6 slides with durations that add up to the target, use live templates and vary transitions (fade, slide, wipe, zoom), add a caption, then render_preview, run the goldcom-auditor agent, refine and give me the studio link so I can export the MP4.` } }],
 }));
 
 const transport = new StdioServerTransport();
