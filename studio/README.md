@@ -70,7 +70,7 @@ Prompts `project_carousel` and `project_video` are also exposed as slash command
 
 ### The auditor
 
-[`../.claude/agents/goldcom-auditor.md`](../.claude/agents/goldcom-auditor.md) is an independent reviewer. It checks visual consistency with the brand, claims and disclaimers, Instagram readiness, and whether the copy sounds human or robotic and generic ("AI slop"), in English and Arabic. The skill makes Claude run it after every design and fix what it finds. The library in this repo went through three audit passes.
+[`../.claude/agents/goldcom-auditor.md`](../.claude/agents/goldcom-auditor.md) is an independent reviewer. It checks visual consistency with the brand, claims and disclaimers, Instagram readiness, and whether the copy sounds human or robotic and generic ("AI slop"), in English and Arabic. The skill makes Claude run it after every design and fix what it finds. The library in this repo went through four audit passes.
 
 ## Using the studio
 

@@ -423,13 +423,14 @@ export const TEMPLATES = {
       const ix = h.m + pad;
       const iw = h.cw - 2 * pad;
       out.push(textLayer(h, { text: c.label || '', role: 'small', x: ix, y: y + pad, w: iw * 0.6, color: 'fg2', lang: ctx.lang, delay: 0.2 }));
-      out.push(textLayer(h, { text: c.time || '', role: 'caption', x: ix + iw * 0.5, y: y + pad + 4 * h.s, w: iw * 0.5, align: 'end', color: 'fg2', lang: ctx.lang, delay: 0.2 }));
+      const tm = textLayer(h, { text: c.time || '', role: 'caption', x: ix + iw * 0.5, y: y + pad + 4 * h.s, w: iw * 0.5, align: 'end', color: 'fg2', lang: ctx.lang, delay: 0.2 }); out.push(tm);
       const pr = textLayer(h, { text: c.price || '', role: 'price', x: ix, y: y + pad + 56 * h.s, w: iw * 0.68, lang: 'en', delay: 0.25, name: 'price' });
       pr.anim = anim('count', 0.25, 1.1); pr.dir = ctx.lang === 'ar' ? 'rtl' : 'ltr'; pr.x = h.X(ix, iw * 0.68); out.push(pr);
       const up = !String(c.change || '').trim().startsWith('-') && !String(c.change || '').trim().startsWith('−');
       const bw = Math.round(200 * h.s);
-      out.push(L('badge', { name: 'change', text: `${up ? '▲' : '▼'} ${c.change || ''}`, variant: up ? 'gain' : 'loss', gem: false, x: h.X(ix + iw - bw, bw), y: y + pad + 70 * h.s, w: bw, h: Math.round(56 * h.s), dir: 'ltr', anim: anim('fade', 0.5) }));
-      const chY = y + pad + 200 * h.s;
+      out.push(L('badge', { name: 'change', text: `${up ? '▲' : '▼'} ${c.change || ''}`, variant: up ? 'gain' : 'loss', gem: false, x: h.X(ix + iw - bw, bw), y: Math.max(y + pad + 70 * h.s, tm.y + tm.h + 14 * h.s), w: bw, h: Math.round(56 * h.s), dir: 'ltr', anim: anim('fade', 0.5) }));
+      // A long time stamp wraps; the badge and chart move down with it instead of overlapping.
+      const chY = Math.max(y + pad + 200 * h.s, tm.y + tm.h + 110 * h.s);
       out.push(L('chart', { name: 'chart', trend: up ? 'up' : 'down', x: ix, y: chY, w: iw, h: y + cardH - pad - chY, anim: anim('draw', 0.4, 1.4) }));
       out.push(disclaimerLayer(h, ctx, h.H - h.m - (ctx.noPager ? 0 : 70 * h.s)));
       out.push(...pagerLayers(h, ctx));

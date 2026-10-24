@@ -576,9 +576,9 @@ export function buildLibraryDoc(item, lang = 'ar') {
   const built = item.build(lang);
   const doc = createDocument({ name: item.name[lang] || item.name.en, format: item.format, kind: item.kind, lang, caption: built.caption });
   doc.source = { type: 'library', item: item.id };
-  // Buttons inside a Reel cannot be tapped, so the caption points to the link in the bio.
+  // Buttons inside a Reel (or a video posted as one) cannot be tapped, so the caption points to the link in the bio.
   const last = built.slides[built.slides.length - 1];
-  if (item.kind === 'reel' && last?.template === 'cta' && doc.caption && !/goldcom\.om/.test(doc.caption.text)) {
+  if (['reel', 'video'].includes(item.kind) && last?.template === 'cta' && doc.caption && !/goldcom\.om/.test(doc.caption.text)) {
     doc.caption = { ...doc.caption, text: `${doc.caption.text}\n\n${lang === 'ar' ? 'الرابط في الملف الشخصي: goldcom.om' : 'Link in bio: goldcom.om'}` };
   }
   if (item.notes) doc.notes = item.notes;

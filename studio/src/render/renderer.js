@@ -681,7 +681,7 @@ function drawGoldBar(c, layer, ctx, gleamP) {
 }
 
 function drawChart(c, layer, ctx, p) {
-  let pts = (layer.points && layer.points.filter((v) => Number.isFinite(Number(v))).length > 1 ? layer.points.filter((v) => Number.isFinite(Number(v))) : [40, 42, 41, 44, 43, 42, 45, 44, 46, 45, 47, 46, 48]).map(Number);
+  let pts = (layer.points && layer.points.filter((v) => Number.isFinite(Number(v))).length > 1 ? layer.points.filter((v) => Number.isFinite(Number(v))) : [44, 45.5, 44.2, 43.1, 44.8, 46, 45.1, 43.9, 44.6, 45.8, 45.2, 44.5, 45.6]).map(Number);
   const liveChart = layer.loop?.type === 'live' && ctx.live;
   if (liveChart) {
     // Live data: the series breathes and the newest point keeps updating.
@@ -692,7 +692,9 @@ function drawChart(c, layer, ctx, p) {
   const up = layer.trend === 'up' || (layer.trend !== 'down' && pts[pts.length - 1] >= pts[0]);
   const light = isLightTheme(ctx.theme);
   const lineCol = up ? (light ? COLORS.bronze : COLORS.gold) : light ? COLORS.lossLight : COLORS.lossDark;
-  const min = Math.min(...pts), max = Math.max(...pts);
+  // Headroom above and below keeps a small daily move looking small (brand §10: calm about markets).
+  const lo = Math.min(...pts), hi = Math.max(...pts), span = (hi - lo) || 1;
+  const min = lo - span * 0.45, max = hi + span * 0.45;
   const pad = layer.h * 0.08;
   const X = (i) => layer.x + (i / (pts.length - 1)) * layer.w;
   const Y = (v) => layer.y + pad + (1 - (v - min) / (max - min || 1)) * (layer.h - 2 * pad);
