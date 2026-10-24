@@ -8,7 +8,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { unzipSync } from 'fflate';
 import { DATA_DIR } from '../store.mjs';
 
-const TOOLS_DIR = path.join(DATA_DIR, 'tools');
+export const TOOLS_DIR = path.join(DATA_DIR, 'tools');
 const exe = process.platform === 'win32' ? 'adb.exe' : 'adb';
 
 export function findAdb() {
@@ -83,6 +83,15 @@ export async function devices() {
     const kv = Object.fromEntries(rest.map((x) => x.split(':')).filter((x) => x.length === 2));
     return { serial, state, model: (kv.model || '').replace(/_/g, ' '), product: kv.product || '', device: kv.device || '', usb: kv.usb || null };
   });
+}
+
+/**
+ * The phone to film with: the preferred serial when it is online, otherwise the studio's emulator, otherwise the
+ * first connected device (USB phone or cloud phone connected over the network).
+ */
+export async function pickDevice(preferred) {
+  const ready = (await devices()).filter((d) => d.state === 'device');
+  return ready.find((d) => d.serial === preferred) || ready.find((d) => d.serial === 'emulator-5584') || ready[0] || null;
 }
 
 export async function deviceInfo(serial) {

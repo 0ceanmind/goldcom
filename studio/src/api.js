@@ -41,13 +41,22 @@ export const api = {
   uploadFootage: (file) => req('POST', '/api/footage', file, { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name || 'recording.mp4') }),
   updateFootage: (id, patch) => req('PATCH', `/api/footage/${id}`, patch),
   deleteFootage: (id) => req('DELETE', `/api/footage/${id}`),
-  device: () => req('GET', '/api/device'),
+  device: (serial) => req('GET', `/api/device${serial ? `?serial=${encodeURIComponent(serial)}` : ''}`),
   installTools: () => req('POST', '/api/device/install-tools', {}),
   deviceInput: (b) => req('POST', '/api/device/input', b),
-  deviceScreenshot: (name) => req('POST', '/api/device/screenshot', { name }),
-  deviceCapture: (goal, lang) => req('POST', '/api/device/capture', { goal, lang }),
-  recordStart: () => req('POST', '/api/device/record/start', {}),
+  deviceScreenshot: (name, serial) => req('POST', '/api/device/screenshot', { name, serial }),
+  deviceCapture: (goal, lang, serial) => req('POST', '/api/device/capture', { goal, lang, serial }),
+  recordStart: (serial) => req('POST', '/api/device/record/start', { serial }),
   recordStop: (name) => req('POST', '/api/device/record/stop', { name }),
+
+  // Phone emulator on this computer
+  emulator: () => req('GET', '/api/emulator'),
+  emulatorInstall: () => req('POST', '/api/emulator/install', { acceptLicense: true }),
+  emulatorStart: (headless) => req('POST', '/api/emulator/start', { headless }),
+  emulatorStop: () => req('POST', '/api/emulator/stop', {}),
+  emulatorOpenStore: () => req('POST', '/api/emulator/open-store', {}),
+  emulatorEnableHypervisor: () => req('POST', '/api/emulator/enable-hypervisor', {}),
+  emulatorRemove: () => req('DELETE', '/api/emulator'),
 
   // Settings, engine, updates
   settings: () => req('GET', '/api/settings'),

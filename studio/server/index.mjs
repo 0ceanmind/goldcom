@@ -12,12 +12,14 @@ import { lintDocument } from '../shared/lint.js';
 import { capturePage, renderDocument, browserAvailable, closeBrowser } from './browser.mjs';
 import { send, readJson, readBody, serveFile } from './http-util.mjs';
 import { setBroadcaster, getJob, listJobs, cancelJob, deleteJob, recoverJobs } from './jobs.mjs';
-import { onFootageChange } from './footage/store.mjs';
+import { onFootageChange, resumeProcessing } from './footage/store.mjs';
 import { footageRoutes } from './routes/footage.mjs';
 import { exportRoutes } from './routes/exports.mjs';
 import { systemRoutes, startUpdateChecks } from './routes/system.mjs';
 import { productionRoutes } from './routes/production.mjs';
 import { deviceRoutes } from './routes/device.mjs';
+import { emulatorRoutes } from './routes/emulator.mjs';
+import { cloudRoutes } from './routes/cloud.mjs';
 
 const PORT = Number(process.env.PORT || 5177);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -27,6 +29,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
 
 ensureDirs();
 recoverJobs().catch(() => {});
+resumeProcessing().catch(() => {});
 
 // ---------- live updates ----------
 const clients = new Set();
@@ -117,6 +120,8 @@ async function handle(req, res) {
   if (await exportRoutes(req, res, url, { base: BASE })) return;
   if (await productionRoutes(req, res, url, { base: BASE, broadcast })) return;
   if (await deviceRoutes(req, res, url, { base: BASE, broadcast })) return;
+  if (await emulatorRoutes(req, res, url)) return;
+  if (await cloudRoutes(req, res, url)) return;
   if (await systemRoutes(req, res, url, { broadcast, server })) return;
 
   if ((mm = m(/^\/assets\/([^/]+)$/))) {

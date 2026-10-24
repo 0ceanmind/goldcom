@@ -89,6 +89,14 @@ export async function importFootage(input, extra = {}) {
   return meta;
 }
 
+/** Finish footage whose processing was cut short (the studio stopped or restarted while it ran). */
+export async function resumeProcessing() {
+  for (const meta of await listFootage()) {
+    if (meta.status !== 'processing') continue;
+    await processFootage(meta.id).catch((e) => updateFootage(meta.id, { status: 'error', error: e.message }).catch(() => {}));
+  }
+}
+
 /** Transcode, poster, segment detection. */
 export async function processFootage(id) {
   const meta = await getFootage(id);

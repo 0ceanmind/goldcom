@@ -11,7 +11,7 @@ import { getSettings } from '../settings.mjs';
 const deviceCapture = {
   async status() {
     if (!A.findAdb()) return null;
-    const ready = (await A.devices()).find((d) => d.state === 'device');
+    const ready = await A.pickDevice(getSettings().captureDevice);
     return ready ? { ready: true, serial: ready.serial, model: ready.model } : null;
   },
   async capture({ goal, lang, signal, onMessage }) {

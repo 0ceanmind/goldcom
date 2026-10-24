@@ -13,6 +13,8 @@ export const DEFAULTS = {
   claudePath: '', // custom path to the `claude` CLI
   language: 'ar', // default content language
   appPackage: '', // Android package of the Goldcom app (auto-detected when empty)
+  captureDevice: '', // adb serial to film with ('' = automatic: emulator, then any connected phone)
+  cloudPhones: [], // saved cloud phones: [{ name, provider, address: 'host:port' }]
   updateBranch: '', // empty = studio/release.json
   autoUpdateCheck: true,
   exportFps: 30,

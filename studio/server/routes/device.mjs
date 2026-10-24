@@ -11,9 +11,9 @@ let manual = null;
 
 async function pickSerial(serial) {
   if (serial) return serial;
-  const list = (await A.devices()).filter((d) => d.state === 'device');
-  if (!list.length) throw Object.assign(new Error('No Android phone is connected. Connect it with USB and allow USB debugging.'), { status: 409 });
-  return list[0].serial;
+  const d = await A.pickDevice(getSettings().captureDevice);
+  if (!d) throw Object.assign(new Error('No phone is available. Start the phone emulator, connect a cloud phone, or plug in an Android phone.'), { status: 409 });
+  return d.serial;
 }
 
 export async function deviceRoutes(req, res, url) {
@@ -25,13 +25,14 @@ export async function deviceRoutes(req, res, url) {
     let devices = [];
     let error = null;
     try { devices = await A.devices(); } catch (e) { error = e.message; }
-    const ready = devices.find((d) => d.state === 'device');
+    const want = url.searchParams.get('serial');
+    const ready = want ? devices.find((d) => d.serial === want && d.state === 'device') : devices.find((d) => d.state === 'device');
     let info = null, pkg = getSettings().appPackage || null;
     if (ready) {
       try { info = await A.deviceInfo(ready.serial); } catch { /* ignore */ }
       if (!pkg) { try { pkg = await A.findGoldcomPackage(ready.serial); } catch { /* ignore */ } }
     }
-    send(res, 200, { adb: adbPath, devices, info, pkg, recording: !!manual, error });
+    send(res, 200, { adb: adbPath, devices, serial: ready?.serial || null, info, pkg, recording: manual?.serial || null, error });
     return true;
   }
   if (p === '/api/device/install-tools' && req.method === 'POST') {
@@ -87,6 +88,7 @@ export async function deviceRoutes(req, res, url) {
     if (manual) throw Object.assign(new Error('Already recording'), { status: 409 });
     const serial = await pickSerial(b.serial);
     manual = await startManualTake(serial, { demo: b.demo !== false });
+    manual.serial = serial;
     send(res, 200, { ok: true });
     return true;
   }

@@ -34,8 +34,12 @@ The default model is Claude Opus 5.5 at "Thorough". **Test connection** checks i
 
 The **Footage** page holds real recordings and screenshots of the Goldcom app. Claude watches each one (screens, button labels, whether personal data is visible) and cuts them into productions.
 
-- **Any phone:** record the screen (iPhone: Control Centre → Screen Recording; Android: Quick settings → Screen record), go through the flow slowly, and drop the video on the Footage page. Long recordings are split into steps automatically.
-- **Android phone over USB (recommended):** press **Install Android tools** once, connect the phone with USB debugging on, and Claude can operate the real app itself. Type a goal ("open Browse, open the 1 g bar, tap Buy gold, stop on the review screen before paying"): Claude **rehearses** the flow screen by screen, then records **one clean take** at a natural pace with a clean status bar (09:41, full battery, no notifications) and every tap logged, so the editor can add tap ripples and camera zooms in the right places. It never confirms payments, sales or gifts and never types personal data. You can also mirror the phone, take screenshots, or record yourself while it logs your taps.
+Footage → **Film the real app** offers these sources. Claude drives any of them the same way: type a goal ("open Browse, open the 1 g bar, tap Buy gold, stop on the review screen before paying"), and Claude **rehearses** the flow screen by screen, then records **one clean take** at a natural pace with a clean status bar (09:41, full battery, no notifications) and every tap logged, so the editor can add tap ripples and camera zooms in the right places. It never confirms payments, sales or gifts and never types personal data.
+
+- **Emulator (no phone needed):** a real Android phone with Google Play running inside your computer. Press **Install the phone emulator** once (about 2.3 GB from Google, needs ~12 GB free disk and 8 GB RAM), then **Start the phone**. The first time, sign in to the Play Store in the phone window, press **Open Goldcom in the Play Store**, install it and log in (a demo account is best). After that the phone keeps its data and starts in seconds. On Windows the studio checks that *Windows Hypervisor Platform* is on and can switch it on for you (one restart).
+- **Cloud phone:** an Android phone rented in a data centre. Paste its ADB address (host:port) from your provider's dashboard and the studio connects to it over the internet.
+- **Any phone, recorded by hand:** record the screen (iPhone: Control Centre → Screen Recording; Android: Quick settings → Screen record), go through the flow slowly, and drop the video on the Footage page. Long recordings are split into steps automatically.
+- **Android phone over USB (optional):** press **Install Android tools** once and connect the phone with USB debugging on.
 
 ### Production scenes
 
