@@ -14,9 +14,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { DATA_DIR, saveAsset } from './store.mjs';
 import { recordGeneration, providerStats, readLessons, readKnowledge } from './memory.mjs';
+import { getSettings, updateSettings } from './settings.mjs';
 
-// ---------- settings (local only: <data>/settings.json, git-ignored) ----------
-const SETTINGS = path.join(DATA_DIR, 'settings.json');
+// ---------- settings (local only: <data>/settings.json via settings.mjs, git-ignored) ----------
 export const KEY_NAMES = ['OPENAI_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'MESHY_API_KEY', 'TRIPO_API_KEY'];
 const DEFAULT_MODELS = {
   openai: 'gpt-image-2.5-sunburst',
@@ -28,28 +28,41 @@ const DEFAULT_MODELS = {
   tripo: 'v3.1-20260211',
 };
 
-export function readSettings() {
-  try { return JSON.parse(fs.readFileSync(SETTINGS, 'utf8')); } catch { return {}; }
+export const readSettings = () => getSettings();
+/** Merge generator settings (nested keys/models/providers/director) into the shared settings file. */
+export function writeGeneratorSettings(patch) {
+  const cur = getSettings();
+  const next = {};
+  if (patch.keys) {
+    const keys = { ...(cur.keys || {}) };
+    for (const [k, v] of Object.entries(patch.keys)) {
+      if (k === 'ANTHROPIC_API_KEY') { next.anthropicApiKey = v || ''; continue; } // one Anthropic key for the whole studio
+      if (v === '' || v === null) delete keys[k]; else keys[k] = v;
+    }
+    next.keys = keys;
+  }
+  if (patch.models) next.models = { ...(cur.models || {}), ...patch.models };
+  if (patch.providers) next.providers = { ...(cur.providers || {}), ...patch.providers };
+  if (patch.director) next.director = { ...(cur.director || {}), ...patch.director };
+  if ('autoRepair' in patch) next.autoRepair = !!patch.autoRepair;
+  return updateSettings(next);
 }
-export function writeSettings(patch) {
-  const cur = readSettings();
-  const next = { ...cur, ...patch, keys: { ...(cur.keys || {}), ...(patch.keys || {}) }, models: { ...(cur.models || {}), ...(patch.models || {}) }, providers: { ...(cur.providers || {}), ...(patch.providers || {}) } };
-  for (const [k, v] of Object.entries(next.keys)) if (v === '' || v === null) delete next.keys[k];
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(SETTINGS, JSON.stringify(next, null, 2), { mode: 0o600 });
-  return next;
-}
-const key = (name) => readSettings().keys?.[name] || process.env[name] || '';
-const model = (name) => readSettings().models?.[name] || DEFAULT_MODELS[name];
-const rememberModel = (name, id) => writeSettings({ models: { [name]: id } });
-const enabled = (id) => readSettings().providers?.[id] !== false;
+const key = (name) => {
+  const s = getSettings();
+  if (name === 'ANTHROPIC_API_KEY') return s.anthropicApiKey || process.env.ANTHROPIC_API_KEY || '';
+  return s.keys?.[name] || process.env[name] || '';
+};
+const model = (name) => getSettings().models?.[name] || DEFAULT_MODELS[name];
+const rememberModel = (name, id) => writeGeneratorSettings({ models: { [name]: id } });
+const enabled = (id) => getSettings().providers?.[id] !== false;
 
-/** Settings for the UI: keys are masked, never returned in full. */
-export function publicSettings() {
-  const s = readSettings();
+/** Generator settings for the UI: keys are masked, never returned in full. */
+export function publicGeneratorSettings() {
+  const s = getSettings();
   const keys = Object.fromEntries(KEY_NAMES.map((k) => {
-    const v = s.keys?.[k] || process.env[k] || '';
-    return [k, v ? { set: true, source: s.keys?.[k] ? 'studio' : 'environment', hint: `…${v.slice(-4)}` } : { set: false }];
+    const own = k === 'ANTHROPIC_API_KEY' ? s.anthropicApiKey : s.keys?.[k];
+    const v = own || process.env[k] || '';
+    return [k, v ? { set: true, source: own ? 'studio' : 'environment', hint: `…${String(v).slice(-4)}` } : { set: false }];
   }));
   return { keys, models: { ...DEFAULT_MODELS, ...(s.models || {}) }, providers: s.providers || {}, autoRepair: s.autoRepair !== false, director: s.director || {} };
 }
@@ -282,7 +295,7 @@ const providers = {
       if (key('ANTHROPIC_API_KEY')) {
         const j = await fetchJson('https://api.anthropic.com/v1/messages', {
           method: 'POST',
-          headers: { 'x-api-key': key('ANTHROPIC_API_KEY'), 'anthropic-version': readSettings().anthropicVersion || '2023-06-01', 'content-type': 'application/json' },
+          headers: { 'x-api-key': key('ANTHROPIC_API_KEY'), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
           body: JSON.stringify({ model: model('claude'), max_tokens: 16000, messages: [{ role: 'user', content: ask }] }),
         }, 'claude');
         svg = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');

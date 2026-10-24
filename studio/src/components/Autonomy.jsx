@@ -203,9 +203,9 @@ export function SettingsDialog({ onClose, toast }) {
   const [gens, setGens] = useState(null);
   const [agent, setAgent] = useState(null);
   const [keys, setKeys] = useState({});
-  const load = () => { api.settings().then(setS); api.generators().then(setGens); api.agentStatus().then(setAgent); };
+  const load = () => { api.generatorSettings().then(setS); api.generators().then(setGens); api.agentStatus().then(setAgent); };
   useEffect(load, []);
-  const save = async (patch) => { try { setS(await api.saveSettings(patch)); setKeys({}); api.generators().then(setGens); toast?.('Settings saved'); } catch (e) { toast?.(e.message, true); } };
+  const save = async (patch) => { try { setS(await api.saveGeneratorSettings(patch)); setKeys({}); api.generators().then(setGens); toast?.('Settings saved'); } catch (e) { toast?.(e.message, true); } };
   if (!s) return <Modal title="Settings" onClose={onClose} size="sm"><p className="hint">Loading…</p></Modal>;
   const KEYS = [['OPENAI_API_KEY', 'OpenAI (GPT Image)'], ['GEMINI_API_KEY', 'Google Gemini (Nano Banana)'], ['ANTHROPIC_API_KEY', 'Anthropic (Claude SVG art, optional director billing)'], ['MESHY_API_KEY', 'Meshy (text to 3D)'], ['TRIPO_API_KEY', 'Tripo (text to 3D)']];
   return (

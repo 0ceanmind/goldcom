@@ -581,6 +581,102 @@ server.registerTool('open_studio', {
   return text(up ? { url } : `Could not start the studio. Run: cd ${STUDIO_ROOT} && npm install && npm run studio`);
 });
 
+// ---------- AI productions, footage and video export (through the running studio) ----------
+async function studioApi(method, route, body, headers = {}) {
+  if (!(await ensureStudio())) throw new Error(`The studio is not running. Start it with: cd ${STUDIO_ROOT} && npm run studio`);
+  const raw = Buffer.isBuffer(body);
+  const res = await fetch(`${STUDIO_URL}${route}`, { method, headers: body && !raw ? { 'Content-Type': 'application/json', ...headers } : headers, body: body ? (raw ? body : JSON.stringify(body)) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
+  return data;
+}
+const productionUrl = (id) => `${STUDIO_URL}/#/p/${id}`;
+
+server.registerTool('produce', {
+  title: 'Produce content with the studio AI director',
+  description: 'Hand a plain-language request to the studio\'s production pipeline (brief → 3 concepts → director pick → storyboard → real app footage → motion design → art-director review → MP4). Returns a production id; follow it with production_status. Use this for complete Reels/carousels/Stories made with real app footage.',
+  inputSchema: {
+    prompt: z.string().describe('What to make, in the user\'s words, e.g. "step-by-step reel on how to buy gold in the app"'),
+    format: z.enum(['auto', 'reel', 'carousel', 'story', 'post', 'motion']).optional(),
+    lang: z.enum(['ar', 'en']).optional(),
+    duration: z.number().optional().describe('Target seconds for reels'),
+    open: z.boolean().optional().describe('Open the production page in the browser (default true)'),
+  },
+}, async ({ prompt, format = 'auto', lang, duration, open = true }) => {
+  try {
+    const { jobId } = await studioApi('POST', '/api/productions', { prompt, options: { format, lang, duration } });
+    if (open) openBrowser(productionUrl(jobId));
+    return text({ productionId: jobId, url: productionUrl(jobId), next: 'Call production_status every minute or two until status is "done" (a production takes about 5–10 minutes).' });
+  } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('production_status', {
+  title: 'Production status',
+  description: 'Status of a studio production: stage, latest message, storyboard, art-director reviews, design id and final video.',
+  inputSchema: { id: z.string() },
+}, async ({ id }) => {
+  try {
+    const j = await studioApi('GET', `/api/jobs/${id}`);
+    return text({
+      status: j.status, stage: j.stage, progress: j.progress, message: j.message, error: j.error, url: productionUrl(id),
+      brief: j.brief ? { format: j.brief.format, lang: j.brief.lang, key_message: j.brief.key_message } : null,
+      concept: j.concepts?.find((c) => c.id === (j.chosen || j.pick?.winner)) || null,
+      storyboard: j.storyboard ? j.storyboard.scenes.map((s, i) => ({ n: i + 1, scene: s.scene, duration: s.duration, title: s.fields.find((f) => f.key === 'title')?.value, footage: s.footage?.footage_id || (s.footage?.use ? 'missing' : null) })) : null,
+      reviews: (j.reviews || []).map((r) => ({ round: r.round, score: r.score, verdict: r.verdict, summary: r.summary })),
+      design: j.docId ? { id: j.docId, url: designUrl(j.docId) } : null,
+      video: j.result?.video || j.video ? `${STUDIO_URL}${(j.result?.video || j.video).url}` : null,
+      notes: j.storyboard?.notes || [],
+    });
+  } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('revise_production', {
+  title: 'Revise a production',
+  description: 'Ask the studio AI director to change a finished production ("make the hook punchier", "15 seconds", "use a woman in step 2"). It rewrites the storyboard, rebuilds, reviews and re-exports.',
+  inputSchema: { id: z.string(), note: z.string() },
+}, async ({ id, note }) => {
+  try { await studioApi('POST', `/api/productions/${id}/revise`, { note }); return text({ ok: true, url: productionUrl(id) }); } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('list_footage', {
+  title: 'List app footage',
+  description: 'The footage library: real Goldcom app screen recordings and screenshots with their steps, screens and tap timings.',
+  inputSchema: {},
+}, async () => {
+  try {
+    const list = await studioApi('GET', '/api/footage');
+    return text(list.map((f) => ({ id: f.id, name: f.name, kind: f.kind, status: f.status, duration: f.duration, summary: f.labels?.summary || null, src: f.kind === 'image' ? `/footage/${f.id}/image${f.ext || '.png'}` : `/footage/${f.id}/video.mp4`, steps: f.steps || [], segments: (f.segments || []).map((s) => ({ start: s.start, end: s.end, label: s.label || null })), taps: (f.events || []).filter((e) => e.type === 'tap') })));
+  } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('import_footage', {
+  title: 'Import app footage',
+  description: 'Add a screen recording (MP4/MOV) or screenshot (PNG/JPG) from a file path to the footage library.',
+  inputSchema: { path: z.string(), name: z.string().optional() },
+}, async ({ path: p, name }) => {
+  try {
+    const buf = fs.readFileSync(path.resolve(p));
+    const meta = await studioApi('POST', '/api/footage', buf, { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(name ? `${name}${path.extname(p)}` : path.basename(p)) });
+    return text({ id: meta.id, status: meta.status, note: 'Processing runs in the background (a few seconds to a minute).' });
+  } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('export_video', {
+  title: 'Export studio-quality video',
+  description: 'Render a design to MP4 on the server (frame-exact, with sound effects). Reels/videos → one MP4; Stories/carousels → one MP4 per slide in a ZIP. Returns a job id; poll job_status.',
+  inputSchema: { id: z.string(), mode: z.enum(['auto', 'sequence', 'slide', 'slides']).optional(), index: z.number().optional() },
+}, async ({ id, mode = 'auto', index = 0 }) => {
+  try { const { jobId } = await studioApi('POST', `/api/documents/${id}/export`, { mode, index }); return text({ jobId }); } catch (e) { return fail(e.message); }
+});
+
+server.registerTool('job_status', {
+  title: 'Job status',
+  description: 'Status of a studio background job (export, capture, update).',
+  inputSchema: { id: z.string() },
+}, async ({ id }) => {
+  try { const j = await studioApi('GET', `/api/jobs/${id}`); return text({ status: j.status, progress: j.progress, message: j.message, error: j.error, result: j.result ? { ...j.result, ...(j.result.url ? { url: `${STUDIO_URL}${j.result.url}` } : {}) } : null }); } catch (e) { return fail(e.message); }
+});
+
 server.registerPrompt('project_carousel', {
   title: 'Goldcom carousel for this project',
   description: 'Design an on-brand Goldcom carousel about the current project.',

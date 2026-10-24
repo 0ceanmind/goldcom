@@ -9,6 +9,12 @@ You design with the **goldcom-studio** MCP tools. Every design lands live in the
 
 If the `goldcom-studio` tools are not available, tell the user to run `npm run connect` inside the `studio/` folder of the Goldcom repo (or `claude mcp add goldcom-studio --scope user -- node <path>/studio/mcp/server.mjs`), then restart Claude Code.
 
+## 0. Prefer the studio's AI production pipeline for finished content
+For a complete Reel, carousel, Story or post about Goldcom (e.g. "step-by-step reel on how to buy gold", "carousel of two people with and without Goldcom"), call `produce` with the user's request. The studio then writes the brief, explores three concepts, lets a creative director pick one, storyboards it, uses REAL app footage from the library (or films the app on a connected Android phone), builds it with the production scenes, has an art director review rendered frames, applies the fixes and renders the MP4. Poll `production_status` every minute or two (a production takes about 5–10 minutes) and hand over the production URL, the design link, the video link, the art-director score and the "before posting" notes. Use `revise_production` for follow-up changes.
+- `list_footage` shows the app recordings available; `import_footage` adds a recording or screenshot from a path.
+- `export_video` renders any design to MP4 on the server (frame-exact, with sound effects).
+Use the manual workflow below for designs about other projects, or when the user wants hands-on control.
+
 ## 1. Load the rules
 Call `studio_guide` first, every session. It returns the brand rules (voice, claims register, colours, Arabic rules), the templates with their fields, and the formats and themes. Follow it over anything here if they differ.
 

@@ -12,12 +12,12 @@ async function loadPlaywright() {
   }
 }
 
-async function getBrowser() {
+export async function getBrowser() {
   if (!browserPromise) {
     browserPromise = (async () => {
       const { chromium } = await loadPlaywright();
       const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH && fs.existsSync(process.env.PLAYWRIGHT_CHROMIUM_PATH) ? process.env.PLAYWRIGHT_CHROMIUM_PATH : undefined;
-      return chromium.launch({ executablePath, args: ['--disable-dev-shm-usage'] });
+      return chromium.launch({ executablePath, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--disable-accelerated-2d-canvas'] });
     })().catch((e) => { browserPromise = null; throw e; });
   }
   return browserPromise;

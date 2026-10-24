@@ -25,13 +25,18 @@ const which = (cmd) => {
   return null;
 };
 
+// The same Claude Code discovery as the production engine (custom path in Settings, Windows installs).
+const claudeCli = async () => { try { const { findClaudeCli } = await import('./ai/engine.mjs'); return findClaudeCli(); } catch { return null; } };
+let cliInfo = null;
+claudeCli().then((c) => { cliInfo = c; });
+
 export function agentStatus() {
-  const cli = which('claude');
+  const cli = cliInfo?.path || which('claude');
   const s = readSettings();
   return {
     available: !!cli,
     cli,
-    billing: s.director?.useApiKey && (s.keys?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY) ? 'Anthropic API key' : 'Claude plan (Pro/Max login)',
+    billing: s.director?.useApiKey && (s.anthropicApiKey || process.env.ANTHROPIC_API_KEY) ? 'Anthropic API key' : 'Claude plan (Pro/Max login)',
     model: s.director?.model || 'default',
     autoRepair: s.autoRepair !== false,
     why: cli ? null : 'Install Claude Code (`npm i -g @anthropic-ai/claude-code`) and sign in once with `claude`. The director runs it in the background.',
@@ -127,8 +132,8 @@ function run(t) {
   const s = readSettings();
   t.attempts += 1;
   const env = { ...process.env, GOLDCOM_STUDIO_DATA: DATA_DIR };
-  const useKey = s.director?.useApiKey && (s.keys?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY);
-  if (useKey) env.ANTHROPIC_API_KEY = s.keys?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const useKey = s.director?.useApiKey && (s.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
+  if (useKey) env.ANTHROPIC_API_KEY = s.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
   else delete env.ANTHROPIC_API_KEY; // bill the Claude plan
   const args = [
     '-p', buildPrompt(t), '--output-format', 'stream-json', '--verbose',
@@ -139,7 +144,8 @@ function run(t) {
     '--max-turns', String(s.director?.maxTurns || 80),
   ];
   if (s.director?.model) args.push('--model', s.director.model);
-  const child = spawn(which('claude'), args, { cwd: REPO_ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const exe = cliInfo?.path || which('claude');
+  const child = spawn(exe, args, { cwd: REPO_ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], shell: cliInfo ? !cliInfo.native : false });
   running.set(t.id, child);
   const push = (entry) => {
     const e = { at: new Date().toISOString(), ...entry };

@@ -4,6 +4,10 @@ import { LOGO_INK, SYMBOL_ROOF, SYMBOL_G, SYMBOL_GEM, LOGO_BOX, LOGO_PARTS } fro
 import { ICONS } from '../../shared/icons.js';
 import { slideAt } from '../../shared/schema.js';
 import { sceneRuntime } from './scene3d/runtime.js';
+import { EASE, evalKeys, evalCamera, applyCamera, mapTime } from './motion.js';
+import { drawDevice, screenRect } from './device.js';
+import { isVideoSrc } from './media.js';
+import { drawGlow, drawStep, drawCheck, drawFocus, drawBubble, drawPlates, drawCharacter, drawProp, drawSet } from './extras.js';
 
 // ---------- fonts & images ----------
 export async function loadFonts() {
@@ -17,13 +21,14 @@ export async function loadFonts() {
 }
 
 export class ImageCache {
-  constructor(onLoad) {
-    this.map = new Map(); this.onLoad = onLoad;
+  // `media` (VideoPool in the editor, FrameSequence when exporting) supplies video frames.
+  constructor(onLoad, media = null) {
+    this.map = new Map(); this.onLoad = onLoad; this.media = media;
     // 3D scene modules and their assets load asynchronously too: redraw when they arrive.
     if (onLoad) this.off = sceneRuntime.onChange((e) => onLoad(`scene:${e.id || ''}`));
   }
   get(src) {
-    if (!src) return null;
+    if (!src || isVideoSrc(src)) return null;
     let e = this.map.get(src);
     if (!e) {
       const img = new Image();
@@ -41,8 +46,8 @@ export class ImageCache {
   async preload(doc) {
     const srcs = [];
     for (const s of doc.slides) {
-      if (s.bg?.src) srcs.push(s.bg.src);
-      for (const l of s.layers) if (l.src) srcs.push(l.src);
+      if (s.bg?.src && !isVideoSrc(s.bg.src)) srcs.push(s.bg.src);
+      for (const l of s.layers) if (l.src && !isVideoSrc(l.src)) srcs.push(l.src);
     }
     for (const src of srcs) this.get(src);
     await Promise.all([...srcs.map((s) => this.map.get(s)?.p), sceneRuntime.preload(doc).catch(() => null)]);
@@ -195,14 +200,40 @@ function drawBackground(c, slide, W, H, s, images, lt = 0, live = false) {
   }
 }
 
+const iw = (img) => img.videoWidth || img.naturalWidth || img.width;
+const ih = (img) => img.videoHeight || img.naturalHeight || img.height;
+
 function drawImageFit(c, img, x, y, w, h, fit = 'cover', align = 'center') {
-  const ir = img.width / img.height, br = w / h;
+  const ir = iw(img) / ih(img), br = w / h;
   let dw, dh;
   if ((fit === 'cover') === ir > br) { dh = h; dw = h * ir; } else { dw = w; dh = w / ir; }
   if (fit === 'width') { dw = w; dh = w / ir; }
+  if (fit === 'fill') { dw = w; dh = h; }
   const dx = x + (w - dw) / 2;
-  const dy = align === 'top' ? y : y + (h - dh) / 2;
+  const dy = align === 'top' ? y : align === 'bottom' ? y + h - dh : y + (h - dh) / 2;
   c.drawImage(img, dx, dy, dw, dh);
+}
+
+// ---------- video ----------
+function localRate(map, t) {
+  for (let i = 1; i < map.length; i++) if (t <= map[i][0]) return map[i][0] === map[i - 1][0] ? 0 : (map[i][1] - map[i - 1][1]) / (map[i][0] - map[i - 1][0]);
+  return 1;
+}
+
+/** Footage time shown by a video layer at the slide's local time (vmap remaps time: holds, speed ramps). */
+export function videoTime(layer, ctx) {
+  if (!ctx.live) return layer.poster ?? (layer.vmap?.length ? mapTime(layer.vmap, (ctx.dur || 4) * 0.5) : (layer.vstart || 0) + 0.5);
+  if (layer.vmap?.length) return mapTime(layer.vmap, ctx.t);
+  return (layer.vstart || 0) + Math.max(0, ctx.t - (layer.vfrom || 0)) * (layer.vrate || 1);
+}
+
+/** Image or current video frame for a layer's src. */
+function mediaFrame(layer, ctx, images, src = layer.src) {
+  if (!isVideoSrc(src)) return images?.get(src);
+  const media = images?.media;
+  if (!media) return null;
+  const rate = layer.vmap?.length ? localRate(layer.vmap, ctx.t) : layer.vrate || 1;
+  return media.frame(src, videoTime(layer, ctx), rate);
 }
 
 // ---------- text ----------
@@ -320,20 +351,22 @@ function drawLine(c, line, x, y, w, align, rtl, space, colors, fx) {
       const rw = run.tokens.reduce((acc, [t], j) => acc + t.width + (j && !t.glue ? space : 0), 0);
       cursor -= rw;
       let cx = cursor;
-      // Punctuation that ends the Latin run ("99.99%)." ) belongs to the Arabic sentence: draw it at the run's left, mirrored.
-      const [lastT, lastK] = run.tokens[run.tokens.length - 1];
-      const tail = /^(.*[A-Za-z0-9%])([^A-Za-z0-9%]+)$/.exec(lastT.w);
-      if (tail) {
-        const tw = c.measureText(tail[2]).width;
-        c.direction = 'rtl'; put({ ...lastT, w: tail[2] }, lastK, cx);
-        cx += tw;
-      }
-      run.tokens.forEach(([t, k], j) => {
+      // Punctuation around the Latin run («Browse», "(99.9%)." ) belongs to the Arabic sentence: it is drawn mirrored,
+      // the closing marks at the run's left and the opening marks at its right.
+      const toks = run.tokens.map(([t, k]) => ({ t, k, w: t.w }));
+      const f0 = toks[0], fl = toks[toks.length - 1];
+      const tail = /^(.*[A-Za-z0-9%])([^A-Za-z0-9%]+)$/.exec(fl.w);
+      if (tail) fl.w = tail[1];
+      const head = /^([^A-Za-z0-9]+)(.*[A-Za-z0-9].*)$/.exec(f0.w);
+      if (head) f0.w = head[2];
+      if (tail) { c.direction = 'rtl'; put({ ...fl.t, w: tail[2] }, fl.k, cx); cx += c.measureText(tail[2]).width; }
+      toks.forEach(({ t, k, w: tw }, j) => {
         if (j && !t.glue) cx += space;
         c.direction = 'ltr';
-        if (tail && k === lastK) { put({ ...t, w: tail[1] }, k, cx); return; }
-        put(t, k, cx); cx += t.width;
+        put({ ...t, w: tw }, k, cx);
+        cx += tw === t.w ? t.width : c.measureText(tw).width;
       });
+      if (head) { c.direction = 'rtl'; put({ ...f0.t, w: head[1] }, f0.k, cx); }
     }
   }
 }
@@ -413,6 +446,20 @@ function drawText(c, layer, ctx, p, raw) {
   if (text !== (layer.text || '')) {
     // Re-wrap the changing string with the settled font size so the layout does not jump.
     lines = wrapText(c, (TYPE[layer.role]?.upper && !lay.rtl && layer.upper !== false) ? upperKeepBrand(text) : text, layer.w, lay.font, lay.ls).lines;
+  }
+  if (layer.plate) {
+    // Rounded plates behind each line, sized to the line (captions over footage or illustrations).
+    const padX = lay.size * 0.42, padY = lay.lh * 0.08;
+    const rects = lines.map((line, li) => {
+      const align = layer.align || 'start';
+      let left;
+      if (align === 'center') left = layer.x + (layer.w - line.width) / 2;
+      else if ((align === 'start') !== lay.rtl) left = layer.x;
+      else left = layer.x + layer.w - line.width;
+      return { x: left - padX, y: y + li * lay.lh - padY, w: line.width + padX * 2, h: lay.lh + padY * 2 };
+    });
+    drawPlates(c, rects, ctx);
+    c.font = lay.font;
   }
   let budget = Infinity;
   if (kind === 'type' && animating) budget = Math.floor(String(layer.text).length * raw);
@@ -577,7 +624,17 @@ function drawGem(c, layer) {
 }
 
 function drawShape(c, layer, ctx) {
-  const fill = layer.fill ? resolveColor(layer.fill, ctx.theme, { layer, H: ctx.H }) : null;
+  if (layer.fill === 'fade-down') {
+    // Theme background fading to transparent: keeps text readable over moving footage.
+    const bg = (THEMES[ctx.theme] || THEMES.onyx).bg;
+    const col = bg === 'bullion' ? '#62422A' : COLORS[bg] || COLORS.onyx;
+    const g = c.createLinearGradient(0, layer.y, 0, layer.y + layer.h);
+    const solid = clamp(layer.solid ?? 0.7, 0, 0.98);
+    g.addColorStop(0, hexA(col, 1)); g.addColorStop(solid, hexA(col, 1)); g.addColorStop(solid + (1 - solid) * 0.45, hexA(col, 0.6)); g.addColorStop(1, hexA(col, 0));
+    c.fillStyle = g; c.fillRect(layer.x, layer.y, layer.w, layer.h);
+    return;
+  }
+  const fill = layer.fill === 'goldLeaf' ? gradient(c, GRADIENTS.goldLeaf, layer.x, layer.y, layer.x + layer.w, layer.y + layer.h) : layer.fill ? resolveColor(layer.fill, ctx.theme, { layer, H: ctx.H }) : null;
   const stroke = layer.stroke ? resolveColor(layer.stroke, ctx.theme, { layer, H: ctx.H }) : null;
   if (layer.shape === 'circle') { c.beginPath(); c.ellipse(layer.x + layer.w / 2, layer.y + layer.h / 2, layer.w / 2, layer.h / 2, 0, 0, Math.PI * 2); }
   else if (layer.shape === 'line') { c.beginPath(); c.moveTo(layer.x, layer.y + layer.h / 2); c.lineTo(layer.x + layer.w, layer.y + layer.h / 2); c.strokeStyle = stroke || fill || COLORS.slate; c.lineWidth = Math.max(1, layer.h); c.stroke(); return; }
@@ -611,6 +668,9 @@ function drawBadge(c, layer, ctx) {
     gain: light ? [hexA(COLORS.gainLight, 0.12), COLORS.gainLight] : [hexA(COLORS.gainDark, 0.16), COLORS.gainDark],
     loss: light ? [hexA(COLORS.lossLight, 0.12), COLORS.lossLight] : [hexA(COLORS.lossDark, 0.16), COLORS.lossDark],
     info: [COLORS.info, COLORS.white],
+    muted: light ? [hexA(COLORS.stoneDark, 0.14), COLORS.stoneDark] : ['rgba(154,150,140,0.22)', '#D6D2C8'],
+    gold: [COLORS.spark, COLORS.ink],
+    dark: ['rgba(21,21,19,0.86)', COLORS.white],
     outline: [null, resolveColor('fg', ctx.theme)],
     live: [light ? COLORS.charcoal : 'rgba(21,21,19,0.75)', COLORS.white],
   };
@@ -730,11 +790,12 @@ function drawChart(c, layer, ctx, p) {
 }
 
 function drawImageLayer(c, layer, ctx, images) {
-  const img = images?.get(layer.src);
+  const img = mediaFrame(layer, ctx, images);
   c.save();
   rr(c, layer.x, layer.y, layer.w, layer.h, layer.radius || 0, layer.facet ? 24 * ctx.s : 0, ctx.rtl);
   c.clip();
-  if (img) drawImageFit(c, img, layer.x, layer.y, layer.w, layer.h, layer.fit || 'cover');
+  if (img) drawImageFit(c, img, layer.x, layer.y, layer.w, layer.h, layer.fit || 'cover', layer.align || 'center');
+  else if (isVideoSrc(layer.src)) { c.fillStyle = COLORS.onyx; c.fillRect(layer.x, layer.y, layer.w, layer.h); }
   else drawPlaceholder(c, layer, ctx, 'Add image');
   if (layer.scrim) {
     c.fillStyle = gradient(c, [[0, 'rgba(21,21,19,0.1)'], [0.5, 'rgba(21,21,19,0.25)'], [1, 'rgba(21,21,19,0.9)']], 0, layer.y, 0, layer.y + layer.h);
@@ -854,34 +915,68 @@ function scrollOffset(layer, ctx, img, vw, vh) {
   return max * (0.5 - 0.5 * Math.cos((2 * Math.PI * ctx.lt) / period));
 }
 
+// Tap feedback drawn on the screen: the finger lands, presses, and a ring spreads out.
+function drawTaps(c, layer, ctx, sx, sy, sw, sh) {
+  const r0 = sw * 0.075;
+  if (!ctx.live && layer.tapHint) {
+    // Stills (carousels) show where to tap: a soft finger dot inside a Spark ring.
+    const px = sx + layer.tapHint.x * sw, py = sy + layer.tapHint.y * sh;
+    c.save();
+    c.fillStyle = 'rgba(255,255,255,0.42)'; c.beginPath(); c.arc(px, py, r0 * 0.9, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = COLORS.spark; c.lineWidth = sw * 0.01; c.beginPath(); c.arc(px, py, r0 * 1.45, 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 0.45; c.beginPath(); c.arc(px, py, r0 * 2, 0, Math.PI * 2); c.stroke();
+    c.restore();
+    return;
+  }
+  if (!layer.taps?.length || !ctx.live) return;
+  for (const tap of layer.taps) {
+    const dt = ctx.t - tap.t;
+    if (dt < -0.18 || dt > 0.75) continue;
+    const px = sx + tap.x * sw, py = sy + tap.y * sh;
+    c.save();
+    if (dt < 0) {
+      const q = 1 - -dt / 0.18;
+      c.globalAlpha *= 0.35 * q;
+      c.fillStyle = '#FFFFFF';
+      c.beginPath(); c.arc(px, py, r0 * (1.25 - 0.25 * q), 0, Math.PI * 2); c.fill();
+    } else {
+      const press = Math.min(1, dt / 0.12);
+      const fade = dt < 0.12 ? 1 : Math.max(0, 1 - (dt - 0.12) / 0.5);
+      c.globalAlpha *= 0.5 * fade;
+      c.fillStyle = '#FFFFFF';
+      c.beginPath(); c.arc(px, py, r0 * (1 - 0.15 * press), 0, Math.PI * 2); c.fill();
+      const ring = EASE.expoOut(Math.min(1, dt / 0.6));
+      c.globalAlpha = Math.max(0, 1 - ring) * 0.9;
+      c.strokeStyle = COLORS.spark; c.lineWidth = sw * 0.008;
+      c.beginPath(); c.arc(px, py, r0 * (1 + 1.4 * ring), 0, Math.PI * 2); c.stroke();
+    }
+    c.restore();
+  }
+}
+
 function drawPhone(c, layer, ctx, images) {
-  const { x, y, w, h } = layer;
-  const r = w * 0.15;
-  c.save();
-  c.shadowColor = 'rgba(0,0,0,0.5)'; c.shadowBlur = w * 0.18; c.shadowOffsetY = w * 0.09;
-  rr(c, x, y, w, h, r); c.fillStyle = '#0b0b0a'; c.fill();
-  c.restore();
-  c.strokeStyle = '#3a3a37'; c.lineWidth = Math.max(1, w * 0.004); rr(c, x, y, w, h, r); c.stroke();
-  const inset = w * 0.033;
-  const sx = x + inset, sy = y + inset, sw = w - 2 * inset, sh = h - 2 * inset;
-  c.save(); rr(c, sx, sy, sw, sh, r - inset); c.clip();
-  const img = images?.get(layer.src);
-  if (img && layer.statusBar !== false) {
-    // Captured screenshots have no status bar: add one so the camera island never covers content.
-    const band = sw * 0.12;
-    const [r, g, b] = topColor(img);
-    c.fillStyle = `rgb(${r},${g},${b})`; c.fillRect(sx, sy, sw, sh);
-    const light = 0.2126 * r + 0.7152 * g + 0.0722 * b > 140;
-    c.fillStyle = light ? '#000' : '#fff';
-    c.font = `600 ${sw * 0.04}px ${FONTS.latin}`; c.textAlign = 'left'; c.direction = 'ltr';
-    c.fillText('9:41', sx + sw * 0.1, sy + band * 0.52);
-    c.fillRect(sx + sw * 0.8, sy + band * 0.36, sw * 0.07, sw * 0.03);
-    c.drawImage(img, sx, sy + band - scrollOffset(layer, ctx, img, sw, sh - band), sw, sw * img.height / img.width);
-  } else if (img) { const off2 = scrollOffset(layer, ctx, img, sw, sh); if (off2) c.drawImage(img, sx, sy - off2, sw, sw * img.height / img.width); else drawImageFit(c, img, sx, sy, sw, sh, 'cover', 'top'); }
-  else drawAppScreen(c, sx, sy, sw, sh, layer.placeholder || 'home', layer.lang || 'en');
-  c.restore();
-  // Dynamic island
-  c.fillStyle = '#000'; rr(c, x + w / 2 - w * 0.13, sy + w * 0.025, w * 0.26, w * 0.068, w * 0.034); c.fill();
+  const img = mediaFrame(layer, ctx, images);
+  const video = isVideoSrc(layer.src);
+  drawDevice(c, layer, (cc, sx, sy, sw, sh) => {
+    if (img && !video && layer.statusBar !== false) {
+      // Captured screenshots have no status bar: add one so the camera island never covers content.
+      const band = sw * 0.12;
+      const [r, g, b] = topColor(img);
+      cc.fillStyle = `rgb(${r},${g},${b})`; cc.fillRect(sx, sy, sw, sh);
+      const light = 0.2126 * r + 0.7152 * g + 0.0722 * b > 140;
+      cc.fillStyle = light ? '#000' : '#fff';
+      cc.font = `600 ${sw * 0.04}px ${FONTS.latin}`; cc.textAlign = 'left'; cc.direction = 'ltr';
+      cc.fillText('9:41', sx + sw * 0.1, sy + band * 0.52);
+      cc.fillRect(sx + sw * 0.8, sy + band * 0.36, sw * 0.07, sw * 0.03);
+      cc.drawImage(img, sx, sy + band - scrollOffset(layer, ctx, img, sw, sh - band), sw, sw * ih(img) / iw(img));
+    } else if (img) {
+      const off2 = video ? 0 : scrollOffset(layer, ctx, img, sw, sh);
+      if (off2) cc.drawImage(img, sx, sy - off2, sw, sw * ih(img) / iw(img));
+      else drawImageFit(cc, img, sx, sy, sw, sh, layer.fit || 'cover', layer.align || 'top');
+    } else if (video) { cc.fillStyle = COLORS.onyx; cc.fillRect(sx, sy, sw, sh); }
+    else drawAppScreen(cc, sx, sy, sw, sh, layer.placeholder || 'home', layer.lang || 'en');
+    drawTaps(cc, layer, ctx, sx, sy, sw, sh);
+  });
 }
 
 function drawBrowser(c, layer, ctx, images) {
@@ -1518,6 +1613,14 @@ function drawLayerBody(c, layer, ctx, st, images) {
     case 'tap': drawTap(c, layer, ctx); break;
     case 'sparkles': drawSparkles(c, layer, ctx); break;
     case 'scene3d': drawScene3D(c, layer, ctx); break;
+    case 'glow': drawGlow(c, layer, ctx); break;
+    case 'step': drawStep(c, layer, ctx); break;
+    case 'check': drawCheck(c, layer, ctx, layer.anim?.in === 'draw' ? st.p : 1); break;
+    case 'focus': drawFocus(c, layer, ctx); break;
+    case 'bubble': drawBubble(c, layer, ctx); break;
+    case 'character': drawCharacter(c, layer, ctx); break;
+    case 'prop': drawProp(c, layer, ctx); break;
+    case 'set': drawSet(c, layer, ctx); break;
     default: break;
   }
 }
@@ -1545,7 +1648,21 @@ function sheenPass(c, layer, st, ctx, images) {
 
 export function drawLayer(c, layer, ctx, images) {
   if (layer.hidden) return;
+  // Keyframes override geometry and add transforms on top of the entrance/exit/loop animation.
+  const k = layer.keys?.length ? evalKeys(layer.keys, Number.isFinite(ctx.t) ? ctx.t : 1e6) : null;
+  if (k) {
+    const geo = {};
+    for (const p of ['x', 'y', 'w', 'h']) if (k[p] !== undefined) geo[p] = k[p];
+    if (k.rx !== undefined || k.ry !== undefined) geo.tilt = { ...(layer.tilt || {}), ...(k.rx !== undefined ? { rx: k.rx } : {}), ...(k.ry !== undefined ? { ry: k.ry } : {}) };
+    layer = { ...layer, ...geo };
+  }
   const st = animState(layer, ctx);
+  if (k) {
+    if (k.opacity !== undefined) st.alpha *= clamp(k.opacity);
+    if (k.scale !== undefined) st.sc *= k.scale;
+    if (k.rotation !== undefined) st.rot += k.rotation;
+    if (k.blur !== undefined) st.blur += k.blur * ctx.s;
+  }
   if (st.alpha <= 0.001) return;
   c.save();
   c.globalAlpha *= (layer.opacity ?? 1) * st.alpha;
@@ -1576,8 +1693,22 @@ export function renderSlide(c, doc, index, opts = {}) {
   const live = Number.isFinite(t);
   const avoid = slide.layers.filter((l) => !l.hidden && ['text', 'list', 'button', 'badge', 'notification', 'sticker', 'countdown', 'chat', 'logo', 'progress'].includes(l.type)).map((l) => ({ x: l.x, y: l.y, w: l.w, h: l.h }));
   const ctx = { W, H, s, theme: slide.theme, index, total: doc.slides.length, rtl, t, lt: live ? t : 0, live, dur: Number(slide.duration) || 4, avoid, guides: !!opts.guides };
+  // The camera moves the background and every layer except `fixed` ones (captions, logos, step badges).
+  const cam = opts.noCamera ? null : evalCamera(slide.camera, t, W, H);
+  c.save();
+  applyCamera(c, cam, W, H);
   drawBackground(c, slide, W, H, s, images, ctx.lt, live);
-  for (const layer of slide.layers) drawLayer(c, layer, ctx, images);
+  let i = 0;
+  for (; i < slide.layers.length; i++) {
+    const layer = slide.layers[i];
+    if (cam && layer.fixed) break;
+    drawLayer(c, layer, ctx, images);
+  }
+  c.restore();
+  if (cam) for (const layer of slide.layers.slice(i)) {
+    if (layer.fixed) drawLayer(c, layer, ctx, images);
+    else { c.save(); applyCamera(c, cam, W, H); drawLayer(c, layer, ctx, images); c.restore(); }
+  }
   c.restore();
 }
 
@@ -1590,6 +1721,12 @@ function off(i, w, h) {
 }
 
 export const TRANSITION_DUR = 0.6;
+const TRANSITION_DURS = { whip: 0.38, cut: 0, 'zoom-through': 0.7, push: 0.65, facet: 0.75, blur: 0.6, 'scale-fade': 0.55 };
+export const transitionDur = (slide) => Number(slide?.transitionDur) || (TRANSITION_DURS[slide?.transition] ?? TRANSITION_DUR);
+
+function blurredDraw(c, cv, x, y, amount) {
+  if (amount > 0.4) { c.filter = `blur(${amount}px)`; c.drawImage(cv, x, y); c.filter = 'none'; } else c.drawImage(cv, x, y);
+}
 
 /** Draw a video frame at global time t, including slide transitions. */
 export function renderFrame(c, doc, t, { images, scale = 1 } = {}) {
@@ -1597,8 +1734,10 @@ export function renderFrame(c, doc, t, { images, scale = 1 } = {}) {
   const W = Math.round(doc.width * scale), H = Math.round(doc.height * scale);
   const slide = doc.slides[index];
   const tr = slide?.transition || 'fade';
-  if (index === 0 || tr === 'none' || local >= TRANSITION_DUR) { renderSlide(c, doc, index, { t: local, images, scale }); return; }
-  const p = easeInOut(clamp(local / TRANSITION_DUR));
+  const td = transitionDur(slide);
+  if (index === 0 || tr === 'none' || tr === 'cut' || local >= td) { renderSlide(c, doc, index, { t: local, images, scale }); return; }
+  const raw = clamp(local / td);
+  const p = easeInOut(raw);
   const a = off(0, W, H), b = off(1, W, H);
   // Outgoing slide keeps its loops running (continuous time) instead of freezing.
   renderSlide(a.getContext('2d'), doc, index - 1, { t: (Number(doc.slides[index - 1].duration) || 4) + local, images, scale });
@@ -1607,25 +1746,58 @@ export function renderFrame(c, doc, t, { images, scale = 1 } = {}) {
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.clearRect(0, 0, W, H);
   const rtl = doc.lang === 'ar';
+  const dir = rtl ? 1 : -1;
+  const sc = Math.min(W, H) / 1080;
   if (tr === 'slide') {
-    const dir = rtl ? 1 : -1;
     c.drawImage(a, dir * p * W, 0);
     c.drawImage(b, dir * (p - 1) * W, 0);
-  } else if (tr === 'zoom') {
+  } else if (tr === 'push' || tr === 'whip') {
+    // Both frames travel together; the whip adds motion blur at peak speed.
+    const q = tr === 'whip' ? EASE.expoInOut(raw) : EASE.smooth(raw);
+    const speed = tr === 'whip' ? Math.sin(Math.PI * raw) : 0;
+    const blurPx = speed * 28 * sc;
+    c.save(); c.globalAlpha = 1;
+    blurredDraw(c, a, dir * q * W, 0, blurPx);
+    blurredDraw(c, b, dir * (q - 1) * W, 0, blurPx);
+    c.restore();
+  } else if (tr === 'zoom' || tr === 'zoom-through') {
+    const strong = tr === 'zoom-through';
     c.save(); c.globalAlpha = Math.max(0, 1 - p * 1.4);
-    const za = 1 + 0.25 * p; c.translate(W / 2, H / 2); c.scale(za, za); c.translate(-W / 2, -H / 2); c.drawImage(a, 0, 0); c.restore();
+    const za = 1 + (strong ? 0.6 : 0.25) * EASE.in(raw); c.translate(W / 2, H / 2); c.scale(za, za); c.translate(-W / 2, -H / 2);
+    blurredDraw(c, a, 0, 0, strong ? raw * 18 * sc : 0); c.restore();
     c.save(); c.globalAlpha = Math.min(1, p * 1.6);
-    const zb = 0.92 + 0.08 * p; c.translate(W / 2, H / 2); c.scale(zb, zb); c.translate(-W / 2, -H / 2); c.drawImage(b, 0, 0); c.restore();
-  } else if (tr === 'wipe') {
+    const zb = (strong ? 0.82 : 0.92) + (strong ? 0.18 : 0.08) * EASE.expoOut(raw); c.translate(W / 2, H / 2); c.scale(zb, zb); c.translate(-W / 2, -H / 2);
+    blurredDraw(c, b, 0, 0, strong ? (1 - raw) * 10 * sc : 0); c.restore();
+  } else if (tr === 'blur') {
+    c.drawImage(b, 0, 0);
+    c.globalAlpha = Math.max(0, 1 - p);
+    blurredDraw(c, a, 0, 0, p * 30 * sc);
+  } else if (tr === 'scale-fade') {
+    c.drawImage(b, 0, 0);
+    c.save(); c.globalAlpha = Math.max(0, 1 - EASE.out(raw) * 1.3);
+    const za = 1 - 0.06 * EASE.smooth(raw); c.translate(W / 2, H / 2); c.scale(za, za); c.translate(-W / 2, -H / 2); c.drawImage(a, 0, 0); c.restore();
+  } else if (tr === 'wipe' || tr === 'facet') {
+    // 45° diagonal reveal from the reading start; the facet version carries a thin gold edge.
     c.drawImage(a, 0, 0);
+    const q = tr === 'facet' ? EASE.expoInOut(raw) : p;
+    const reach = (W + H) * q;
     c.save();
-    const reach = (W + H) * p;
     c.beginPath();
     if (rtl) { c.moveTo(W, 0); c.lineTo(W - reach, 0); c.lineTo(W, reach); }
     else { c.moveTo(0, 0); c.lineTo(reach, 0); c.lineTo(0, reach); }
     c.closePath(); c.clip();
     c.drawImage(b, 0, 0);
     c.restore();
+    if (tr === 'facet' && raw > 0.02 && raw < 0.98) {
+      c.save();
+      const g = c.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, COLORS.amber); g.addColorStop(0.5, COLORS.spark); g.addColorStop(1, COLORS.gold);
+      c.strokeStyle = g; c.lineWidth = 6 * sc; c.shadowColor = 'rgba(242,212,107,0.6)'; c.shadowBlur = 24 * sc;
+      c.beginPath();
+      if (rtl) { c.moveTo(W - reach, 0); c.lineTo(W, reach); } else { c.moveTo(reach, 0); c.lineTo(0, reach); }
+      c.stroke();
+      c.restore();
+    }
   } else {
     // Incoming slide underneath (its layers animate in), outgoing slide fades out quickly on top.
     c.drawImage(b, 0, 0);
@@ -1633,4 +1805,23 @@ export function renderFrame(c, doc, t, { images, scale = 1 } = {}) {
     c.drawImage(a, 0, 0);
   }
   c.restore();
+}
+
+/** Footage frames needed to draw time t: [[src, footageTime], ...]. `slide` given → t is that slide's local time. */
+export function videoRequests(doc, t, slide = null) {
+  const visible = [];
+  if (slide !== null && slide !== undefined) visible.push([slide, t]);
+  else {
+    const { index, local } = slideAt(doc, t);
+    visible.push([index, local]);
+    if (index > 0 && local < transitionDur(doc.slides[index])) visible.push([index - 1, (Number(doc.slides[index - 1].duration) || 4) + local]);
+  }
+  const out = [];
+  for (const [i, lt] of visible) {
+    const s = doc.slides[i];
+    if (!s) continue;
+    const ctx = { live: Number.isFinite(lt), t: lt, dur: Number(s.duration) || 4 };
+    for (const l of s.layers) if (!l.hidden && isVideoSrc(l.src)) out.push([l.src, videoTime(l, ctx)]);
+  }
+  return out;
 }

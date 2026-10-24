@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const BASE = process.env.STUDIO_URL || 'http://localhost:5177';
+const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY, 'i') : null; // ONLY="gallery header" runs matching scenarios
 const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'goldcom-ui-'));
 const api = async (p, method = 'GET', body) => {
   const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -25,6 +26,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 page.on('dialog', (d) => d.accept());
 
 async function scenario(name, fn) {
+  if (ONLY && !ONLY.test(name)) return;
   errors = [];
   const t0 = Date.now();
   try {
@@ -63,9 +65,51 @@ const canvasPainted = () => page.evaluate(() => {
 
 console.log(`\nGoldcom Studio · editor scenarios against ${BASE}\n`);
 
+// ---------- Create, footage, settings ----------
+await scenario('Create page shows the prompt composer, examples and readiness', async () => {
+  await page.goto(`${BASE}/#/`);
+  await page.waitForSelector('.composer textarea');
+  expect(await page.locator('.chips .chip').count() >= 4, 'example prompts are listed');
+  expect(await page.locator('.ready-item').count() === 3, 'Claude, phone and footage readiness shown');
+  await page.locator('.chips .chip').first().click();
+  expect((await page.inputValue('.composer textarea')).length > 10, 'clicking an example fills the prompt');
+});
+
+await scenario('Footage page and phone panel load', async () => {
+  await page.goto(`${BASE}/#/footage`);
+  await page.waitForSelector('.dropzone');
+  await page.waitForSelector('.phone-panel h3');
+});
+
+await scenario('Capture sources: emulator, cloud phone (form, prices), iPhone and USB tabs', async () => {
+  await page.goto(`${BASE}/#/footage`);
+  await page.waitForSelector('.phone-panel .seg');
+  await page.click('.phone-panel .seg button:has-text("Emulator")');
+  await page.waitForSelector('.phone-panel :text("Android"), .phone-panel :text("emulator")');
+  await page.click('.phone-panel .seg button:has-text("Cloud phone")');
+  await page.click('.phone-panel :text("Add a cloud phone")');
+  for (const pv of ['geelark', 'duoplus', 'morelogin', 'multilogin', 'other']) await page.selectOption('.phone-panel select', pv);
+  await page.click('.phone-panel :text("Cancel")');
+  await page.click('.phone-panel :text("Compare cloud phone prices")');
+  await page.waitForSelector('.phone-panel .price-table tbody tr');
+  await page.click('.phone-panel .seg button:has-text("iPhone")');
+  await page.waitForSelector('.phone-panel :text("Real iPhone in the cloud")');
+  await page.click('.phone-panel .seg button:has-text("USB phone")');
+  await page.waitForTimeout(500);
+  await page.click('.phone-panel .seg button:has-text("Emulator")');
+});
+
+await scenario('Settings dialog opens and closes', async () => {
+  await page.goto(`${BASE}/#/`);
+  await page.locator('.topbar button[title="Settings"]').click();
+  await page.waitForSelector('.modal.settings');
+  await page.locator('.modal.settings .btn', { hasText: 'Close' }).click();
+  await page.waitForSelector('.modal.settings', { state: 'detached' });
+});
+
 // ---------- Gallery ----------
 await scenario('Gallery loads with both tabs and no errors', async () => {
-  await page.goto(`${BASE}/#/`);
+  await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gallery');
   await page.locator('.seg.big button', { hasText: 'Library' }).click();
   await page.waitForSelector('.gcard');
@@ -130,7 +174,7 @@ await scenario('Unknown design URL shows a clear message instead of hanging', as
 
 // ---------- New design ----------
 await scenario('New design dialog offers every content type and every starter creates a design', async () => {
-  await page.goto(`${BASE}/#/`);
+  await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gallery');
   await page.locator('.ghead .btn.primary', { hasText: 'New design' }).click();
   await page.waitForSelector('.starter');
@@ -139,7 +183,7 @@ await scenario('New design dialog offers every content type and every starter cr
   const starters = await page.locator('.starter button').count();
   await page.keyboard.press('Escape');
   for (let i = 0; i < starters; i++) {
-    await page.goto(`${BASE}/#/`);
+    await page.goto(`${BASE}/#/designs`);
     await page.waitForSelector('.gallery');
     await page.locator('.ghead .btn.primary', { hasText: 'New design' }).click();
     await page.locator('.starter button').nth(i).click();
@@ -439,10 +483,10 @@ await scenario('Ask Claude, Generate, Rate (with reasons) and the 3D scene picke
   expect(await page.locator('.scene-card').count() >= 10, 'scene picker lists the scenes');
 });
 
-await scenario('Gallery header: settings and what the studio has learned', async () => {
-  await page.goto(`${BASE}/#/`);
+await scenario('Gallery header: generators and what the studio has learned', async () => {
+  await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gallery');
-  await page.locator('.topbar .btn[title^="Settings"]').click();
+  await page.locator('.topbar .btn[title^="Generators"]').click();
   await page.waitForSelector('.gen-row');
   expect(await page.locator('.gen-row').count() >= 5, 'settings lists the generators');
   await page.keyboard.press('Escape');
@@ -454,7 +498,7 @@ await scenario('Gallery header: settings and what the studio has learned', async
 
 // ---------- Gallery management ----------
 await scenario('Gallery card menu: duplicate, rename and delete', async () => {
-  await page.goto(`${BASE}/#/`);
+  await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gcard');
   await page.fill('.gsearch', 'UI test · base');
   await page.waitForTimeout(300);
@@ -465,7 +509,7 @@ await scenario('Gallery card menu: duplicate, rename and delete', async () => {
   for (let i = 0; i < 40 && after.length === before.length; i++) { await wait(250); after = await api('/api/documents'); }
   expect(after.length === before.length + 1, 'duplicate added a design');
   for (const d of after) if (!before.some((b) => b.id === d.id)) created.add(d.id);
-  await page.goto(`${BASE}/#/`);
+  await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gcard');
   await page.fill('.gsearch', 'UI test · base');
   await page.locator('.gcard .btn[title="More"]').first().click();
