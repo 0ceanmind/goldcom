@@ -68,6 +68,9 @@ export function DeviceControls({ serial, toast, label }) {
         {!rec ? <button className="btn sm" disabled={busy || !!dev?.recording} onClick={() => act(async () => { await api.recordStart(serial); refresh(); }, 'Recording — use the phone, then press Stop')}><span className="rec-dot" />Record</button>
           : <button className="btn sm primary" disabled={busy} onClick={() => act(async () => { await api.recordStop('Screen recording'); refresh(); }, 'Recording saved')}>Stop & save</button>}
       </div>
+      <label className="btn sm ghost file-btn"><Icon name="upload" />Install app file (.apk)
+        <input type="file" accept=".apk,application/vnd.android.package-archive" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) act(async () => { toast(`Installing ${f.name}…`); await api.installApk(f, serial); refresh(); }, 'App installed'); }} />
+      </label>
       <div className="capture-box">
         <label className="lbl">Let Claude film a flow</label>
         <textarea className="input" rows={3} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g. From the home screen, open Browse, open the 1 g bar, tap Buy gold, stop on the review screen before paying" dir="auto" />
@@ -148,6 +151,123 @@ function EmulatorSource({ toast }) {
   );
 }
 
+// ---------- cloud phones (Android, over ADB) ----------
+// Prices and trials as published on 24 Oct 2026; check the provider's page before buying.
+const CLOUD_PROVIDERS = [
+  {
+    id: 'geelark', name: 'GeeLark', code: true, url: 'https://www.geelark.com/pricing/',
+    price: '$0.007/min (max $1.20/day) or $29.90 per phone/month; ADB needs the Base plan ($5/month)',
+    trial: 'Free plan: 2 phones + 30 minutes once, but no ADB (needed by the studio)',
+    steps: ['In GeeLark, open Profiles and turn on ADB for the phone.', 'Start the phone, then click the 🔗 icon to see its address (IP:port) and connection code.', 'Paste both below.'],
+  },
+  {
+    id: 'duoplus', name: 'DuoPlus', code: false, url: 'https://www.duoplus.net/pricing/', whitelist: true,
+    price: '$2 per phone/month + $0.06 per 10 min running (max $1.20/day), or $16.91/month flat',
+    trial: '1 phone free for 30 days + 30 running minutes',
+    steps: ['In Team settings, add this computer’s IP address (below) to the ADB whitelist.', 'Turn on ADB for the phone in the phone list.', 'Copy the “adb connect …” address from the dashboard and paste it below.'],
+  },
+  {
+    id: 'morelogin', name: 'MoreLogin', code: true, url: 'https://www.morelogin.com/pricing',
+    price: '$0.006/min (max $1.50/day) or $23–25 per phone for 30 days',
+    trial: '2 permanent phones + 100 minutes, no card',
+    steps: ['Create an Android 12 or Android 15 phone (other versions need an SSH tunnel the studio does not set up).', 'Turn on ADB and copy its IP:port and connection code.', 'Paste both below.'],
+  },
+  {
+    id: 'multilogin', name: 'Multilogin', code: true, url: 'https://multilogin.com/pricing',
+    price: 'From $7.08/month (annual) + $0.0073/min',
+    trial: 'Free plan: 30 minutes once, no card, but no ADB (paid plans only)',
+    steps: ['On a paid plan, open the cloud phone (Android 11 or newer) and enable ADB.', 'Copy its IP:port and connection code.', 'Paste both below.'],
+  },
+  {
+    id: 'other', name: 'Other (any “adb connect” address)', code: false, url: null,
+    price: 'e.g. VMOS Cloud, Alibaba Cloud Phone, Genymotion, Samsung Remote Test Lab',
+    trial: '',
+    steps: ['Start the phone in your provider’s dashboard and enable ADB.', 'Paste the address it gives for “adb connect” (host:port). If it gives a login code to type after connecting, add it too.'],
+  },
+];
+
+function CloudSource({ toast }) {
+  const [data, setData] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ provider: 'geelark', address: '', code: '', name: '' });
+  const [busy, setBusy] = useState(false);
+  const [ip, setIp] = useState(null);
+  const [compare, setCompare] = useState(false);
+  const refresh = () => api.cloud().then(setData).catch(() => setData({ phones: [] }));
+  useEffect(() => { refresh(); const t = setInterval(refresh, 6000); return () => clearInterval(t); }, []);
+  const pv = CLOUD_PROVIDERS.find((x) => x.id === form.provider) || CLOUD_PROVIDERS[0];
+  useEffect(() => { if (pv.whitelist && !ip) api.cloudMyIp().then((r) => setIp(r.ip || '')).catch(() => setIp('')); }, [pv.id]);
+  const act = async (fn, ok) => { setBusy(true); try { const r = await fn(); if (ok) toast(ok); refresh(); return r; } catch (e) { toast(e.message, true); return null; } finally { setBusy(false); } };
+  if (!data) return <p className="hint">Checking…</p>;
+  const phones = data.phones || [];
+  const live = phones.find((x) => x.state === 'device');
+  const add = () => act(async () => {
+    const r = await api.cloudAdd(form);
+    if (r.connection?.state === 'error') throw new Error(r.connection.error);
+    setAdding(false); setForm({ ...form, address: '', code: '', name: '' });
+    return r;
+  }, 'Cloud phone saved');
+  return (
+    <>
+      <p className="hint">An Android phone rented in a data centre, used over the internet. Install Goldcom on it once from its Play Store and it stays logged in, so Claude can film the real app any time without a phone or a powerful computer.</p>
+      {phones.map((ph) => (
+        <div key={ph.address} className="cloud-phone">
+          <div className="phone-status"><span className={`dot ${ph.state === 'device' ? 'live' : ''}`} /><b>{ph.name}</b><span className="hint">{ph.address} · {ph.state === 'device' ? 'connected' : ph.state === 'unauthorized' ? 'waiting for approval' : 'not connected'}</span></div>
+          <div className="row">
+            {ph.state === 'device'
+              ? <button className="btn sm" disabled={busy} onClick={() => act(() => api.cloudDisconnect(ph.address), 'Disconnected')}>Disconnect</button>
+              : <button className="btn sm primary" disabled={busy} onClick={() => act(async () => { const r = await api.cloudConnect(ph.address); if (r.state !== 'device') throw new Error(r.state === 'unauthorized' ? 'Approve this computer on the cloud phone, then press Connect again.' : 'The phone did not come online. Check it is running in your provider’s dashboard.'); }, 'Connected')}>Connect</button>}
+            <button className="btn sm ghost danger" disabled={busy} onClick={() => { if (confirm(`Forget “${ph.name}”?`)) act(() => api.cloudRemove(ph.address), 'Removed'); }}>Forget</button>
+          </div>
+        </div>
+      ))}
+      {live && <DeviceControls serial={live.address} toast={toast} label={live.name} />}
+      {!adding ? <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />Add a cloud phone</button> : (
+        <div className="setup-steps">
+          <div className="field"><label>Provider</label>
+            <select className="input" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}>{CLOUD_PROVIDERS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          </div>
+          <ol className="howto">{pv.steps.map((t) => <li key={t}>{t}</li>)}</ol>
+          {pv.whitelist && <p className="hint small">This computer’s IP address: <code>{ip === null ? '…' : ip || 'unknown (search “what is my IP”)'}</code></p>}
+          <div className="field"><label>Address (IP:port)</label><input className="input" value={form.address} placeholder="203.0.113.10:5555" onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          {(pv.code || form.provider === 'other') && <div className="field"><label>Connection code{pv.code ? '' : ' (if any)'}</label><input className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>}
+          <div className="field"><label>Name (optional)</label><input className="input" value={form.name} placeholder={`${pv.name.split(' ')[0]} phone`} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div className="row"><button className="btn primary" disabled={busy || !form.address.trim() || (pv.code && !form.code.trim())} onClick={add}>Save & connect</button><button className="btn ghost" onClick={() => setAdding(false)}>Cancel</button></div>
+          <p className="hint small">First time on a new cloud phone: open its Play Store, sign in with a Google account from Oman (Goldcom may only be listed there), install Goldcom and log in with a demo account. If the Goldcom team gives you the app file (.apk), use “Install app file” instead.</p>
+        </div>
+      )}
+      <button className="btn sm ghost" onClick={() => setCompare(!compare)}>{compare ? 'Hide' : 'Compare'} cloud phone prices</button>
+      {compare && (
+        <table className="price-table">
+          <thead><tr><th>Provider</th><th>Price</th><th>Free</th></tr></thead>
+          <tbody>{CLOUD_PROVIDERS.filter((x) => x.url).map((x) => <tr key={x.id}><td><a href={x.url} target="_blank" rel="noreferrer">{x.name}</a></td><td>{x.price}</td><td>{x.trial}</td></tr>)}</tbody>
+        </table>
+      )}
+    </>
+  );
+}
+
+// ---------- iPhone ----------
+function IosSource() {
+  return (
+    <>
+      <p className="hint">Apple only lets iPhone apps run on real iPhones (and Macs), so there is no iPhone emulator for Windows. Tools such as xtool build your own apps and install them on a connected iPhone; they cannot run or film the App Store version of Goldcom. The way to film the real iPhone app without owning an iPhone is a real iPhone in the cloud:</p>
+      <div className="setup-steps">
+        <b>Real iPhone in the cloud (works today)</b>
+        <ol className="howto">
+          <li>Open an iPhone session on <a href="https://www.browserstack.com/app-live" target="_blank" rel="noreferrer">BrowserStack App Live</a> (from $39/month, 30-minute free trial) or <a href="https://www.testmuai.com/pricing/" target="_blank" rel="noreferrer">TestMu AI</a> (from $39/month).</li>
+          <li>Open the App Store on it, sign in with an Apple ID from Oman, install Goldcom and log in (a demo account is best).</li>
+          <li>Start recording your screen: <b>Win + Alt + R</b> (Xbox Game Bar) or Snipping Tool → Record.</li>
+          <li>Go through the flow slowly, stop the recording and drop the video on this page.</li>
+          <li>Press <b>Crop to the phone screen</b> on it: Claude finds the iPhone and the studio keeps only the app.</li>
+        </ol>
+        <p className="hint small">These shared iPhones are wiped after every session, so you sign in and install Goldcom each time. Dedicated iPhones that stay logged in (and that Claude could operate by itself) are sold by BrowserStack, TestMu AI, Sauce Labs and TestingBot on request.</p>
+      </div>
+      <p className="hint small">Have an iPhone at hand? Record its screen (Control Centre → Screen Recording) and drop the video here.</p>
+    </>
+  );
+}
+
 // ---------- Android phone over USB (optional extra) ----------
 function UsbSource({ toast }) {
   const [dev, setDev] = useState(null);
@@ -196,6 +316,8 @@ export function CapturePanel({ toast, extraSources = {} }) {
       <div className="seg wide">{SOURCES.map(([k, l]) => <button key={k} className={src === k ? 'on' : ''} onClick={() => pick(k)}>{l}</button>)}</div>
       {src === 'emulator' && <EmulatorSource toast={toast} />}
       {src === 'usb' && <UsbSource toast={toast} />}
+      {src === 'cloud' && <CloudSource toast={toast} />}
+      {src === 'ios' && <IosSource />}
       {Extra && <Extra toast={toast} />}
       <div className="note"><b>Recorded it yourself?</b> Screen recordings from any phone work too: drop the video on the left. Claude splits it into steps and uses it in productions.</div>
     </aside>

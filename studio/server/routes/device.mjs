@@ -1,6 +1,9 @@
 // Android phone routes: status, Android tools install, live mirror, remote input, Claude-driven capture,
 // manual recordings and screenshots straight into the footage library.
-import { send, readJson } from '../http-util.mjs';
+import fsp from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { send, readJson, bodyToFile } from '../http-util.mjs';
 import * as A from '../capture/adb.mjs';
 import { captureFlow, startManualTake } from '../capture/agent.mjs';
 import { importFootage } from '../footage/store.mjs';
@@ -41,6 +44,22 @@ export async function deviceRoutes(req, res, url) {
     A.installPlatformTools(({ message, pct }) => updateJob(job, { message, progress: pct }, message))
       .then((adb) => updateJob(job, { status: 'done', progress: 1, result: { adb } }, 'Done'))
       .catch((e) => updateJob(job, { status: 'error', error: e.message, message: e.message }));
+    return true;
+  }
+  if (p === '/api/device/install-apk' && req.method === 'POST') {
+    // An APK from the Goldcom team installs on any phone, even where the Play Store does not list the app.
+    const serial = await pickSerial(url.searchParams.get('serial'));
+    const file = path.join(os.tmpdir(), `goldcom-${Date.now()}.apk`);
+    try {
+      await bodyToFile(req, file, 600 * 1024 * 1024);
+      const head = await fsp.readFile(file).then((b) => b.subarray(0, 4));
+      if (head.readUInt32BE(0) !== 0x504b0304) throw Object.assign(new Error('That file is not an Android app (.apk).'), { status: 400 });
+      const out = (await A.adb(['install', '-r', '-g', file], { serial, timeout: 300000 })).toString('utf8');
+      if (!/Success/.test(out)) throw new Error(`Install failed: ${out.trim().slice(-300)}`);
+      send(res, 200, { ok: true, pkg: await A.findGoldcomPackage(serial).catch(() => null) });
+    } finally {
+      fsp.rm(file, { force: true }).catch(() => {});
+    }
     return true;
   }
   if (p === '/api/device/screen' && req.method === 'GET') {

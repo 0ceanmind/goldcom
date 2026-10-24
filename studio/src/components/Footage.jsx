@@ -3,9 +3,13 @@ import { api } from '../api.js';
 import { Icon } from './ui.jsx';
 import { CapturePanel } from './Capture.jsx';
 
-function FootageCard({ f, onDelete, onRename }) {
+function FootageCard({ f, onDelete, onRename, toast }) {
   const vref = useRef(null);
   const [hover, setHover] = useState(false);
+  const [cropping, setCropping] = useState(false);
+  // A landscape recording is usually a desktop showing a phone (cloud phone session, mirroring window).
+  const wide = f.status === 'ready' && !f.crop && f.width > f.height * 0.9;
+  const crop = async (body, ok) => { setCropping(true); try { await api.cropFootage(f.id, body); toast?.(ok); } catch (e) { toast?.(e.message, true); } finally { setCropping(false); } };
   useEffect(() => { const v = vref.current; if (!v) return; if (hover) v.play().catch(() => {}); else { v.pause(); v.currentTime = 0; } }, [hover]);
   const steps = f.steps || [];
   return (
@@ -25,6 +29,8 @@ function FootageCard({ f, onDelete, onRename }) {
         {f.labels?.sensitive && <span className="pill warn">Personal data visible</span>}
         {steps.length > 0 && <div className="ft-steps">{steps.map((s, i) => <span key={i} title={`${Number(s.t).toFixed(1)}s`} dir="auto">{s.caption || s.screen}</span>)}</div>}
         {!steps.length && f.segments?.some((s) => s.label) && <div className="ft-steps">{f.segments.filter((s) => s.label).map((s, i) => <span key={i} dir="auto">{s.label}</span>)}</div>}
+        {wide && <button className="btn sm" disabled={cropping} onClick={() => crop({ auto: true }, 'Cropping to the phone screen…')}>{cropping ? <i className="spin" /> : <Icon name="crop" />}Crop to the phone screen</button>}
+        {f.crop && f.status === 'ready' && <button className="btn sm ghost" disabled={cropping} onClick={() => crop({ rect: null }, 'Crop removed')}>Undo crop</button>}
         <div className="ft-actions"><span className="hint">{(f.events || []).filter((e) => e.type === 'tap').length} taps logged</span><button className="btn sm ghost danger" onClick={onDelete}><Icon name="trash" />Delete</button></div>
       </div>
     </div>
@@ -70,7 +76,7 @@ export default function Footage({ toast }) {
         </div>
         {items.length ? (
           <div className="ft-grid">
-            {items.map((f) => <FootageCard key={f.id} f={f} onDelete={async () => { if (confirm(`Delete “${f.name}”?`)) { await api.deleteFootage(f.id); load(); } }} onRename={(name) => api.updateFootage(f.id, { name }).then(load)} />)}
+            {items.map((f) => <FootageCard key={f.id} f={f} toast={toast} onDelete={async () => { if (confirm(`Delete “${f.name}”?`)) { await api.deleteFootage(f.id); load(); } }} onRename={(name) => api.updateFootage(f.id, { name }).then(load)} />)}
           </div>
         ) : <p className="empty">No footage yet.</p>}
       </div>

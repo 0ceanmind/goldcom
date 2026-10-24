@@ -4,7 +4,8 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { send, readJson, bodyToFile, serveFile } from '../http-util.mjs';
-import { listFootage, getFootage, updateFootage, deleteFootage, importFootage, footageFile, ensureFrames } from '../footage/store.mjs';
+import { listFootage, getFootage, updateFootage, deleteFootage, importFootage, footageFile, ensureFrames, setCrop } from '../footage/store.mjs';
+import { detectPhoneScreen } from '../ai/crop.mjs';
 
 export async function footageRoutes(req, res, url) {
   const p = url.pathname;
@@ -29,6 +30,13 @@ export async function footageRoutes(req, res, url) {
       const meta = await importFootage(tmp, { name, source: req.headers['x-source'] || 'upload', notes: decodeURIComponent(req.headers['x-notes'] || '') });
       send(res, 201, meta);
     } finally { fsp.rm(tmp, { force: true }).catch(() => {}); }
+    return true;
+  }
+  if ((m = p.match(/^\/api\/footage\/([\w-]+)\/crop$/)) && req.method === 'POST') {
+    // { auto: true } finds the phone screen with Claude; { rect: { x, y, w, h } } in original pixels; { rect: null } undoes.
+    const b = await readJson(req);
+    const rect = b.auto ? await detectPhoneScreen(m[1]) : b.rect || null;
+    send(res, 200, await setCrop(m[1], rect));
     return true;
   }
   if ((m = p.match(/^\/api\/footage\/([\w-]+)$/))) {

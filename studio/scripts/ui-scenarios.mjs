@@ -79,6 +79,24 @@ await scenario('Footage page and phone panel load', async () => {
   await page.waitForSelector('.phone-panel h3');
 });
 
+await scenario('Capture sources: emulator, cloud phone (form, prices), iPhone and USB tabs', async () => {
+  await page.goto(`${BASE}/#/footage`);
+  await page.waitForSelector('.phone-panel .seg');
+  await page.click('.phone-panel .seg button:has-text("Emulator")');
+  await page.waitForSelector('.phone-panel :text("Android"), .phone-panel :text("emulator")');
+  await page.click('.phone-panel .seg button:has-text("Cloud phone")');
+  await page.click('.phone-panel :text("Add a cloud phone")');
+  for (const pv of ['geelark', 'duoplus', 'morelogin', 'multilogin', 'other']) await page.selectOption('.phone-panel select', pv);
+  await page.click('.phone-panel :text("Cancel")');
+  await page.click('.phone-panel :text("Compare cloud phone prices")');
+  await page.waitForSelector('.phone-panel .price-table tbody tr');
+  await page.click('.phone-panel .seg button:has-text("iPhone")');
+  await page.waitForSelector('.phone-panel :text("Real iPhone in the cloud")');
+  await page.click('.phone-panel .seg button:has-text("USB phone")');
+  await page.waitForTimeout(500);
+  await page.click('.phone-panel .seg button:has-text("Emulator")');
+});
+
 await scenario('Settings dialog opens and closes', async () => {
   await page.goto(`${BASE}/#/`);
   await page.locator('.topbar button[title="Settings"]').click();

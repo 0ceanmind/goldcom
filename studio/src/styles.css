@@ -543,3 +543,5 @@ textarea.input.code { font-family: var(--mono); font-size: 12px; min-height: 120
 .price-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .price-table td, .price-table th { text-align: start; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .price-table th { color: var(--stone); font-weight: 600; }
+.cloud-phone { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.file-btn { cursor: pointer; justify-self: start; }

@@ -5,6 +5,7 @@ import { renderSlide } from '../render/renderer.js';
 
 const UI_ICONS = {
   plus: ['M12 5v14', 'M5 12h14'],
+  crop: ['M6 2v14a2 2 0 0 0 2 2h14', 'M18 22V8a2 2 0 0 0-2-2H2'],
   trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
   copy: ['M9 9h11v11H9z', 'M5 15H4V4h11v1'],
   up: ['m6 14 6-6 6 6'],

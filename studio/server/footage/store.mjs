@@ -89,6 +89,30 @@ export async function importFootage(input, extra = {}) {
   return meta;
 }
 
+/**
+ * Crop footage to a rectangle of the original recording (pixels), or remove the crop (rect = null), and process it
+ * again. Derived files (proxy, frames, keyframes) are rebuilt; the original is never changed.
+ */
+export async function setCrop(id, rect) {
+  const meta = await getFootage(id);
+  const dir = footageDir(id);
+  const original = fs.readdirSync(dir).find((f) => f.startsWith('original'));
+  const info = await probe(path.join(dir, original));
+  let crop = null;
+  if (rect) {
+    const even = (v) => Math.max(0, Math.round(v / 2) * 2);
+    const x = even(Math.min(Math.max(0, rect.x), info.width - 16)), y = even(Math.min(Math.max(0, rect.y), info.height - 16));
+    crop = { x, y, w: even(Math.min(rect.w, info.width - x)), h: even(Math.min(rect.h, info.height - y)) };
+    if (crop.w < 64 || crop.h < 64) throw Object.assign(new Error('That crop is too small.'), { status: 400 });
+  }
+  for (const f of ['video.mp4', 'poster.jpg', `image${meta.ext}`, 'kf', 'frames']) await fsp.rm(path.join(dir, f), { recursive: true, force: true });
+  const next = await updateFootage(id, { crop, status: 'processing', segments: [], labels: null, error: null });
+  processFootage(id).catch((e) => updateFootage(id, { status: 'error', error: e.message }).catch(() => {}));
+  return next;
+}
+
+export const originalFile = (id) => { const dir = footageDir(id); const f = fs.readdirSync(dir).find((x) => x.startsWith('original')); return f ? path.join(dir, f) : null; };
+
 /** Finish footage whose processing was cut short (the studio stopped or restarted while it ran). */
 export async function resumeProcessing() {
   for (const meta of await listFootage()) {
@@ -104,15 +128,18 @@ export async function processFootage(id) {
   const original = fs.readdirSync(dir).find((f) => f.startsWith('original'));
   const src = path.join(dir, original);
   const info = await probe(src);
+  // Optional crop to the phone screen (recordings of a cloud phone or mirror window on a desktop).
+  const crop = meta.crop ? `crop=${meta.crop.w}:${meta.crop.h}:${meta.crop.x}:${meta.crop.y}` : null;
   if (meta.kind === 'image') {
     const out = path.join(dir, `image${meta.ext}`);
-    await fsp.copyFile(src, out);
-    await ffmpeg(['-i', src, '-vf', 'scale=540:-2', '-q:v', '3', path.join(dir, 'poster.jpg')]);
-    return updateFootage(id, { status: 'ready', width: info.width, height: info.height, duration: 0, fps: 0, segments: [{ start: 0, end: 0, kf: 'poster.jpg' }] });
+    if (crop) await ffmpeg(['-i', src, '-vf', crop, out]); else await fsp.copyFile(src, out);
+    await ffmpeg(['-i', out, '-vf', 'scale=540:-2', '-q:v', '3', path.join(dir, 'poster.jpg')]);
+    const oi = crop ? await probe(out) : info;
+    return updateFootage(id, { status: 'ready', width: oi.width, height: oi.height, duration: 0, fps: 0, segments: [{ start: 0, end: 0, kf: 'poster.jpg' }] });
   }
   // Proxy: H.264, even dimensions, a keyframe every half second so scrubbing is instant. Max 60 fps.
   const fps = Math.min(60, Math.round(info.fps) || 30);
-  const vf = [`fps=${fps}`, 'scale=trunc(iw/2)*2:trunc(ih/2)*2', 'format=yuv420p'].join(',');
+  const vf = [crop, `fps=${fps}`, 'scale=trunc(iw/2)*2:trunc(ih/2)*2', 'format=yuv420p'].filter(Boolean).join(',');
   await ffmpeg(['-i', src, '-an', '-vf', vf, '-c:v', 'libx264', '-preset', 'medium', '-crf', '17', '-g', String(Math.round(fps / 2)), '-movflags', '+faststart', path.join(dir, 'video.mp4')]);
   const pinfo = await probe(path.join(dir, 'video.mp4'));
   await ffmpeg(['-ss', String(Math.min(1, pinfo.duration / 2)), '-i', path.join(dir, 'video.mp4'), '-frames:v', '1', '-vf', 'scale=540:-2', '-q:v', '3', path.join(dir, 'poster.jpg')]);

@@ -41,6 +41,7 @@ export const api = {
   uploadFootage: (file) => req('POST', '/api/footage', file, { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name || 'recording.mp4') }),
   updateFootage: (id, patch) => req('PATCH', `/api/footage/${id}`, patch),
   deleteFootage: (id) => req('DELETE', `/api/footage/${id}`),
+  cropFootage: (id, body) => req('POST', `/api/footage/${id}/crop`, body),
   device: (serial) => req('GET', `/api/device${serial ? `?serial=${encodeURIComponent(serial)}` : ''}`),
   installTools: () => req('POST', '/api/device/install-tools', {}),
   deviceInput: (b) => req('POST', '/api/device/input', b),
@@ -48,6 +49,15 @@ export const api = {
   deviceCapture: (goal, lang, serial) => req('POST', '/api/device/capture', { goal, lang, serial }),
   recordStart: (serial) => req('POST', '/api/device/record/start', { serial }),
   recordStop: (name) => req('POST', '/api/device/record/stop', { name }),
+  installApk: (file, serial) => req('POST', `/api/device/install-apk?serial=${encodeURIComponent(serial || '')}`, file, { 'Content-Type': 'application/vnd.android.package-archive' }),
+
+  // Cloud phones
+  cloud: () => req('GET', '/api/cloud'),
+  cloudMyIp: () => req('GET', '/api/cloud/my-ip'),
+  cloudAdd: (b) => req('POST', '/api/cloud/phones', b),
+  cloudConnect: (address) => req('POST', '/api/cloud/connect', { address }),
+  cloudDisconnect: (address) => req('POST', '/api/cloud/disconnect', { address }),
+  cloudRemove: (address) => req('DELETE', `/api/cloud/phones?address=${encodeURIComponent(address)}`),
 
   // Phone emulator on this computer
   emulator: () => req('GET', '/api/emulator'),
