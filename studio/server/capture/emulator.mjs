@@ -286,24 +286,62 @@ let child = null;
 let bootError = null;
 let stopping = false;
 
-// Graphics back-ends. "auto" uses the computer's GPU when it can; on some Windows graphics drivers the emulator then
-// crashes (error 0xC0000005), so after a crash the studio switches to "software", which works everywhere.
-export const GRAPHICS = {
-  auto: ['-gpu', 'auto'],
-  software: ['-gpu', 'swiftshader_indirect', '-feature', '-Vulkan'],
-  host: ['-gpu', 'host'],
-};
+// Ways to run the phone, from fastest to most compatible. When the emulator crashes (on Windows usually error
+// 0xC0000005 from a graphics driver, a leftover process or a broken quick-boot snapshot), the studio moves one level
+// down and tries again by itself. The level that works is remembered.
+export const LEVELS = [
+  { label: 'Normal (uses the graphics card)', args: ['-gpu', 'auto'] },
+  { label: 'Software graphics', args: ['-gpu', 'swiftshader_indirect', '-feature', '-Vulkan', '-no-snapshot-load'] },
+  { label: 'Software graphics, phone shown in the studio only', args: ['-gpu', 'swiftshader_indirect', '-feature', '-Vulkan', '-no-snapshot-load', '-no-window'], headless: true },
+  { label: 'Safest (software, no window, less memory, no quick boot)', args: ['-gpu', 'swiftshader_indirect', '-feature', '-Vulkan', '-no-snapshot', '-no-window', '-memory', '2048', '-cores', '2'], headless: true },
+];
+const MAX_LEVEL = LEVELS.length - 1;
 
-const crashText = (code) => (code === 3221225477 || code === -1073741819
-  ? 'crashed (Windows error 0xC0000005, which is almost always the graphics driver)'
-  : `stopped unexpectedly (code ${code})`);
+const crashText = (code) => (code === 3221225477 || code === -1073741819 ? 'crashed (Windows error 0xC0000005)' : `stopped unexpectedly (code ${code})`);
 
-export function setGraphics(mode) {
-  if (!GRAPHICS[mode]) throw Object.assign(new Error('Unknown graphics mode'), { status: 400 });
-  writeState({ graphics: mode });
+export function setLevel(level) {
+  const l = Number(level);
+  if (!LEVELS[l]) throw Object.assign(new Error('Unknown mode'), { status: 400 });
+  writeState({ level: l, coldBoot: true });
 }
 
+/** Wipe the phone's data on the next start (fixes a corrupted phone; Google and Goldcom must be signed in again). */
+export function resetPhone() { writeState({ wipe: true, coldBoot: true }); }
+
 const pidAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+
+const logFile = () => path.join(SDK, 'emulator.log');
+function crashLog() {
+  try {
+    const lines = fs.readFileSync(logFile(), 'utf8').split(/\r?\n/).filter((l) => l.trim());
+    return lines.slice(-40).join('\n');
+  } catch { return ''; }
+}
+
+/**
+ * Emulator processes left behind by a crash (qemu, netsimd for Bluetooth/Wi-Fi, crash handler) keep files locked and
+ * make the next start crash too. Stop the ones that run from the studio's own emulator folder, and clear stale locks.
+ */
+async function cleanLeftovers() {
+  const dir = path.join(SDK, 'emulator');
+  try {
+    if (process.platform === 'win32') {
+      const ps = `Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith('${dir.replace(/'/g, "''")}', [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+      spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { stdio: 'ignore', timeout: 20000, windowsHide: true });
+    } else {
+      const out = spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8', timeout: 5000 }).stdout || '';
+      for (const line of out.split('\n')) {
+        const m = line.trim().match(/^(\d+)\s+(.*)$/);
+        if (m && m[2].startsWith(dir) && Number(m[1]) !== process.pid) { try { process.kill(Number(m[1]), 'SIGKILL'); } catch { /* gone */ } }
+      }
+    }
+  } catch { /* best effort */ }
+  await new Promise((r) => setTimeout(r, 800));
+  const avd = path.join(AVD_HOME, `${AVD_NAME}.avd`);
+  try {
+    for (const f of await fsp.readdir(avd, { recursive: true })) if (String(f).endsWith('.lock')) await fsp.rm(path.join(avd, f), { recursive: true, force: true });
+  } catch { /* no avd yet */ }
+}
 
 export async function status() {
   const h = host();
@@ -317,17 +355,48 @@ export async function status() {
   const procAlive = !!(child && child.exitCode === null) || (st.pid ? pidAlive(st.pid) : false);
   let goldcom = null;
   if (booted) { try { goldcom = (await A.listPackages(SERIAL, 'goldcom')).length > 0; } catch { /* ignore */ } }
+  const level = Number.isInteger(st.level) ? st.level : 0;
   return {
     supported: !h.unsupported, unsupported: h.unsupported, host: h,
     installed, version: st.emulatorVersion || null, android: st.api ? { 34: '14', 35: '15', 36: '16' }[st.api] || st.api : null,
     accel: installed ? (st.accel || null) : null,
     serial: SERIAL, state: booted ? 'ready' : running || procAlive ? 'starting' : 'stopped', goldcomInstalled: goldcom,
-    freeGb: freeGb(fs.existsSync(SDK) ? SDK : os.homedir()), needGb: NEED_FREE_GB, error: bootError,
-    graphics: st.graphics || 'auto', lastCrash: st.lastCrash || null,
+    freeGb: freeGb(fs.existsSync(SDK) ? SDK : os.homedir()), needGb: NEED_FREE_GB, error: runtimeError(),
+    level, levels: LEVELS.map((l) => l.label), headless: !!(LEVELS[level]?.headless || st.headless),
+    lastCrash: st.lastCrash || null, wipePending: !!st.wipe,
   };
 }
 
-/** Start the phone (window visible so the user can sign in; `headless` hides it) and wait until Android has booted. */
+function launch({ level, headless }) {
+  const saved = readState();
+  const L = LEVELS[level] || LEVELS[0];
+  const args = ['-avd', AVD_NAME, '-port', String(PORT), '-no-boot-anim', '-no-audio', '-netdelay', 'none', '-netspeed', 'full', ...L.args];
+  if (saved.coldBoot && !args.includes('-no-snapshot-load') && !args.includes('-no-snapshot')) args.push('-no-snapshot-load');
+  if (saved.wipe) args.push('-wipe-data');
+  if (headless && !args.includes('-no-window')) args.push('-no-window');
+  const log = fs.openSync(logFile(), 'w');
+  fs.writeSync(log, `[studio] ${new Date().toISOString()} level ${level}: emulator ${args.join(' ')}\n`);
+  stopping = false;
+  // Detached: the phone keeps running while the studio restarts (updates) and is stopped explicitly.
+  const proc = spawn(emulatorBin(), args, { env: emuEnv(), detached: true, stdio: ['ignore', log, log], windowsHide: !!(headless || L.headless) });
+  const t0 = Date.now();
+  proc.on('exit', (code) => {
+    if (proc !== child || !code || stopping) return;
+    const log40 = crashLog();
+    const next = Math.min(MAX_LEVEL, level + 1);
+    writeState({ pid: null, coldBoot: true, level: next, lastCrash: { at: new Date().toISOString(), code, level, afterSec: Math.round((Date.now() - t0) / 1000), log: log40 } });
+    try { fs.copyFileSync(logFile(), path.join(SDK, 'emulator-crash.log')); } catch { /* ignore */ }
+    bootError = { code, level, exhausted: level >= MAX_LEVEL };
+  });
+  proc.unref();
+  child = proc;
+  writeState({ pid: proc.pid, headless: !!headless, wipe: false });
+}
+
+/**
+ * Start the phone (window visible so the user can sign in, unless the mode or `headless` hides it) and wait until
+ * Android has booted. If it crashes while starting, more compatible modes are tried automatically.
+ */
 export async function start({ headless = false, onProgress = () => {}, signal } = {}) {
   const st = await status();
   if (!st.installed) throw new Error('Install the phone emulator first.');
@@ -336,32 +405,24 @@ export async function start({ headless = false, onProgress = () => {}, signal } 
   writeState({ accel });
   if (!accel.ok) throw new Error(accel.message);
   bootError = null;
-  if (st.state === 'stopped') {
-    await fsp.mkdir(EMU_HOME, { recursive: true });
-    const log = fs.openSync(path.join(SDK, 'emulator.log'), 'w');
-    const saved = readState();
-    const mode = GRAPHICS[saved.graphics] ? saved.graphics : 'auto';
-    const args = ['-avd', AVD_NAME, '-port', String(PORT), '-no-boot-anim', ...GRAPHICS[mode], '-no-audio', '-netdelay', 'none', '-netspeed', 'full'];
-    // A crash can leave a broken quick-boot snapshot behind: boot cleanly once (apps and logins are kept).
-    if (saved.coldBoot) args.push('-no-snapshot-load');
-    if (headless) args.push('-no-window');
-    stopping = false;
-    // Detached: the phone keeps running while the studio restarts (updates) and is stopped explicitly.
-    child = spawn(emulatorBin(), args, { env: emuEnv(), detached: true, stdio: ['ignore', log, log], windowsHide: headless });
-    child.on('exit', (code) => {
-      if (!code || stopping) return;
-      writeState({ pid: null, coldBoot: true, graphics: 'software', lastCrash: { at: new Date().toISOString(), code, mode } });
-      bootError = mode === 'software'
-        ? `The phone ${crashText(code)}, even with compatible graphics. Update the graphics driver (or Windows), close other heavy apps, then start it again. ${tailLog()}`.trim()
-        : `The phone ${crashText(code)}. Press “Start the phone” again: it will now use compatible graphics (software rendering), which works on every computer.`;
-    });
-    child.unref();
-    writeState({ pid: child.pid, headless });
-  }
-  const t0 = Date.now();
+  if (st.state === 'stopped') { await fsp.mkdir(EMU_HOME, { recursive: true }); await cleanLeftovers(); launch({ level: st.level, headless }); }
+  let level = st.level;
+  let t0 = Date.now();
   while (Date.now() - t0 < 8 * 60e3) {
     if (signal?.aborted) throw new Error('Cancelled');
-    if (bootError) throw new Error(bootError);
+    if (bootError) {
+      const { code, exhausted } = bootError;
+      if (exhausted) {
+        throw new Error(`The phone ${crashText(code)} in every mode, including the safest one. Press “Copy details” below and send them to support, or use a cloud phone instead. Things that often help: update Windows and the graphics driver, restart the computer, turn off “Memory integrity” (Windows Security → Device security → Core isolation), and make sure no other emulator (BlueStacks, LDPlayer, Android Studio) is running.`);
+      }
+      level = readState().level;
+      onProgress({ message: `The phone ${crashText(code)}. Trying a more compatible mode: ${LEVELS[level].label}…`, pct: 0.05 });
+      bootError = null;
+      await cleanLeftovers();
+      launch({ level, headless });
+      t0 = Date.now();
+      continue;
+    }
     const s = await status();
     if (s.state === 'ready') {
       writeState({ coldBoot: false });
@@ -370,17 +431,16 @@ export async function start({ headless = false, onProgress = () => {}, signal } 
       return s;
     }
     const secs = Math.round((Date.now() - t0) / 1000);
-    onProgress({ message: secs < 20 ? 'Starting the phone…' : `Android is booting (${secs} s; the first start takes a few minutes)…`, pct: Math.min(0.95, secs / 240) });
+    onProgress({ message: secs < 20 ? `Starting the phone (${LEVELS[level].label})…` : `Android is booting (${secs} s; the first start takes a few minutes)…`, pct: Math.min(0.95, secs / 240) });
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error(`The phone did not finish starting in 8 minutes. ${tailLog()}`);
+  throw new Error(`The phone did not finish starting in 8 minutes. ${crashLog().split('\n').filter((l) => /ERROR|FATAL|error:/i.test(l)).slice(-2).join(' ').slice(0, 400)}`);
 }
 
-function tailLog() {
-  try {
-    const lines = fs.readFileSync(path.join(SDK, 'emulator.log'), 'utf8').split(/\r?\n/).filter((l) => /ERROR|FATAL|error:/i.test(l));
-    return lines.slice(-2).join(' ').slice(0, 400);
-  } catch { return ''; }
+/** A crash while the phone was already running: the next start uses the next mode. */
+export function runtimeError() {
+  if (!bootError) return null;
+  return `The phone ${crashText(bootError.code)}. Press “Start the phone” again: it will use ${LEVELS[readState().level ?? 0].label.toLowerCase()}.`;
 }
 
 export async function stop() {
@@ -390,6 +450,7 @@ export async function stop() {
     if (st.pid && pidAlive(st.pid)) { try { process.kill(st.pid); } catch { /* gone */ } }
   }
   child = null;
+  bootError = null;
   writeState({ pid: null });
 }
 

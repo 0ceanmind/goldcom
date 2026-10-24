@@ -30,10 +30,11 @@ function JobLine({ job }) {
 }
 
 /** Mirror, buttons, recording and "Claude films a flow" for one ready Android device (emulator, cloud or USB). */
-export function DeviceControls({ serial, toast, label }) {
+export function DeviceControls({ serial, toast, label, autoMirror = false }) {
   const [dev, setDev] = useState(null);
   const [shot, setShot] = useState(0);
-  const [mirror, setMirror] = useState(false);
+  const [mirror, setMirror] = useState(autoMirror);
+  const [typed, setTyped] = useState('');
   const [goal, setGoal] = useState('');
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useJob((j) => toast(j.status === 'done' ? 'Footage saved to the library' : j.error || j.message, j.status !== 'done'));
@@ -58,6 +59,12 @@ export function DeviceControls({ serial, toast, label }) {
         {mirror ? <img className="mirror" src={`/api/device/screen?serial=${encodeURIComponent(serial)}&n=${shot}`} alt="Phone screen" onClick={tapMirror} onError={() => setMirror(false)} title="Click to tap the phone" />
           : <button className="mirror-off" onClick={() => setMirror(true)}><Icon name="eye" />Show the phone screen</button>}
       </div>
+      {mirror && (
+        <div className="row type-row">
+          <input className="input" value={typed} placeholder="Type into the phone (e.g. an email)" onChange={(e) => setTyped(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && typed) { api.deviceInput({ serial, action: 'text', text: typed }).then(() => { setTyped(''); setShot((n) => n + 1); }).catch((er) => toast(er.message, true)); } }} />
+          <button className="btn sm" disabled={!typed} onClick={() => api.deviceInput({ serial, action: 'text', text: typed }).then(() => { setTyped(''); setShot((n) => n + 1); }).catch((er) => toast(er.message, true))}>Type</button>
+        </div>
+      )}
       <div className="row3">
         <button className="btn sm" onClick={() => api.deviceInput({ serial, action: 'back' })}>Back</button>
         <button className="btn sm" onClick={() => api.deviceInput({ serial, action: 'home' })}>Home</button>
@@ -78,6 +85,20 @@ export function DeviceControls({ serial, toast, label }) {
         <p className="hint small">Claude rehearses the flow first, then records one clean take. It never confirms payments, sales or gifts. Productions also film missing steps by themselves when this phone is running.</p>
       </div>
       <JobLine job={job} />
+    </div>
+  );
+}
+
+function CrashDetails({ crash, toast }) {
+  const [open, setOpen] = useState(false);
+  const text = `Goldcom phone emulator crash\nWhen: ${crash.at}\nCode: ${crash.code}\nMode: ${crash.level}\nAfter: ${crash.afterSec} s\n\n${crash.log || '(no log)'}`;
+  return (
+    <div className="crash">
+      <div className="row">
+        <button className="btn sm ghost" onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'} crash details</button>
+        <button className="btn sm ghost" onClick={() => navigator.clipboard.writeText(text).then(() => toast('Crash details copied')).catch(() => setOpen(true))}>Copy details</button>
+      </div>
+      {open && <pre className="crash-log">{text}</pre>}
     </div>
   );
 }
@@ -120,18 +141,20 @@ function EmulatorSource({ toast }) {
           {st.host?.os === 'windows' && <div><button className="btn sm" onClick={() => act(() => api.emulatorEnableHypervisor(), 'Approve the Windows prompt, then restart the computer')}>Turn on Windows Hypervisor Platform</button></div>}
         </div>
       )}
-      {st.error && <p className="note err">{st.error}</p>}
+      {job?.status === 'error' ? <p className="note err">{job.error || job.message}</p> : st.error && <p className="note err">{st.error}</p>}
+      {st.lastCrash && st.state !== 'ready' && <CrashDetails crash={st.lastCrash} toast={toast} />}
       {st.state === 'stopped' && (
         <>
-          <button className="btn primary" disabled={running} onClick={() => act(async () => { const { jobId } = await api.emulatorStart(headless); setJob({ id: jobId, status: 'running', message: 'Starting the phone…' }); })}><Icon name="phone" />Start the phone</button>
-          <label className="check"><input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} />Run in the background (no phone window)</label>
-          <div className="field"><label>Graphics</label>
-            <select className="input" value={st.graphics || 'auto'} onChange={(e) => act(() => api.emulatorGraphics(e.target.value))}>
-              <option value="auto">Automatic (uses the graphics card)</option>
-              <option value="software">Compatible (software, works on every computer)</option>
-              <option value="host">Graphics card only</option>
+          <button className="btn primary" disabled={running} onClick={() => act(async () => { setJob(null); const { jobId } = await api.emulatorStart(headless); setJob({ id: jobId, status: 'running', message: 'Starting the phone…' }); })}><Icon name="phone" />Start the phone</button>
+          {!st.headless && <label className="check"><input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} />Run in the background (no phone window)</label>}
+          <div className="field"><label>Mode (changes by itself if the phone crashes)</label>
+            <select className="input" value={st.level ?? 0} onChange={(e) => act(() => api.emulatorMode(Number(e.target.value)))}>
+              {(st.levels || []).map((l, i) => <option key={l} value={i}>{l}</option>)}
             </select>
           </div>
+          {st.lastCrash && (
+            <button className="btn sm ghost" disabled={st.wipePending} onClick={() => { if (confirm('Reset the phone to factory state on the next start? This fixes a damaged phone, but you will need to sign in to Google and Goldcom again.')) act(() => api.emulatorReset(), 'The phone will be reset when it next starts'); }}>{st.wipePending ? 'Reset on next start' : 'Reset the phone (factory state)'}</button>
+          )}
         </>
       )}
       <JobLine job={job?.status === 'running' ? job : null} />
@@ -141,13 +164,14 @@ function EmulatorSource({ toast }) {
             <div className="setup-steps">
               <b>First time only</b>
               <ol className="howto">
-                <li>In the phone window, open <b>Play Store</b> and sign in with a Google account (one from Oman if Goldcom is only listed there).</li>
+                <li>In the phone{st.headless ? ' screen below' : ' window'}, open <b>Play Store</b> and sign in with a Google account (one from Oman if Goldcom is only listed there).</li>
                 <li><button className="btn sm" onClick={() => act(() => api.emulatorOpenStore(), 'Goldcom’s Play Store page is open in the phone')}>Open Goldcom in the Play Store</button> and press <b>Install</b>.</li>
                 <li>Open Goldcom and log in. A demo or test account is best, so no real balances are filmed.</li>
               </ol>
             </div>
           )}
-          <DeviceControls serial={st.serial} toast={toast} label="Goldcom phone (emulator)" />
+          {st.headless && <p className="hint small">The phone runs without its own window: use the screen below to tap, and the typing box to type.</p>}
+          <DeviceControls serial={st.serial} toast={toast} label="Goldcom phone (emulator)" autoMirror={st.headless} />
           <button className="btn sm ghost" onClick={() => act(() => api.emulatorStop(), 'Phone stopped')}>Stop the phone</button>
         </>
       )}

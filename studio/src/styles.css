@@ -545,3 +545,6 @@ textarea.input.code { font-family: var(--mono); font-size: 12px; min-height: 120
 .price-table th { color: var(--stone); font-weight: 600; }
 .cloud-phone { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
 .file-btn { cursor: pointer; justify-self: start; }
+.crash { display: grid; gap: 6px; }
+.crash-log { margin: 0; max-height: 220px; overflow: auto; font-size: 11px; line-height: 1.45; background: #0d0d0c; border: 1px solid var(--line); border-radius: 10px; padding: 10px; white-space: pre-wrap; word-break: break-all; color: #cfcbc2; }
+.type-row .input { flex: 1; }

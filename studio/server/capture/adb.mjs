@@ -123,7 +123,8 @@ export const KEY = { back: 4, home: 3, enter: 66, del: 67 };
 export async function typeText(serial, text) {
   const clean = String(text).replace(/[^\x20-\x7E]/g, '');
   if (!clean) throw new Error('Only Latin letters and digits can be typed on the phone');
-  return sh(serial, `input text '${clean.replace(/'/g, '').replace(/ /g, '%s')}'`);
+  // Single-quoted for the phone's shell (so $, &, ; and quotes in passwords arrive as typed); %s is input's space.
+  return sh(serial, `input text '${clean.replace(/ /g, '%s').replace(/'/g, "'\\''")}'`);
 }
 
 export async function listPackages(serial, filter = '') {
