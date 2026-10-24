@@ -84,8 +84,9 @@ export function AssetPicker({ onClose, onPick, toast }) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState('http://localhost:3000');
   const [device, setDevice] = useState('phone');
+  const [footage, setFootage] = useState([]);
   const load = () => api.assets().then(setAssets).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.footage().then((l) => setFootage(l.filter((f) => f.status === 'ready'))).catch(() => {}); }, []);
   const upload = async (files) => {
     setBusy(true);
     try {
@@ -116,6 +117,20 @@ export function AssetPicker({ onClose, onPick, toast }) {
         </div>
         <p className="hint" style={{ marginTop: 6 }}>Captures your running app (for example a Claude Code project's dev server) at real device size. Needs Playwright on the studio machine.</p>
       </div>
+      {footage.length > 0 && (
+        <div className="section" style={{ padding: '0 0 16px', borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <h4>Real app footage</h4>
+          <div className="assets">
+            {footage.map((f) => (
+              <button key={f.id} className="asset footage" title={f.labels?.summary || f.name} onClick={() => onPick(f.kind === 'image' ? `/footage/${f.id}/image${f.ext || '.png'}` : `/footage/${f.id}/video.mp4`)}>
+                <img src={`/footage/${f.id}/poster.jpg`} alt={f.name} loading="lazy" />
+                <span>{f.kind === 'video' ? `${Number(f.duration).toFixed(1)}s · ` : ''}{f.name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="hint" style={{ marginTop: 6 }}>Videos play inside phone mockups. Set the start and end seconds in the slide fields.</p>
+        </div>
+      )}
       <div className="assets">
         {assets.filter((a) => a.mime.startsWith('image/')).map((a) => (
           <button key={a.file} className="asset" onClick={() => onPick(a.url)} title={a.file}><img src={a.url} alt={a.file} loading="lazy" /></button>

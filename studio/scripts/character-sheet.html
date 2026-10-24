@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Goldcom character sheets</title>
+<style>
+  @font-face { font-family: 'Inter'; font-weight: 500; src: url('/node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 600; src: url('/node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 700; src: url('/node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2'); }
+  body { margin: 0; background: #1d1d1f; color: #fff; font: 14px Inter, sans-serif; }
+</style>
+</head>
+<body>
+<script type="module">
+import { drawCharacter, drawProp, drawScene, PROP_NAMES, SCENE_NAMES, CHARACTER_OPTIONS, characterAnchors } from '../src/render/characters/index.js';
+import { COLORS } from '/shared/brand.js';
+
+const POSES = Object.keys(CHARACTER_OPTIONS.pose);
+const MOODS = Object.keys(CHARACTER_OPTIONS.mood);
+
+function canvas(w, h, bg = COLORS.onyx) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d');
+  c.fillStyle = bg; c.fillRect(0, 0, w, h);
+  return [cv, c];
+}
+function label(c, text, x, y, col = COLORS.stone, size = 15, align = 'center') {
+  c.save(); c.font = `600 ${size}px Inter, sans-serif`; c.fillStyle = col; c.textAlign = align; c.fillText(text, x, y); c.restore();
+}
+const out = (cv) => cv.toDataURL('image/png');
+
+function poseSheet(facing) {
+  const cols = 8, cw = 260, ch = 470, lh = 34;
+  const rows = [
+    { gender: 'man', bg: COLORS.cream, ink: COLORS.stoneDark, list: POSES.slice(0, 8) },
+    { gender: 'man', bg: COLORS.cream, ink: COLORS.stoneDark, list: POSES.slice(8) },
+    { gender: 'woman', bg: COLORS.onyx, ink: COLORS.stone, list: POSES.slice(0, 8) },
+    { gender: 'woman', bg: COLORS.onyx, ink: COLORS.stone, list: POSES.slice(8) },
+  ];
+  const [cv, c] = canvas(cols * cw, rows.length * (ch + lh));
+  rows.forEach((r, ri) => {
+    const y0 = ri * (ch + lh);
+    c.fillStyle = r.bg; c.fillRect(0, y0, cols * cw, ch + lh);
+    r.list.forEach((pose, i) => {
+      const spec = r.gender === 'man'
+        ? { gender: 'man', skin: ['medium', 'tan', 'light', 'deep'][i % 4], pose, facing, seed: 1 + (i % 3), accent: 'bullion' }
+        : { gender: 'woman', skin: ['light', 'medium', 'tan', 'deep'][i % 4], pose, facing, seed: 2 + (i % 3), accent: 'gold' };
+      drawCharacter(c, spec, { x: i * cw + 20, y: y0 + 20, w: cw - 40, h: ch - 10 }, 0.4);
+      label(c, pose, i * cw + cw / 2, y0 + ch + 22, r.ink);
+    });
+  });
+  return out(cv);
+}
+
+function varietySheet() {
+  const specs = [
+    { gender: 'man', age: 'young', skin: 'light', outfit: 'casual', headwear: 'none', mood: 'happy' },
+    { gender: 'man', age: 'adult', skin: 'medium', headwear: 'kumma', beard: true },
+    { gender: 'man', age: 'adult', skin: 'tan', headwear: 'massar', beard: true, accent: 'bronze', seed: 3 },
+    { gender: 'man', age: 'senior', skin: 'deep', headwear: 'massar', beard: true, glasses: true, seed: 5 },
+    { gender: 'man', age: 'senior', skin: 'light', headwear: 'kumma', seed: 2 },
+    { gender: 'man', age: 'young', skin: 'deep', outfit: 'casual', headwear: 'kumma', seed: 4 },
+    { gender: 'woman', age: 'young', skin: 'light', outfit: 'casual', headwear: 'hijab', mood: 'happy', seed: 3 },
+    { gender: 'woman', age: 'adult', skin: 'medium', headwear: 'hijab', seed: 1 },
+    { gender: 'woman', age: 'adult', skin: 'tan', headwear: 'sheila', seed: 4, accent: 'sand' },
+    { gender: 'woman', age: 'senior', skin: 'deep', headwear: 'sheila', glasses: true, seed: 6 },
+    { gender: 'woman', age: 'adult', skin: 'deep', headwear: 'hijab', outfit: 'casual', seed: 8 },
+    { gender: 'woman', age: 'young', skin: 'medium', headwear: 'hijab', seed: 5, scarf: 'sandstone' },
+  ];
+  const cw = 270, ch = 520;
+  const [cv, c] = canvas(specs.length / 2 * cw, 2 * (ch + 30));
+  for (let row = 0; row < 2; row++) {
+    c.fillStyle = row ? COLORS.onyx : COLORS.cream;
+    c.fillRect(0, row * (ch + 30), cv.width, ch + 30);
+    for (let i = 0; i < 6; i++) {
+      const s = specs[row * 6 + i];
+      for (const [j, facing] of [[0, 'front']]) {
+        drawCharacter(c, { ...s, facing: i % 2 ? 'right' : 'front' }, { x: i * cw + 15, y: row * (ch + 30) + 15, w: cw - 30, h: ch - 10 }, 0.2);
+      }
+      label(c, `${s.age} ${s.outfit || ''} ${s.headwear}`, i * cw + cw / 2, row * (ch + 30) + ch + 18, row ? COLORS.stone : COLORS.stoneDark, 13);
+    }
+  }
+  return out(cv);
+}
+
+function moodSheet() {
+  const rows = [
+    { spec: { gender: 'man', skin: 'medium', headwear: 'kumma', beard: true, facing: 'right', seed: 1 }, bg: COLORS.cream },
+    { spec: { gender: 'woman', skin: 'light', headwear: 'hijab', facing: 'right', seed: 2 }, bg: COLORS.onyx },
+    { spec: { gender: 'man', age: 'senior', skin: 'tan', headwear: 'massar', beard: true, facing: 'front', seed: 3 }, bg: COLORS.onyx },
+    { spec: { gender: 'woman', skin: 'deep', headwear: 'sheila', facing: 'front', seed: 4 }, bg: COLORS.cream },
+    { spec: { gender: 'man', age: 'young', skin: 'light', outfit: 'casual', headwear: 'none', facing: 'left', seed: 2 }, bg: COLORS.cream },
+  ];
+  const cw = 230, ch = 250;
+  const [cv, c] = canvas(MOODS.length * cw, rows.length * ch + 30);
+  rows.forEach((r, ri) => {
+    c.fillStyle = r.bg; c.fillRect(0, ri * ch, cv.width, ch);
+    MOODS.forEach((mood, i) => {
+      c.save();
+      c.beginPath(); c.rect(i * cw, ri * ch, cw, ch); c.clip();
+      // draw the full figure big and frame the head
+      const H = 1150;
+      const spec = { ...r.spec, mood, pose: 'stand' };
+      const box = { x: i * cw + cw / 2 - 400, y: 0, w: 800, h: H };
+      const a = characterAnchors(spec, box, 0);
+      const dy = ri * ch + ch * 0.46 - a.head.y;
+      box.y += dy;
+      drawCharacter(c, spec, box, 0);
+      c.restore();
+      if (ri === 0) label(c, mood, i * cw + cw / 2, rows.length * ch + 21, COLORS.stone);
+    });
+  });
+  return out(cv);
+}
+
+function propSheet() {
+  const cols = 7, cw = 230, ch = 210;
+  const n = PROP_NAMES.length;
+  const rowsPer = Math.ceil(n / cols);
+  const [cv, c] = canvas(cols * cw, rowsPer * 2 * (ch + 26));
+  for (let half = 0; half < 2; half++) {
+    const theme = half ? 'onyx' : 'cream';
+    const bg = half ? COLORS.onyx : COLORS.cream;
+    const y0 = half * rowsPer * (ch + 26);
+    c.fillStyle = bg; c.fillRect(0, y0, cv.width, rowsPer * (ch + 26));
+    PROP_NAMES.forEach((name, i) => {
+      const x = (i % cols) * cw, y = y0 + Math.floor(i / cols) * (ch + 26);
+      drawProp(c, name, { x: x + 25, y: y + 20, w: cw - 50, h: ch - 30 }, { theme }, 0.6);
+      label(c, name, x + cw / 2, y + ch + 12, half ? COLORS.stone : COLORS.stoneDark, 13);
+    });
+  }
+  return out(cv);
+}
+
+function sceneSheet() {
+  const cw = 480, ch = 600;
+  const themes = ['cream', 'onyx'];
+  const [cv, c] = canvas(SCENE_NAMES.length * cw, themes.length * (ch + 30));
+  themes.forEach((theme, ri) => {
+    SCENE_NAMES.forEach((name, i) => {
+      const box = { x: i * cw + 6, y: ri * (ch + 30) + 6, w: cw - 12, h: ch - 12 };
+      const res = drawScene(c, name, box, { theme }, 0.5);
+      // a stand-in person on the floor line to judge scale
+      const h = (box.h) * 0.56;
+      drawCharacter(c, { gender: i % 2 ? 'woman' : 'man', pose: 'stand', facing: 'front', seed: i + 1, mood: theme === 'onyx' ? 'neutral' : 'calm' }, { x: box.x + box.w * 0.3 - 80, y: res.floorY + h * 0.06 - h, w: 160, h }, 0);
+      label(c, `${name} · ${theme}`, i * cw + cw / 2, ri * (ch + 30) + ch + 18, COLORS.stone);
+    });
+  });
+  return out(cv);
+}
+
+function compareSheet() {
+  const W = 1080, H = 1350;
+  const [cv, c] = canvas(W, H, COLORS.onyx);
+  const half = W / 2;
+  // left: without Goldcom — a dark souq, a queue at the gold shop, a stressed man with receipts
+  const L = drawScene(c, 'souq', { x: 0, y: 0, w: half, h: H }, { theme: 'onyx', shopX: 0.7 }, 0.8);
+  const qh = 500, qy = L.floorY - 36;
+  const queue = [
+    { gender: 'woman', skin: 'light', pose: 'phone', seed: 5, headwear: 'hijab' },
+    { gender: 'man', skin: 'deep', age: 'senior', pose: 'stand', mood: 'worried', headwear: 'massar', seed: 6 },
+    { gender: 'man', skin: 'medium', pose: 'stand', mood: 'neutral', seed: 4 },
+  ];
+  queue.forEach((q, i) => drawCharacter(c, { ...q, facing: 'right' }, { x: 420 - i * 92 - 60, y: qy - qh, w: 120, h: qh }, 0.8 + i * 0.6));
+  const hh = 780;
+  drawCharacter(c, { gender: 'man', skin: 'tan', pose: 'stressed', facing: 'right', mood: 'worried', seed: 2, beard: true, accent: 'bronze' }, { x: 10, y: L.floorY + 70 - hh, w: 300, h: hh }, 0.8);
+  drawProp(c, 'clock', { x: 380, y: 210, w: 104, h: 104 }, { theme: 'onyx', speed: 4 }, 0.8);
+  drawProp(c, 'cross-badge', { x: 48, y: 200, w: 84, h: 84 }, { theme: 'onyx' }, 0.8);
+  // right: with Goldcom — a calm woman checking her gold on the phone in a light room
+  const R = drawScene(c, 'room', { x: half, y: 0, w: half, h: H }, { theme: 'cream', windowX: 0.3 }, 0.8);
+  drawCharacter(c, { gender: 'woman', skin: 'medium', pose: 'phone-happy', facing: 'left', seed: 3, accent: 'gold' }, { x: half + 200, y: R.floorY + 70 - hh * 0.98, w: 300, h: hh * 0.98 }, 0.8);
+  drawProp(c, 'check-badge', { x: W - 132, y: 200, w: 84, h: 84 }, { theme: 'cream' }, 0.8);
+  drawProp(c, 'sparkle-burst', { x: half + 190, y: 470, w: 100, h: 100 }, { theme: 'cream' }, 0.8);
+  // divider + labels
+  c.fillStyle = COLORS.spark; c.fillRect(half - 2, 0, 4, H);
+  c.font = '700 40px Inter'; c.textAlign = 'center';
+  c.fillStyle = COLORS.white; c.fillText('Without', half / 2, 110);
+  c.fillStyle = COLORS.charcoal; c.fillText('With Goldcom', half + half / 2, 110);
+  return out(cv);
+}
+
+function animSheet() {
+  const ts = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  const cw = 220, ch = 440;
+  const rows = [
+    { spec: { gender: 'man', skin: 'medium', pose: 'phone', facing: 'right', seed: 1 }, bg: COLORS.cream },
+    { spec: { gender: 'woman', skin: 'tan', pose: 'celebrate', facing: 'front', seed: 2 }, bg: COLORS.onyx },
+    { spec: { gender: 'man', skin: 'deep', pose: 'walk', facing: 'right', seed: 3, outfit: 'dishdasha' }, bg: COLORS.cream },
+    { spec: { gender: 'man', skin: 'light', pose: 'walk', facing: 'left', seed: 3, outfit: 'casual', age: 'young' }, bg: COLORS.onyx },
+  ];
+  const [cv, c] = canvas(ts.length * cw, rows.length * (ch + 26));
+  rows.forEach((r, ri) => {
+    c.fillStyle = r.bg; c.fillRect(0, ri * (ch + 26), cv.width, ch + 26);
+    ts.forEach((t, i) => {
+      drawCharacter(c, r.spec, { x: i * cw + 20, y: ri * (ch + 26) + 30, w: cw - 40, h: ch - 20 }, t);
+      label(c, `${r.spec.pose} t=${t}`, i * cw + cw / 2, ri * (ch + 26) + ch + 16, ri % 2 ? COLORS.stone : COLORS.stoneDark, 13);
+    });
+  });
+  return out(cv);
+}
+
+function heroSheet() {
+  const [cv, c] = canvas(1620, 1080, COLORS.cream);
+  c.fillStyle = COLORS.onyx; c.fillRect(810, 0, 810, 1080);
+  drawCharacter(c, { gender: 'man', skin: 'medium', pose: 'phone', facing: 'right', seed: 1, beard: true }, { x: 20, y: 20, w: 380, h: 1040 }, 0.3);
+  drawCharacter(c, { gender: 'woman', skin: 'light', pose: 'give-gift', facing: 'right', seed: 2 }, { x: 400, y: 20, w: 380, h: 1040 }, 0.3);
+  drawCharacter(c, { gender: 'man', skin: 'tan', pose: 'stressed', facing: 'front', seed: 2, headwear: 'massar' }, { x: 830, y: 20, w: 380, h: 1040 }, 0.3);
+  drawCharacter(c, { gender: 'woman', skin: 'deep', pose: 'hold-goldbar', facing: 'left', seed: 4, headwear: 'sheila' }, { x: 1220, y: 20, w: 380, h: 1040 }, 0.3);
+  return out(cv);
+}
+
+function detailSheet() {
+  // upper-body crops at large scale: hands, grips, sleeves, faces
+  const list = [
+    { gender: 'man', skin: 'medium', pose: 'phone', facing: 'right', seed: 1 },
+    { gender: 'woman', skin: 'light', pose: 'give-gift', facing: 'right', seed: 2 },
+    { gender: 'man', skin: 'tan', pose: 'thinking', facing: 'right', seed: 3, headwear: 'massar' },
+    { gender: 'woman', skin: 'medium', pose: 'stressed', facing: 'right', seed: 4 },
+    { gender: 'man', skin: 'deep', pose: 'receive-gift', facing: 'front', seed: 2 },
+    { gender: 'woman', skin: 'tan', pose: 'hold-goldbar', facing: 'right', seed: 5, headwear: 'sheila' },
+    { gender: 'man', age: 'young', skin: 'light', outfit: 'casual', pose: 'wave', facing: 'right', seed: 2 },
+    { gender: 'woman', skin: 'deep', pose: 'present', facing: 'front', seed: 6, outfit: 'casual' },
+  ];
+  const cw = 500, ch = 620;
+  const [cv, c] = canvas(cw * 4, ch * 2, COLORS.cream);
+  list.forEach((spec, i) => {
+    const x = (i % 4) * cw, y = Math.floor(i / 4) * ch;
+    c.fillStyle = i % 2 ? COLORS.onyx : COLORS.cream; c.fillRect(x, y, cw, ch);
+    c.save(); c.beginPath(); c.rect(x, y, cw, ch); c.clip();
+    const H = 1500;
+    const box = { x: x + cw / 2 - 300 - 40, y: 0, w: 600, h: H };
+    const a = characterAnchors(spec, box, 0.3);
+    box.y = y + 130 - a.head.y;
+    drawCharacter(c, spec, box, 0.3);
+    c.restore();
+  });
+  return out(cv);
+}
+
+function sitSheet() {
+  const specs = [
+    { gender: 'man', pose: 'sit', facing: 'front', seed: 1 },
+    { gender: 'woman', pose: 'sit', facing: 'front', seed: 2 },
+    { gender: 'man', pose: 'sit', facing: 'right', seed: 1, prop: 'phone' },
+    { gender: 'woman', pose: 'sit', facing: 'right', seed: 3, prop: 'coffee', outfit: 'casual' },
+    { gender: 'man', pose: 'sit', facing: 'front', outfit: 'casual', age: 'young', seed: 4 },
+  ];
+  const cw = 420, ch = 760;
+  const [cv, c] = canvas(cw * specs.length, ch, COLORS.cream);
+  specs.forEach((s, i) => { c.fillStyle = i % 2 ? COLORS.onyx : COLORS.cream; c.fillRect(i * cw, 0, cw, ch); drawCharacter(c, s, { x: i * cw + 20, y: 30, w: cw - 40, h: 720 }, 0.3); });
+  return out(cv);
+}
+
+function holdsSheet() {
+  // spec.prop overrides: props in free hands or in the pose's own grip
+  const combos = [
+    ['stand', 'phone'], ['stand', 'coffee'], ['stand', 'bag'], ['stand', 'goldbar'], ['stand', 'giftbox'], ['stand', 'receipts'],
+    ['walk', 'bag'], ['wave', 'phone'], ['point', 'coffee'], ['present', 'bag'], ['celebrate', 'phone'], ['give-gift', 'goldbar'],
+    ['stressed', 'phone'], ['thinking', 'phone'], ['shrug', 'receipts'], ['hold-goldbar', 'coffee'],
+  ];
+  const cols = 8, cw = 250, ch = 460;
+  const [cv, c] = canvas(cols * cw, 2 * (ch + 30), COLORS.cream);
+  combos.forEach(([pose, prop], i) => {
+    const x = (i % cols) * cw, y = Math.floor(i / cols) * (ch + 30);
+    const facing = ['right', 'front', 'left'][i % 3];
+    drawCharacter(c, { gender: i % 2 ? 'woman' : 'man', pose, prop, facing, seed: i + 1, skin: ['light', 'medium', 'tan', 'deep'][i % 4] }, { x: x + 25, y: y + 20, w: cw - 50, h: ch - 10 }, 0.5);
+    label(c, `${pose} + ${prop} (${facing})`, x + cw / 2, y + ch + 18, COLORS.stoneDark, 12);
+  });
+  return out(cv);
+}
+
+function perf() {
+  const [cv, c] = canvas(1080, 1920, COLORS.cream);
+  const specs = POSES.map((pose, i) => ({ gender: i % 2 ? 'woman' : 'man', pose, facing: ['left', 'right', 'front'][i % 3], seed: i }));
+  // warm-up
+  for (const s of specs) drawCharacter(c, s, { x: 0, y: 0, w: 1080, h: 1800 }, 0);
+  const N = 6;
+  const t0 = performance.now();
+  for (let k = 0; k < N; k++) for (const s of specs) drawCharacter(c, s, { x: 0, y: 0, w: 1080, h: 1800 }, k * 0.1);
+  const per = (performance.now() - t0) / (N * specs.length);
+  const t1 = performance.now();
+  for (let k = 0; k < 3; k++) for (const n of PROP_NAMES) drawProp(c, n, { x: 0, y: 0, w: 600, h: 600 }, {}, k);
+  const perProp = (performance.now() - t1) / (3 * PROP_NAMES.length);
+  const t2 = performance.now();
+  for (let k = 0; k < 3; k++) for (const n of SCENE_NAMES) drawScene(c, n, { x: 0, y: 0, w: 1080, h: 1920 }, {}, k);
+  const perScene = (performance.now() - t2) / (3 * SCENE_NAMES.length);
+  // state hygiene: transform and alpha must be untouched afterwards
+  const m = c.getTransform();
+  return { msPerCharacter: +per.toFixed(3), msPerProp: +perProp.toFixed(3), msPerScene: +perScene.toFixed(3), transformClean: m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1 && m.e === 0 && m.f === 0, alpha: c.globalAlpha };
+}
+
+window.sheets = {
+  'poses-34': () => poseSheet('right'),
+  'poses-front': () => poseSheet('front'),
+  'poses-left': () => poseSheet('left'),
+  variety: varietySheet,
+  moods: moodSheet,
+  props: propSheet,
+  scenes: sceneSheet,
+  compare: compareSheet,
+  anim: animSheet,
+  hero: heroSheet,
+  detail: detailSheet,
+  sit: sitSheet,
+  holds: holdsSheet,
+};
+window.perf = perf;
+await document.fonts.load('700 20px Inter');
+await document.fonts.load('600 20px Inter');
+await document.fonts.ready;
+window.ready = true;
+</script>
+</body>
+</html>

@@ -155,7 +155,19 @@ export const LOOPS = {
 
 export const BG_MOTION = { none: 'Still', drift: 'Drifting pattern', zoom: 'Slow zoom (photo)' };
 
-export const TRANSITIONS = { fade: 'Fade', slide: 'Slide', wipe: 'Facet wipe (45°)', zoom: 'Zoom through', none: 'Cut' };
+export const TRANSITIONS = {
+  fade: 'Fade',
+  push: 'Push (both frames travel)',
+  whip: 'Whip pan (fast, motion blur)',
+  'zoom-through': 'Zoom through (blur)',
+  zoom: 'Zoom',
+  'scale-fade': 'Scale and fade',
+  blur: 'Blur dissolve',
+  facet: 'Facet wipe with gold edge (45°)',
+  wipe: 'Facet wipe (45°)',
+  slide: 'Slide',
+  none: 'Cut',
+};
 
 export const DISCLAIMER = {
   en: 'Gold prices change and the value of your holdings can go down as well as up. Prices shown are indicative; the final price is confirmed at checkout. This is not financial advice.',

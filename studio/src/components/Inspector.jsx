@@ -3,6 +3,8 @@ import { TEMPLATES } from '../../shared/templates.js';
 import { THEMES, TYPE, ANIMATIONS, TRANSITIONS, COLORS, LOOPS, EXITS, BG_MOTION, isArabic } from '../../shared/brand.js';
 import { LAYER_TYPES } from '../../shared/schema.js';
 import { ICON_NAMES } from '../../shared/icons.js';
+import { POSES, MOODS, PROPS, SETS } from '../../shared/scenes.js';
+import { PROP_NAMES as PROP_LIST } from '../render/characters/index.js';
 import { Icon, Field, Num, TextIn, Select, ColorPick } from './ui.jsx';
 
 const THEME_SWATCH = {
@@ -197,6 +199,50 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
             </>
           )}
           {l.type === 'phone' && l.src && <label className="check"><input type="checkbox" checked={l.statusBar !== false} onChange={(e) => up({ statusBar: e.target.checked })} />Add status bar (untick for real device screenshots)</label>}
+          {l.type === 'phone' && (
+            <>
+              <div className="row">
+                <Field label="Phone"><Select value={l.frame || 'iphone'} onChange={(v) => up({ frame: v })} options={{ iphone: 'iPhone', android: 'Android' }} /></Field>
+                <Field label="Shadow"><Select value={l.shadow || 'soft'} onChange={(v) => up({ shadow: v })} options={{ soft: 'Soft', floating: 'Floating', none: 'None' }} /></Field>
+              </div>
+              <div className="row3">
+                <Field label="Tilt X°"><Num label="X" value={l.tilt?.rx ?? 0} min={-40} max={40} onChange={(v) => up({ tilt: { ...(l.tilt || {}), rx: v } })} /></Field>
+                <Field label="Turn Y°"><Num label="Y" value={l.tilt?.ry ?? 0} min={-60} max={60} onChange={(v) => up({ tilt: { ...(l.tilt || {}), ry: v } })} /></Field>
+                <Field label="Roll°"><Num label="Z" value={l.tilt?.rz ?? 0} min={-45} max={45} onChange={(v) => up({ tilt: { ...(l.tilt || {}), rz: v } })} /></Field>
+              </div>
+              {/\/video/.test(l.src || '') && <p className="hint">Real footage plays inside the phone. Its timing comes from the slide's footage start and end.</p>}
+            </>
+          )}
+          {l.type === 'character' && (
+            <>
+              <div className="row">
+                <Field label="Person"><Select value={l.spec?.gender || 'man'} onChange={(v) => up({ spec: { ...l.spec, gender: v, outfit: v === 'woman' ? 'abaya' : 'dishdasha', headwear: v === 'woman' ? 'hijab' : 'kumma' } })} options={{ man: 'Man', woman: 'Woman' }} /></Field>
+                <Field label="Age"><Select value={l.spec?.age || 'adult'} onChange={(v) => up({ spec: { ...l.spec, age: v } })} options={['young', 'adult', 'senior']} /></Field>
+              </div>
+              <div className="row">
+                <Field label="Pose"><Select value={l.spec?.pose || 'stand'} onChange={(v) => up({ spec: { ...l.spec, pose: v } })} options={POSES} /></Field>
+                <Field label="Mood"><Select value={l.spec?.mood || 'neutral'} onChange={(v) => up({ spec: { ...l.spec, mood: v } })} options={MOODS} /></Field>
+              </div>
+              <div className="row">
+                <Field label="Holding"><Select value={l.spec?.prop || 'none'} onChange={(v) => up({ spec: { ...l.spec, prop: v === 'none' ? null : v } })} options={PROPS} /></Field>
+                <Field label="Facing"><Select value={l.spec?.facing || 'front'} onChange={(v) => up({ spec: { ...l.spec, facing: v } })} options={['front', 'left', 'right']} /></Field>
+              </div>
+              <div className="row">
+                <Field label="Outfit"><Select value={l.spec?.outfit || 'dishdasha'} onChange={(v) => up({ spec: { ...l.spec, outfit: v } })} options={['dishdasha', 'abaya', 'casual']} /></Field>
+                <Field label="Head"><Select value={l.spec?.headwear || 'kumma'} onChange={(v) => up({ spec: { ...l.spec, headwear: v } })} options={['kumma', 'massar', 'none', 'hijab', 'sheila']} /></Field>
+              </div>
+              <Field label="Skin"><Select value={l.spec?.skin || 'medium'} onChange={(v) => up({ spec: { ...l.spec, skin: v } })} options={['light', 'medium', 'tan', 'deep']} /></Field>
+            </>
+          )}
+          {l.type === 'set' && (
+            <div className="row">
+              <Field label="Setting"><Select value={l.set || 'room'} onChange={(v) => up({ set: v })} options={SETS} /></Field>
+              <Field label="Light"><Select value={l.setTheme || 'onyx'} onChange={(v) => up({ setTheme: v })} options={{ onyx: 'Evening (dark)', cream: 'Daylight (light)', bullion: 'Gold', sand: 'Sand' }} /></Field>
+            </div>
+          )}
+          {l.type === 'prop' && <Field label="Prop"><Select value={l.prop} onChange={(v) => up({ prop: v })} options={PROP_LIST} /></Field>}
+          {l.type === 'step' && <Field label="Number"><TextIn value={l.text} onChange={(v, o) => up({ text: v }, o)} /></Field>}
+          {l.type === 'focus' && <Field label="Dim outside"><Num label="%" value={Math.round((l.dim ?? 0.62) * 100)} min={0} max={95} onChange={(v) => up({ dim: v / 100 })} /></Field>}
           {l.type === 'phone' && (
             <div className="row">
               <Field label="Placeholder screen"><Select value={l.placeholder} onChange={(v) => up({ placeholder: v })} options={{ home: 'Home', browse: 'Browse' }} /></Field>

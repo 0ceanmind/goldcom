@@ -13,6 +13,11 @@ import Gallery from './components/Gallery.jsx';
 import InstaPreview from './components/InstaPreview.jsx';
 import { NewDocDialog, TemplatePicker, AssetPicker, ClaudePanel, LintPanel } from './components/Dialogs.jsx';
 import { Icon, SlideThumb, Select } from './components/ui.jsx';
+import Home from './components/Home.jsx';
+import Production from './components/Production.jsx';
+import Footage from './components/Footage.jsx';
+import { SettingsDialog, UpdateButton } from './components/Settings.jsx';
+import { VideoPool } from './render/media.js';
 
 const TOOL_GROUPS = [
   ['Text', 'text', [['text', 'Text'], ['list', 'List']]],
@@ -20,7 +25,8 @@ const TOOL_GROUPS = [
   ['Media', 'image', [['image', 'Image'], ['phone', 'Phone mockup'], ['browser', 'Browser mockup'], ['code', 'Code card']]],
   ['Data', 'chart', [['chart', 'Price chart'], ['ticker', 'Price ticker'], ['countdown', 'Countdown'], ['progress', 'Progress ring / bar']]],
   ['Interactive', 'sparkle', [['sticker', 'Story sticker'], ['notification', 'Push notification'], ['chat', 'Chat'], ['tap', 'Tap indicator']]],
-  ['Shapes & UI', 'square', [['button', 'Button'], ['badge', 'Badge / LIVE'], ['icon', 'Icon'], ['shape', 'Shape'], ['pager', 'Carousel pager']]],
+  ['People', 'user', [['character', 'Person'], ['set', 'Setting (room, souq…)'], ['prop', 'Prop (gift, gold bar…)'], ['bubble', 'Speech bubble']]],
+  ['Shapes & UI', 'square', [['button', 'Button'], ['badge', 'Badge / LIVE'], ['icon', 'Icon'], ['shape', 'Shape'], ['step', 'Step number'], ['check', 'Check mark'], ['focus', 'Spotlight'], ['glow', 'Glow'], ['pager', 'Carousel pager']]],
 ];
 
 // Arabic defaults for new layers in Arabic documents.
@@ -38,6 +44,16 @@ const AR_DEFAULTS = {
 };
 
 const routeId = () => (location.hash.match(/#\/doc\/([\w-]+)/) || [])[1];
+/** Hash routes: #/ (create) · #/p/<job> (production) · #/designs · #/footage · #/doc/<id> (editor) */
+function parseRoute() {
+  const h = location.hash;
+  let m;
+  if ((m = h.match(/#\/doc\/([\w-]+)/))) return { view: 'editor', id: m[1] };
+  if ((m = h.match(/#\/p\/([\w-]+)/))) return { view: 'production', id: m[1] };
+  if (h.startsWith('#/designs')) return { view: 'gallery' };
+  if (h.startsWith('#/footage')) return { view: 'footage' };
+  return { view: 'home' };
+}
 const readPref = (k, d) => { try { const v = localStorage.getItem(`gc.${k}`); return v === null ? d : JSON.parse(v); } catch { return d; } };
 const writePref = (k, v) => { try { localStorage.setItem(`gc.${k}`, JSON.stringify(v)); } catch { /* storage unavailable */ } };
 
@@ -47,7 +63,8 @@ export default function App() {
   const [docsLoaded, setDocsLoaded] = useState(false);
   const [doc, setDoc] = useState(null);
   const docRef = useRef(null);
-  const [view, setView] = useState(routeId() ? 'editor' : 'gallery');
+  const [view, setView] = useState(() => parseRoute().view);
+  const [prodId, setProdId] = useState(() => (parseRoute().view === 'production' ? parseRoute().id : null));
   const [slideIdx, setSlideIdx] = useState(0);
   const [selId, setSelId] = useState(null);
   const [modal, setModal] = useState(null);
@@ -62,7 +79,10 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(null);
   const [zones, setZones] = useState(() => readPref('zones', true));
   const [saveState, setSaveState] = useState('saved');
-  const images = useMemo(() => new ImageCache(() => setImagesVersion((v) => v + 1)), []);
+  const images = useMemo(() => {
+    const bump = () => setImagesVersion((v) => v + 1);
+    return new ImageCache(bump, new VideoPool(bump));
+  }, []);
   const clock = useMemo(createClock, []);
   const hist = useRef({ past: [], future: [], base: null });
   const lastSaved = useRef(null);
@@ -139,21 +159,30 @@ export default function App() {
     }
   }, [clock, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goGallery = useCallback(async () => {
+  const go = useCallback(async (v, id) => {
     await flush();
     clock.playing = false; clock.set(null);
-    setView('gallery');
     setSelId(null);
-    if (location.hash !== '#/') history.pushState(null, '', '#/');
-    refreshList();
+    const hash = v === 'production' ? `#/p/${id}` : v === 'gallery' ? '#/designs' : v === 'footage' ? '#/footage' : '#/';
+    if (location.hash !== hash) history.pushState(null, '', hash);
+    if (v === 'production') setProdId(id);
+    setView(v);
+    if (v === 'gallery') refreshList();
   }, [flush, clock, refreshList]);
+  const goGallery = useCallback(() => go('gallery'), [go]);
 
   useEffect(() => {
     loadFonts().then(() => setFontsReady(true));
     api.health().then(setHealth).catch(() => {});
     refreshList();
     if (routeId()) openDoc(routeId());
-    const onPop = () => { const id = routeId(); if (id) { if (id !== docRef.current?.id || view !== 'editor') openDoc(id); } else { setView('gallery'); refreshList(); } };
+    const onPop = () => {
+      const r = parseRoute();
+      if (r.view === 'editor') { if (r.id !== docRef.current?.id || view !== 'editor') openDoc(r.id); return; }
+      if (r.view === 'production') setProdId(r.id);
+      setView(r.view);
+      if (r.view === 'gallery') refreshList();
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -169,6 +198,12 @@ export default function App() {
       es.onmessage = (m) => {
         let ev;
         try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.type === 'hello') window.__serverPid = ev.pid;
+        if (ev.type === 'job') window.dispatchEvent(new CustomEvent('gc:job', { detail: ev }));
+        if (ev.type === 'footage') window.dispatchEvent(new CustomEvent('gc:footage', { detail: ev }));
+        if (ev.type === 'update') window.dispatchEvent(new CustomEvent('gc:update', { detail: ev.update }));
+        if (ev.type === 'restarting') window.dispatchEvent(new CustomEvent('gc:restarting'));
+        if (ev.type === 'job' && ev.job?.type === 'export' && ev.job.status === 'done' && ev.job.result?.url && ev.line) toast(`Video ready: ${ev.job.result.file}`);
         if (ev.type === 'document' || ev.type === 'deleted') refreshList();
         const cur = docRef.current;
         if (ev.type === 'document' && cur && ev.id === cur.id && ev.updatedAt !== lastSaved.current && ev.updatedAt !== cur.updatedAt) {
@@ -358,22 +393,46 @@ export default function App() {
       toast(res?.container ? `Exported ${res.container.toUpperCase()}${res.frames ? ` · ${res.frames} ${res.container === 'zip' ? 'files' : 'frames'}` : ''} · ${(res.bytes / 1e6).toFixed(1)} MB` : 'Export ready');
     } catch (e) { toast(`Export failed: ${e.message}`, true); } finally { setProgress(null); }
   };
+  /** Studio-quality export rendered by the server (exact footage frames, sound effects), then downloaded. */
+  const serverRun = async (label, body, id = docRef.current?.id) => {
+    setMenuOpen(null);
+    await flush();
+    setProgress({ label, p: 0, server: true });
+    try {
+      const { jobId } = await api.exportVideo(id, body);
+      const job = await new Promise((resolve, reject) => {
+        const done = (j) => {
+          if (j.status === 'done') { cleanup(); resolve(j); } else if (['error', 'cancelled'].includes(j.status)) { cleanup(); reject(new Error(j.error || j.status)); } else setProgress({ label, p: j.progress || 0, server: true, msg: j.message });
+        };
+        const on = (e) => { if (e.detail?.job?.id === jobId) done(e.detail.job); };
+        const poll = setInterval(() => api.job(jobId).then(done).catch(() => {}), 2500);
+        const cleanup = () => { window.removeEventListener('gc:job', on); clearInterval(poll); };
+        window.addEventListener('gc:job', on);
+      });
+      const a = document.createElement('a');
+      a.href = `${job.result.url}?download`; a.download = job.result.file;
+      document.body.appendChild(a); a.click(); a.remove();
+      toast(`Exported ${job.result.file} · ${(job.result.bytes / 1e6).toFixed(1)} MB`);
+    } catch (e) { toast(`Export failed: ${e.message}`, true); } finally { setProgress(null); }
+  };
   const exportsFor = (d, i) => {
     const k = d.kind;
+    const server = !!health?.browser;
     const list = [
       ['PNG', 'this slide', () => run('Rendering PNG', () => exportPng(d, i, images))],
-      ['All slides', 'PNG · ZIP', () => run('Rendering images', (p) => exportZip(d, images, p))],
+      ['All slides', 'PNG · ZIP', () => (server ? serverRun('Rendering images', { mode: 'png' }) : run('Rendering images', (p) => exportZip(d, images, p)))],
     ];
-    if (k === 'reel' || k === 'video') list.unshift(['Video', 'MP4 · whole design', () => run('Encoding video', (p) => exportVideo(d, images, { mode: 'sequence', onProgress: p }))]);
-    if (k === 'story') list.unshift(['Story frames', 'MP4 per frame · ZIP', () => run('Encoding story frames', (p) => exportSlideVideosZip(d, images, p))], ['This frame', 'MP4', () => run('Encoding frame', (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
-    if (k === 'carousel') list.push(['Animated slides', 'MP4 per slide · ZIP', () => run('Encoding slides', (p) => exportSlideVideosZip(d, images, p))], ['This slide animated', 'MP4', () => run('Encoding slide', (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
-    if (k === 'motion' || k === 'post') list.unshift(['Animated post', 'MP4', () => run('Encoding animation', (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
+    const vid = (label, body, local) => () => (server ? serverRun(label, body) : run(label, local));
+    if (k === 'reel' || k === 'video') list.unshift(['Video', 'MP4 · studio quality', vid('Rendering video', { mode: 'sequence' }, (p) => exportVideo(d, images, { mode: 'sequence', onProgress: p }))]);
+    if (k === 'story') list.unshift(['Story frames', 'MP4 per frame · ZIP', vid('Rendering story frames', { mode: 'slides' }, (p) => exportSlideVideosZip(d, images, p))], ['This frame', 'MP4', vid('Rendering frame', { mode: 'slide', index: i }, (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
+    if (k === 'carousel') list.push(['Animated slides', 'MP4 per slide · ZIP', vid('Rendering slides', { mode: 'slides' }, (p) => exportSlideVideosZip(d, images, p))], ['This slide animated', 'MP4', vid('Rendering slide', { mode: 'slide', index: i }, (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
+    if (k === 'motion' || k === 'post') list.unshift(['Animated post', 'MP4', vid('Rendering animation', { mode: 'slide', index: i }, (p) => exportVideo(d, images, { mode: 'slide', index: i, onProgress: p }))]);
     list.push(['GIF', isSequence(k) ? 'whole design' : 'this slide', () => run('Encoding GIF', (p) => exportGif(d, images, { mode: isSequence(k) ? 'sequence' : 'slide', index: i, onProgress: p }))]);
     list.push(['Caption', 'TXT', () => { setMenuOpen(null); const c = captionText(d); if (!c) return toast('Add a caption first (Caption tab).', true); downloadBlob(new Blob([c], { type: 'text/plain' }), 'caption.txt'); }]);
     list.push(['Design file', 'JSON', () => { setMenuOpen(null); exportJson(d); }]);
     return list;
   };
-  const galleryExport = (d, what) => (what === 'video'
+  const galleryExport = (d, what) => (health?.browser ? serverRun(what === 'video' ? 'Rendering video' : 'Rendering images', { mode: what === 'video' ? 'auto' : 'png' }, d.id) : what === 'video'
     ? run('Encoding video', (p) => (isSequence(d.kind) ? exportVideo(d, images, { mode: 'sequence', onProgress: p }) : d.kind === 'story' || d.kind === 'carousel' ? exportSlideVideosZip(d, images, p) : exportVideo(d, images, { mode: 'slide', index: 0, onProgress: p })))
     : run('Rendering images', (p) => exportZip(d, images, p)));
 
@@ -444,31 +503,40 @@ export default function App() {
       {modal === 'template' && doc && <TemplatePicker doc={doc} images={images} defaultTheme={doc.slides[slideIdx]?.theme} onClose={() => setModal(null)} onPick={addSlide} />}
       {modal === 'assets' && <AssetPicker toast={toast} onClose={() => setModal(null)} onPick={(url) => { assetCb.current?.(url); setModal(null); }} />}
       {modal === 'claude' && <ClaudePanel health={health} docs={docs} onClose={() => setModal(null)} onOpen={openDoc} />}
+      {modal === 'settings' && <SettingsDialog onClose={() => setModal(null)} toast={toast} />}
       {modal === 'lint' && doc && <LintPanel issues={issues} onClose={() => setModal(null)} onGo={(i) => { setSlideIdx(i.slide); setSelId(i.layer); }} />}
       {preview && (
         <InstaPreview doc={preview.doc} images={images} notes={preview.item?.notes} onClose={() => setPreview(null)}
           onEdit={Object.assign(() => { const p = preview; setPreview(null); if (p.item) applyLibrary(p.item, p.doc.lang); else if (p.doc.id && p.doc.id !== docRef.current?.id) openDoc(p.doc.id); }, { label: preview.item ? 'Use this design' : preview.doc.id === docRef.current?.id ? 'Back to editor' : 'Open in editor' })} />
       )}
-      {progress && <div className="progress"><div className="box"><b>{progress.label}…</b><div className="hint" style={{ marginTop: 4 }}>Rendered frame by frame in your browser.</div><div className="bar"><div style={{ width: `${Math.round(progress.p * 100)}%` }} /></div></div></div>}
+      {progress && <div className="progress"><div className="box"><b>{progress.label}…</b><div className="hint" style={{ marginTop: 4 }}>{progress.server ? progress.msg || 'Rendered frame by frame by the studio, with sound.' : 'Rendered frame by frame in your browser.'}</div><div className="bar"><div style={{ width: `${Math.round(progress.p * 100)}%` }} /></div></div></div>}
       <div className="toasts">{toasts.map((t) => <div key={t.id} className={`toast${t.err ? ' err' : ''}`}>{t.msg}</div>)}</div>
     </>
   );
 
-  if (view === 'gallery' || !doc) {
+  if (view !== 'editor' || !doc) {
+    const nav = [['home', 'Create', 'claude'], ['gallery', 'Designs', 'grid'], ['footage', 'Footage', 'film']];
     return (
       <div className="app">
         <header className="topbar">
-          <div className="brandmark"><img src="/favicon.svg" alt="Goldcom" /><b>Goldcom <span>Studio</span></b></div>
-          <span className="hint hide-sm">Instagram posts, carousels, Reels, Stories and animations, on brand.</span>
+          <button className="brandmark plain" onClick={() => go('home')}><img src="/favicon.svg" alt="Goldcom" /><b>Goldcom <span>Studio</span></b></button>
+          <nav className="mainnav">
+            {nav.map(([k, label, icon]) => <button key={k} className={view === k || (k === 'home' && view === 'production') ? 'on' : ''} onClick={() => go(k)}><Icon name={icon} size={16} />{label}</button>)}
+          </nav>
           <span className="spacer" />
           {view === 'editor' && !doc && <span className="hint">Loading design…</span>}
+          <UpdateButton toast={toast} />
+          <button className="btn icon ghost" title="Settings" onClick={() => setModal('settings')}><Icon name="gear" /></button>
         </header>
-        {docsLoaded || docs.length ? (
+        {view === 'home' && <Home onOpenProduction={(id) => go('production', id)} onOpenSettings={() => setModal('settings')} onGo={go} toast={toast} />}
+        {view === 'production' && prodId && <Production key={prodId} id={prodId} images={images} onOpenDoc={openDoc} onBack={() => go('home')} toast={toast} />}
+        {view === 'footage' && <Footage toast={toast} />}
+        {(view === 'gallery' || (view === 'editor' && !doc)) && (docsLoaded || docs.length ? (
           <Gallery docs={docs} images={images} live={live}
             onOpen={openDoc} onNew={() => setModal('new')} onUseLibrary={applyLibrary}
             onPreview={(d, item) => setPreview({ doc: d, item })} onDuplicate={duplicateDoc} onRename={renameDoc} onDelete={deleteDoc}
             onExport={galleryExport} onClaude={() => setModal('claude')} />
-        ) : <div className="welcome"><p className="hint">Connecting to the studio server…</p></div>}
+        ) : <div className="welcome"><p className="hint">Connecting to the studio server…</p></div>)}
         {dialogs}
       </div>
     );

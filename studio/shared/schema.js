@@ -29,6 +29,14 @@ export const LAYER_TYPES = {
   chat: 'Chat',
   tap: 'Tap indicator',
   sparkles: 'Gold sparkles',
+  character: 'Person (illustration)',
+  prop: 'Prop (illustration)',
+  set: 'Setting (illustration)',
+  glow: 'Glow',
+  step: 'Step number',
+  check: 'Check mark',
+  focus: 'Spotlight',
+  bubble: 'Speech bubble',
 };
 
 /** Default properties for each layer type, relative to a 1080 px wide canvas. */
@@ -57,6 +65,14 @@ export function layerDefaults(type) {
     case 'chat': return { ...base, w: 920, h: 640, messages: [{ from: 'them', text: 'Can I send gold to my sister in Sohar?' }, { from: 'me', text: 'Yes. Pick a weight, add her number, and she gets it right away.' }], dir: 'auto', anim: { in: 'type', delay: 0.2, dur: 3 } };
     case 'tap': return { ...base, w: 140, h: 140, anim: { in: 'fade', delay: 0.8, dur: 0.3 }, loop: { type: 'pulse' } };
     case 'sparkles': return { ...base, x: 0, y: 0, w: 1080, h: 1080, count: 26, seed: 7, anim: { in: 'fade', delay: 0, dur: 1 }, loop: { type: 'shimmer' } };
+    case 'character': return { ...base, w: 360, h: 720, spec: { gender: 'woman', outfit: 'abaya', headwear: 'hijab', pose: 'phone-happy', mood: 'happy', prop: 'phone', skin: 'medium', facing: 'front' }, anim: { in: 'fade-up', delay: 0.2, dur: 0.8 } };
+    case 'prop': return { ...base, w: 240, h: 240, prop: 'giftbox', anim: { in: 'pop', delay: 0.3, dur: 0.6 } };
+    case 'set': return { ...base, x: 0, y: 0, w: 1080, h: 1080, set: 'room', mood: 'warm', radius: 0, anim: { in: 'fade', delay: 0, dur: 0.8 } };
+    case 'glow': return { ...base, x: -200, y: 0, w: 1480, h: 1200, color: 'gold', intensity: 0.2, anim: { in: 'fade', delay: 0, dur: 1.2 } };
+    case 'step': return { ...base, w: 96, h: 96, text: '1', anim: { in: 'pop', delay: 0, dur: 0.6 } };
+    case 'check': return { ...base, w: 44, h: 44, anim: { in: 'draw', delay: 0.2, dur: 0.5 } };
+    case 'focus': return { ...base, w: 600, h: 160, radius: 18, dim: 0.62, anim: { in: 'fade', delay: 0.6, dur: 0.6 } };
+    case 'bubble': return { ...base, w: 480, h: 160, tail: 'end', anim: { in: 'pop', delay: 0.6, dur: 0.5 } };
     case 'chart': return { ...base, w: 920, h: 360, points: [44, 45.5, 44.2, 43.1, 44.8, 46, 45.1, 43.9, 44.6, 45.8, 45.2, 44.5, 45.6], trend: 'auto', area: true, grid: true, anim: { in: 'draw', delay: 0.2, dur: 1.2 } };
     default: return base;
   }
