@@ -55,7 +55,7 @@ export function DeviceControls({ serial, toast, label }) {
       <div className="phone-status"><span className="dot live" /><b>{label || dev?.info?.model || serial}</b><span className="hint">{dev?.info ? `Android ${dev.info.android} · ${dev.info.width}×${dev.info.height}` : ''}</span></div>
       <p className="hint">{dev?.pkg ? <>Goldcom app: <code>{dev.pkg}</code></> : 'Goldcom is not installed on this phone yet.'}</p>
       <div className="mirror-wrap">
-        {mirror ? <img className="mirror" src={`/api/device/screen?serial=${encodeURIComponent(serial)}&n=${shot}`} alt="Phone screen" onClick={tapMirror} title="Click to tap the phone" />
+        {mirror ? <img className="mirror" src={`/api/device/screen?serial=${encodeURIComponent(serial)}&n=${shot}`} alt="Phone screen" onClick={tapMirror} onError={() => setMirror(false)} title="Click to tap the phone" />
           : <button className="mirror-off" onClick={() => setMirror(true)}><Icon name="eye" />Show the phone screen</button>}
       </div>
       <div className="row3">
@@ -125,6 +125,13 @@ function EmulatorSource({ toast }) {
         <>
           <button className="btn primary" disabled={running} onClick={() => act(async () => { const { jobId } = await api.emulatorStart(headless); setJob({ id: jobId, status: 'running', message: 'Starting the phone…' }); })}><Icon name="phone" />Start the phone</button>
           <label className="check"><input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} />Run in the background (no phone window)</label>
+          <div className="field"><label>Graphics</label>
+            <select className="input" value={st.graphics || 'auto'} onChange={(e) => act(() => api.emulatorGraphics(e.target.value))}>
+              <option value="auto">Automatic (uses the graphics card)</option>
+              <option value="software">Compatible (software, works on every computer)</option>
+              <option value="host">Graphics card only</option>
+            </select>
+          </div>
         </>
       )}
       <JobLine job={job?.status === 'running' ? job : null} />

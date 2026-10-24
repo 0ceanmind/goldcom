@@ -64,6 +64,7 @@ export const api = {
   emulatorInstall: () => req('POST', '/api/emulator/install', { acceptLicense: true }),
   emulatorStart: (headless) => req('POST', '/api/emulator/start', { headless }),
   emulatorStop: () => req('POST', '/api/emulator/stop', {}),
+  emulatorGraphics: (mode) => req('POST', '/api/emulator/graphics', { mode }),
   emulatorOpenStore: () => req('POST', '/api/emulator/open-store', {}),
   emulatorEnableHypervisor: () => req('POST', '/api/emulator/enable-hypervisor', {}),
   emulatorRemove: () => req('DELETE', '/api/emulator'),

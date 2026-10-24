@@ -284,6 +284,24 @@ export function enableHypervisor() {
 
 let child = null;
 let bootError = null;
+let stopping = false;
+
+// Graphics back-ends. "auto" uses the computer's GPU when it can; on some Windows graphics drivers the emulator then
+// crashes (error 0xC0000005), so after a crash the studio switches to "software", which works everywhere.
+export const GRAPHICS = {
+  auto: ['-gpu', 'auto'],
+  software: ['-gpu', 'swiftshader_indirect', '-feature', '-Vulkan'],
+  host: ['-gpu', 'host'],
+};
+
+const crashText = (code) => (code === 3221225477 || code === -1073741819
+  ? 'crashed (Windows error 0xC0000005, which is almost always the graphics driver)'
+  : `stopped unexpectedly (code ${code})`);
+
+export function setGraphics(mode) {
+  if (!GRAPHICS[mode]) throw Object.assign(new Error('Unknown graphics mode'), { status: 400 });
+  writeState({ graphics: mode });
+}
 
 const pidAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
@@ -305,6 +323,7 @@ export async function status() {
     accel: installed ? (st.accel || null) : null,
     serial: SERIAL, state: booted ? 'ready' : running || procAlive ? 'starting' : 'stopped', goldcomInstalled: goldcom,
     freeGb: freeGb(fs.existsSync(SDK) ? SDK : os.homedir()), needGb: NEED_FREE_GB, error: bootError,
+    graphics: st.graphics || 'auto', lastCrash: st.lastCrash || null,
   };
 }
 
@@ -320,11 +339,22 @@ export async function start({ headless = false, onProgress = () => {}, signal } 
   if (st.state === 'stopped') {
     await fsp.mkdir(EMU_HOME, { recursive: true });
     const log = fs.openSync(path.join(SDK, 'emulator.log'), 'w');
-    const args = ['-avd', AVD_NAME, '-port', String(PORT), '-no-boot-anim', '-gpu', 'auto', '-no-audio', '-netdelay', 'none', '-netspeed', 'full'];
+    const saved = readState();
+    const mode = GRAPHICS[saved.graphics] ? saved.graphics : 'auto';
+    const args = ['-avd', AVD_NAME, '-port', String(PORT), '-no-boot-anim', ...GRAPHICS[mode], '-no-audio', '-netdelay', 'none', '-netspeed', 'full'];
+    // A crash can leave a broken quick-boot snapshot behind: boot cleanly once (apps and logins are kept).
+    if (saved.coldBoot) args.push('-no-snapshot-load');
     if (headless) args.push('-no-window');
+    stopping = false;
     // Detached: the phone keeps running while the studio restarts (updates) and is stopped explicitly.
     child = spawn(emulatorBin(), args, { env: emuEnv(), detached: true, stdio: ['ignore', log, log], windowsHide: headless });
-    child.on('exit', (code) => { if (code) bootError = `The emulator stopped (code ${code}). ${tailLog()}`; });
+    child.on('exit', (code) => {
+      if (!code || stopping) return;
+      writeState({ pid: null, coldBoot: true, graphics: 'software', lastCrash: { at: new Date().toISOString(), code, mode } });
+      bootError = mode === 'software'
+        ? `The phone ${crashText(code)}, even with compatible graphics. Update the graphics driver (or Windows), close other heavy apps, then start it again. ${tailLog()}`.trim()
+        : `The phone ${crashText(code)}. Press “Start the phone” again: it will now use compatible graphics (software rendering), which works on every computer.`;
+    });
     child.unref();
     writeState({ pid: child.pid, headless });
   }
@@ -334,6 +364,7 @@ export async function start({ headless = false, onProgress = () => {}, signal } 
     if (bootError) throw new Error(bootError);
     const s = await status();
     if (s.state === 'ready') {
+      writeState({ coldBoot: false });
       // Let the status bar demo mode work for clean recordings.
       await A.adb(['shell', 'settings put global sysui_demo_allowed 1'], { serial: SERIAL }).catch(() => {});
       return s;
@@ -353,6 +384,7 @@ function tailLog() {
 }
 
 export async function stop() {
+  stopping = true;
   try { await A.adb(['emu', 'kill'], { serial: SERIAL, timeout: 15000 }); } catch {
     const st = readState();
     if (st.pid && pidAlive(st.pid)) { try { process.kill(st.pid); } catch { /* gone */ } }

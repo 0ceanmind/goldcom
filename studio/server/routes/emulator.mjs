@@ -35,6 +35,7 @@ export async function emulatorRoutes(req, res, url) {
       .catch((e) => updateJob(job, { status: 'error', error: e.message, message: e.message }, e.stack));
     return true;
   }
+  if (p === '/api/emulator/graphics' && req.method === 'POST') { const b = await readJson(req); E.setGraphics(b.mode); send(res, 200, { ok: true }); return true; }
   if (p === '/api/emulator/stop' && req.method === 'POST') { await E.stop(); send(res, 200, { ok: true }); return true; }
   if (p === '/api/emulator/open-store' && req.method === 'POST') { await E.openStore(getSettings().appPackage || E.GOLDCOM_PACKAGE); send(res, 200, { ok: true }); return true; }
   if (p === '/api/emulator/enable-hypervisor' && req.method === 'POST') { E.enableHypervisor(); send(res, 200, { ok: true }); return true; }
