@@ -1,4 +1,4 @@
-// People: one or two stylized 3D figures (Omani dress, faceless by design) in a 3D set or on a studio sweep.
+// People: one or two stylized 3D figures (Omani dress, calm natural faces) in a 3D set or on a studio sweep.
 // Built on kit.figure and kit.diorama, which take the same person spec and set names the production scenes use.
 // The camera stays level (verticals stay straight, like architectural photography) and every person's feet land
 // exactly where the layout asks (a_at / b_at across, floorAt down), so text and badges can be placed around them.
@@ -11,7 +11,7 @@ const SKIN_OPTS = ['light', 'medium', 'tan', 'deep'];
 export default {
   id: 'people',
   name: 'People · in a set',
-  description: 'One or two soft-matte 3D figures in Omani dress, faceless by design so body language carries the moment, in a 3D set (living room with a Muscat window, souq arcade with a gold shop, office, night room, corniche at golden hour) or on a seamless studio sweep. Real window light and shadows.',
+  description: 'One or two soft-matte 3D figures in Omani dress with calm, natural faces and gestures, in a 3D set (living room with a Muscat window, souq arcade with a gold shop, office, night room, corniche at golden hour) or on a seamless studio sweep. Real window light and shadows.',
   idea: { en: 'Real people, real moments with gold.', ar: 'أناس حقيقيون ولحظات حقيقية مع الذهب.' },
   tags: ['people', 'character', 'story', 'lifestyle', 'set'],
   duration: 6,
@@ -22,7 +22,7 @@ export default {
     { key: 'set', label: 'Setting', type: 'select', options: ['studio', 'room', 'night-room', 'souq', 'office', 'outdoor-muscat', 'none'], default: 'studio' },
     { key: 'setTheme', label: 'Set colours', type: 'select', options: ['auto', 'onyx', 'cream', 'bullion', 'sand'], default: 'auto' },
     { key: 'mood', label: 'Light', type: 'select', options: ['warm', 'dim'], default: 'warm' },
-    { key: 'framing', label: 'Framing', type: 'select', options: ['wide', 'full', 'three-quarter', 'waist', 'cutout'], default: 'full' },
+    { key: 'framing', label: 'Framing', type: 'select', options: ['wide', 'full', 'three-quarter', 'waist', 'portrait', 'cutout'], default: 'full' },
     { key: 'floorAt', label: 'Feet at (0 top … 1 bottom, 0 = auto)', type: 'number', min: 0, max: 1.5, step: 0.01, default: 0 },
     { key: 'fill', label: 'Person height (share of frame, 0 = auto)', type: 'number', min: 0, max: 2, step: 0.01, default: 0 },
     { key: 'props', label: 'Props on the floor (comma list: giftbox, bag, coffee, goldbar)', type: 'text', default: '' },
@@ -41,13 +41,13 @@ export default {
     { key: 'b_facing', label: 'Second facing', type: 'select', options: ['auto', 'front', 'right', 'left'], default: 'auto' },
     { key: 'b_at', label: 'Second across (0 = auto)', type: 'number', min: 0, max: 1, step: 0.01, default: 0 },
     { key: 'seed', label: 'Variation', type: 'number', min: 1, max: 9, step: 1, default: 1 },
-    { key: 'face', label: 'Face', type: 'select', options: ['none', 'minimal'], default: 'none' },
+    { key: 'face', label: 'Face', type: 'select', options: ['natural', 'minimal', 'none'], default: 'natural' },
     { key: 'spec', label: 'Full spec A (JSON, overrides person A)', type: 'text', default: '' },
     { key: 'specB', label: 'Full spec B (JSON)', type: 'text', default: '' },
   ],
   post: { bloom: 0.04, bloomThreshold: 3, vignette: 0.18, exposure: 1.06 },
 
-  create({ THREE, kit, params, theme, lang, aspect, transparent }) {
+  create({ THREE, kit, params, theme, lang, aspect, transparent, loop, duration }) {
     const PERSONS = {
       man: { gender: 'man', outfit: 'dishdasha', headwear: 'kumma', age: 'adult', beard: true },
       'young-man': { gender: 'man', outfit: 'dishdasha', headwear: 'kumma', age: 'young', beard: false },
@@ -110,7 +110,7 @@ export default {
       const prop = params[`${p}prop`];
       if (!full && prop && prop !== 'auto') base.prop = prop === 'none' ? null : prop;
       const f = params[`${p}facing`];
-      return { face: params.face, seed: s, lang, theme: setTheme, ...base, facing: base.facing || (f && f !== 'auto' ? f : facing) };
+      return { face: params.face, seed: s, lang, theme: setTheme, loop, dur: duration, ...base, facing: base.facing || (f && f !== 'auto' ? f : facing) };
     };
     const at = (p, d) => { const v = Number(params[`${p}at`]); return v > 0 ? v : d; };
     const none = params.a_person === 'none' && !json(params.spec);
@@ -123,7 +123,8 @@ export default {
       wide: { fill: two ? 0.42 : 0.46, floor: 0.86 },
       full: { fill: two ? 0.6 : 0.66, floor: 0.9 },
       'three-quarter': { fill: 0.9, floor: 1.12 },
-      waist: { fill: 1.25, floor: 1.42 },
+      waist: { fill: 1.6, floor: 1.72 },
+      portrait: { fill: 4.2, floor: 4.0 },
       cutout: { fill: 0.92, floor: 0.97 },
     }[cutout ? 'cutout' : params.framing] || { fill: 0.66, floor: 0.9 };
     const floorAt = Number(params.floorAt) > 0 ? Number(params.floorAt) : F.floor;

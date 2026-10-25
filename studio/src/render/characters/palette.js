@@ -12,12 +12,12 @@ export function brand(token, fallback = COLORS.gold) {
   return COLORS[token] || fallback;
 }
 
-// Skin: base, shade (form shadow), deep (creases, nostril), lip, blush.
+// Skin: base, shade (form shadow), deep (creases, nostril), lip, blush (unused by faces), palm (palm side of the hand).
 export const SKIN = {
-  light: { base: '#EDCBA9', shade: '#D8AE8A', deep: '#BF9070', lip: '#B9786A', blush: '#E6A48E' },
-  medium: { base: '#D2A47D', shade: '#BB8963', deep: '#A0704E', lip: '#A0614F', blush: '#D08A6E' },
-  tan: { base: '#B07D56', shade: '#986642', deep: '#7F5235', lip: '#844C3B', blush: '#B8704F' },
-  deep: { base: '#7A533A', shade: '#64422E', deep: '#4F3322', lip: '#55311F', blush: '#86513A' },
+  light: { base: '#EDCBA9', shade: '#D8AE8A', deep: '#BF9070', lip: '#B9786A', blush: '#E6A48E', palm: '#F0CDB0' },
+  medium: { base: '#D2A47D', shade: '#BB8963', deep: '#A0704E', lip: '#A0614F', blush: '#D08A6E', palm: '#DDB08F' },
+  tan: { base: '#B07D56', shade: '#986642', deep: '#7F5235', lip: '#844C3B', blush: '#B8704F', palm: '#C69472' },
+  deep: { base: '#7A533A', shade: '#64422E', deep: '#4F3322', lip: '#55311F', blush: '#86513A', palm: '#A57A5E' },
 };
 
 export const FEATURE = { light: '#2E231C', medium: '#2B201A', tan: '#261C16', deep: '#1B1410' };

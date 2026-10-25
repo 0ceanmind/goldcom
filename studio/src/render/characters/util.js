@@ -226,3 +226,54 @@ export function fitBox(box, aspect, align = 'center') {
   const y = align === 'bottom' ? box.y + bh - h : box.y + (bh - h) / 2;
   return { x, y, w, h };
 }
+
+// ---------- motion ----------
+/**
+ * Eased "hold, then move" noise in [-1, 1]: random targets are held, then eased into the next one.
+ * Segment lengths and move timing vary per segment, so layered channels never read as a loop.
+ */
+export function holdNoise(t, seed, period, move = 0.4) {
+  const x = t / period + hash(seed * 0.731 + 0.17) * 13;
+  const i = Math.floor(x), fr = x - i;
+  const mv = clamp(move * (0.6 + 0.8 * hash(i * 1.913 + seed * 3.7)), 0.08, 0.95);
+  const a = hash(i * 12.9898 + seed * 78.233) * 2 - 1;
+  const b = hash((i + 1) * 12.9898 + seed * 78.233) * 2 - 1;
+  return lerp(a, b, easeInOut(clamp((fr - (1 - mv)) / mv)));
+}
+
+function blinkShape(d) {
+  if (d < 0 || d > 0.25) return 0;
+  if (d < 0.07) return smooth(d / 0.07);
+  if (d < 0.1) return 1;
+  return 1 - smooth((d - 0.1) / 0.15);
+}
+/**
+ * Natural blinks: one per ~3.4 s segment at an irregular offset, ~1 in 5 a double blink.
+ * The first blink never happens before t ≈ 1.15 s, so stills (t ≤ 1) always have open eyes.
+ */
+export function blinkAt(t, seed) {
+  const P = 3.4;
+  const i0 = Math.floor(t / P);
+  let v = 0;
+  for (let i = Math.max(0, i0 - 1); i <= i0; i++) {
+    const b0 = i * P + P * (0.34 + 0.56 * hash(i * 7.31 + seed * 1.17));
+    v = Math.max(v, blinkShape(t - b0));
+    if (hash(i * 3.17 + seed * 2.71) < 0.22) v = Math.max(v, blinkShape(t - b0 - 0.32));
+  }
+  return v;
+}
+
+/** Recurring gesture events: returns { k, age } for the event active at t (k = index, age in s, or -1). */
+export function events(t, seed, gapMin, gapMax, start = 0.3) {
+  // deterministic irregular schedule; walk back from a coarse index estimate
+  const mean = (gapMin + gapMax) / 2;
+  let i = Math.max(0, Math.floor((t - start) / mean) - 2);
+  const at = (k) => { let s = start; for (let j = 0; j < k; j++) s += lerp(gapMin, gapMax, hash(j * 4.13 + seed)); return s; };
+  let s = at(i);
+  while (true) {
+    const nx = s + lerp(gapMin, gapMax, hash(i * 4.13 + seed));
+    if (nx > t) break;
+    s = nx; i++;
+  }
+  return t >= s ? { k: i, age: t - s } : { k: -1, age: -1 };
+}

@@ -1,13 +1,13 @@
-// The person: spec resolution, a small 2D rig (torso / neck / head, two-bone arms, legs) and the
-// layered drawing of robes, sleeves, hands, feet and held props in correct z-order.
+// The person: spec resolution, a small 2D rig (torso / neck / head, two-bone arms, legs), layered idle
+// motion, and the drawing of robes, sleeves, hands, feet and held props in correct z-order.
 import {
-  TAU, DEG, clamp, lerp, wave, rng, mix, tone, rgba, add, sub, scl, len, norm, rot, ik, tube,
-  shade, groundShadow, spline, pk, rrect,
+  TAU, DEG, clamp, lerp, smooth, easeInOut, rng, mix, tone, rgba, add, sub, scl, len, norm, rot, mid, ik, tube,
+  shade, groundShadow, spline, pk, holdNoise, blinkAt,
 } from './util.js';
 import { SKIN, FEATURE, HAIR, FABRIC, SHOE, LIGHT, brand, COLORS } from './palette.js';
 import { drawHead } from './face.js';
-import { handShape } from './hands.js';
-import { POSES, HAND_PROPS, STAND_HOLDS } from './poses.js';
+import { handShape, drawHandParts, palmTone, handFromProp, propFromHand, GRIPS, BAG_GRIP } from './hands.js';
+import { POSES, HAND_PROPS, STAND_HOLDS, PROP_GRIPS } from './poses.js';
 import { drawPropShape, PROP_ASPECT } from './props.js';
 
 export const FRAME_H = 1090; // model units mapped to the box height (standing height = 1000)
@@ -59,13 +59,42 @@ export function resolveSpec(spec = {}) {
 
 // ---------- dimensions ----------
 const DIMS = {
-  man: { sw: 114, ww: 98, hw: 104, hem: 130, hemY: -34, neck: 22.5, sleeve: [27, 24.5, 21] },
-  woman: { sw: 100, ww: 92, hw: 106, hem: 146, hemY: -22, neck: 18, sleeve: [26, 27, 35] },
+  man: { sw: 114, ww: 98, hw: 104, hem: 130, hemY: -34, neck: 22.5, sleeve: [27, 23.5, 18] },
+  woman: { sw: 100, ww: 92, hw: 106, hem: 146, hemY: -22, neck: 18, sleeve: [25.5, 25.5, 30] },
 };
-const CASUAL_SLEEVE = { man: [24, 21, 18], woman: [24, 22, 20] };
+const CASUAL_SLEEVE = { man: [23, 20, 16.5], woman: [23, 21, 17.5] };
 
 // ---------- rig ----------
-function propSize(name, fallback) { return { phone: 90, giftbox: 112, goldbar: 80, receipts: 104, bag: 130, coffee: 78 }[name] || fallback; }
+const HAND_K = { man: 1, woman: 0.93 };
+function propDims(name, size) {
+  const asp = PROP_ASPECT[name] || 1;
+  return asp >= 1 ? { w: size, h: size / asp } : { w: size * asp, h: size };
+}
+function propSize(name, fallback) { return { phone: 90, giftbox: 112, goldbar: 80, receipts: 104, bag: 128, coffee: 78 }[name] || fallback; }
+const saltOf = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 997; return h; };
+const rotv = (q, a) => rot(q, a);
+
+/** Walk cycle for one leg. q in [0,1): 0 = heel strike. Returns the foot origin (ankle at the sole) and angle. */
+const ST = 0.62, STRIDE = 100, HEEL = 20, TOE = 62;
+function stanceFoot(q) {
+  const hx = STRIDE - (2 * STRIDE / ST) * q; // heel of the planted foot slides back at walking speed
+  if (q < 0.1) { // heel strike: toe lowering, pivot on the heel
+    const th = -0.26 * (1 - smooth(q / 0.1));
+    return { x: hx + HEEL * Math.cos(th), y: HEEL * Math.sin(th), ang: th };
+  }
+  if (q < 0.42) return { x: hx + HEEL, y: 0, ang: 0 };
+  const th = 0.52 * smooth((q - 0.42) / (ST - 0.42)); // heel rising, pivot on the toe
+  const tx = hx + HEEL + TOE;
+  return { x: tx - TOE * Math.cos(th), y: -TOE * Math.sin(th), ang: th };
+}
+function walkFoot(q) {
+  q = ((q % 1) + 1) % 1;
+  if (q < ST) return { ...stanceFoot(q), swing: 0 };
+  const s = (q - ST) / (1 - ST);
+  const a = stanceFoot(ST - 1e-6), b = stanceFoot(0);
+  const lift = 38 * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.1)), 0.8);
+  return { x: lerp(a.x, b.x, easeInOut(s)), y: lerp(a.y, b.y, s) - lift, ang: 0.52 * (1 - s) ** 2 - 0.26 * s * s, swing: Math.sin(Math.PI * s) };
+}
 
 export function buildRig(S, t) {
   const base = POSES[S.pose];
@@ -73,6 +102,8 @@ export function buildRig(S, t) {
   const fr = view === 'front' ? base.front || {} : {};
   const r = rng(S.seed * 3.7 + 11);
   const ph = r();
+  const ns = S.seed * 7.13 + (S.man ? 0 : 3.3) + saltOf(S.pose) * 0.37; // noise seed
+  const HK = HAND_K[S.gender];
   let prop = base.prop ? { ...base.prop, ...(fr.prop || {}) } : null;
   const arms = {
     near: { ...base.arms.near, ...(fr.arms?.near || {}) },
@@ -81,50 +112,59 @@ export function buildRig(S, t) {
   const headDef = { ...(base.head || {}), ...(fr.head || {}) };
 
   // ---- props requested by the spec ----
-  let handProp = null; // a prop attached to a free hand rather than placed by the pose
+  let handProp = null; // a prop carried by a free hand rather than placed by the pose
   if (S.prop === null) { if (prop) prop = { ...prop, hidden: true }; } // keep the grip pose, draw nothing
   else if (S.prop) {
     if (prop) {
       if (prop.name !== S.prop) {
-        const k = propSize(S.prop, prop.size) / prop.size;
-        for (const a of [arms.near, arms.far]) if (a.rel) a.rel = [a.rel[0] * k, a.rel[1] * k];
-        if (S.prop === 'phone' && prop.hold !== 'both') arms.near.hand = 'phone';
-        else if (arms.near.rel && arms.near.hand === 'phone') arms.near.hand = 'grip';
-        prop = { ...prop, name: S.prop, size: propSize(S.prop, prop.size) };
+        // the pose's own hold, re-gripped for the new prop
+        const g = PROP_GRIPS[S.prop] || PROP_GRIPS.receipts;
+        prop = { ...prop, name: S.prop, size: propSize(S.prop, prop.size), ang: (prop.ang || 0) * 0.5 };
+        const holder = arms.near.grip ? 'near' : 'far';
+        const other = holder === 'near' ? 'far' : 'near';
+        arms[holder] = { ...arms[holder], hand: g.hand, grip: g.at, mir: g.mir };
+        if (g.single) { if (arms[other].grip) arms[other] = hangArm(other, view); prop.hold = holder; }
+        else if (arms[other].grip) arms[other] = { ...arms[other], hand: g.hand, grip: g.at2, mir: view === 'front' ? g.mir2Front : g.mir2 };
+        else prop.hold = holder;
       }
     } else if ((S.pose === 'stand' || S.pose === 'sit') && STAND_HOLDS[S.prop]) {
       const h = STAND_HOLDS[S.prop];
       prop = { ...h.prop };
       if (view === 'front') prop.at = h.frontAt;
-      if (S.pose === 'sit') prop.at = [prop.at[0] + 30, prop.at[1] - 10];
-      // in the front view forearms come towards the viewer: foreshorten them and keep elbows down
-      arms.near = { ...h.near, ...(view === 'front' ? { pref: [-0.4, 1], len: h.frontLen || [1, 0.55] } : {}) };
-      if (h.far) arms.far = { ...h.far, ...(view === 'front' ? { pref: [0.4, 1], z: 'front', len: [1, 0.55] } : {}) };
-      if (S.prop === 'phone' || S.prop === 'receipts' || S.prop === 'goldbar') { headDef.tilt = (headDef.tilt || 0) + 11; headDef.look = view === 'front' ? [-0.3, 1] : [0.6, 1]; }
+      if (S.pose === 'sit') prop.at = [prop.at[0] + (view === 'front' ? 0 : 30), prop.at[1] + 10];
+      arms.near = { ...h.near, ...(view === 'front' ? h.frontNear || {} : {}) };
+      if (h.far) arms.far = { ...h.far, ...(view === 'front' ? h.frontFar || {} : {}) };
+      if (h.look) { headDef.tilt = (headDef.tilt || 0) + 11; headDef.look = view === 'front' ? [-0.3, 1] : [0.6, 1]; }
     } else {
-      const free = base.free || (arms.near.hand === 'relax' && !arms.near.rel ? 'near' : arms.far.hand === 'relax' && !arms.far.rel ? 'far' : 'near');
+      const free = base.free || (!arms.near.grip && arms.near.hand === 'relax' ? 'near' : !arms.far.grip && arms.far.hand === 'relax' ? 'far' : 'near');
       const hp = HAND_PROPS[S.prop] || HAND_PROPS.receipts;
-      handProp = { name: S.prop, side: free, ...hp };
-      arms[free] = { ...arms[free], hand: hp.hand };
+      const ov = hp.arm ? hp.arm(free, view, arms[free]) : {};
+      handProp = { name: S.prop, side: free, ...hp, mirEff: view === 'front' && free === 'far' && hp.mirFront ? hp.mirFront : hp.mir };
+      arms[free] = { ...arms[free], ...ov, hand: hp.hand, grip: null };
     }
   }
 
-  // ---- idle + pose motion ----
-  const A = base.anim ? base.anim(t, ph, view) || {} : {};
-  const breath = wave(t, 3.8, ph);
-  const sway = wave(t, 5.6, ph + 0.3);
-  const blinkCycle = ((t + ph * 3.1) % 3.9) / 3.9;
-  const blink = blinkCycle > 0.965 ? Math.sin(((blinkCycle - 0.965) / 0.035) * Math.PI) : 0;
-  const body = { dx: sway * 2 + (A.dx || 0), dy: -1.8 * (breath + 1) + (A.dy || 0), lean: (base.lean || 0) + (A.lean || 0) };
+  // ---- motion: pose gesture + layered idle (breathing, weight shifts, head, eyes, blinks) ----
+  const A = base.anim ? base.anim(t, ph, view, ns) || {} : {};
+  const idle = (base.idle ?? 1) * (A.idle ?? 1);
+  const breath = Math.sin(TAU * (t / 4.3 + ph) + 0.5 * Math.sin(t * 0.41 + ph * 6));
+  const shift = holdNoise(t, ns + 1, 4.3, 0.42) * idle;
+  const nod = holdNoise(t, ns + 2, 3.1, 0.36) * idle;
+  const turnN = holdNoise(t, ns + 5, 3.7, 0.3) * idle;
+  const lookN = holdNoise(t, ns + 4, 2.3, 0.16);
+  const lookV = holdNoise(t, ns + 6, 2.9, 0.2);
+  const blink = blinkAt(t, ns);
+  const body = { dx: shift * 3 + (A.dx || 0), dy: -1.5 * (breath + 1) + (A.dy || 0), lean: (base.lean || 0) + (A.lean || 0) + shift * 0.55 };
   if (S.age === 'senior') body.lean += 2.5;
   const sit = !!base.sit;
   const walk = !!base.walk;
   let wk = null;
   if (walk) {
-    const phw = (t / 1.1) * TAU + ph * TAU;
-    wk = { ph: phw };
-    body.dy += -5 * Math.cos(2 * phw) - 3;
-    body.lean += 2;
+    const p = (((t / 1.1) + ph) % 1 + 1) % 1;
+    wk = { p, ph: p * TAU };
+    body.dy += 4.4 * Math.cos(4 * Math.PI * (p - 0.08)) - 3; // two bobs a cycle: low after each heel strike
+    body.lean += 3;
+    if (view === 'front') body.dx += 3.5 * Math.sin(TAU * (p - 0.1));
   }
   const off = sit ? { x: view === 'front' ? 0 : -28, y: 232 } : { x: 0, y: 0 };
   const lean = body.lean * DEG;
@@ -140,28 +180,63 @@ export function buildRig(S, t) {
   const shoulderLift = (base.shoulders || 0) + (A.shoulders || 0) - breath * 1.2;
   const SH = view === 'side' ? { near: [-62 * sk, -790], far: [52 * sk, -792] } : { near: [-84 * sk, -790], far: [84 * sk, -790] };
 
-  // prop placement (torso-relative)
+  // ---- head (before the arms: a hand may rest on the chin) ----
+  const ht = (A.headTurn || 0) + turnN * 0.14;
+  const turn = view === 'side' ? 1 - Math.abs(ht) * 0.25 : clamp(ht, -0.3, 0.3);
+  const tilt = ((headDef.tilt || 0) + (A.headTilt || 0) + nod * 2.2 + (S.age === 'senior' ? 3 : 0) + (S.mood === 'proud' ? -5 : 0)) * DEG;
+  const neckTop = T(view === 'side' ? 4 : 0, -866);
+  const headRot = lean + tilt;
+  const headC = add(neckTop, rot({ x: view === 'side' ? 6 : 0, y: -62 }, headRot));
+  const lk = A.look || headDef.look || [0, 0];
+  const lookHold = A.lookHold ?? base.lookHold ?? 1;
+  const look = { x: lk[0] + lookN * 0.45 * lookHold, y: lk[1] + lookV * 0.25 * lookHold };
+  const HS = 1.05; // head scale
+  const chinAt = (dx, dy) => add(headC, rot({ x: dx * HS, y: dy * HS }, headRot));
+
+  // ---- prop placement (torso-relative) ----
   let P = null;
   if (prop) {
     const at = T(prop.at[0] + (A.prop?.[0] || 0), prop.at[1] + (A.prop?.[1] || 0));
-    P = { name: prop.name, x: at.x, y: at.y, ang: ((prop.ang || 0) + (A.propAng || 0) + body.lean) * DEG, size: prop.size, hold: prop.hold, hidden: !!prop.hidden };
+    const d = propDims(prop.name, prop.size);
+    P = { name: prop.name, x: at.x, y: at.y, ang: ((prop.ang || 0) + (A.propAng || 0) + body.lean) * DEG, size: prop.size, w: d.w, h: d.h, hold: prop.hold, hidden: !!prop.hidden };
   }
 
+  // ---- arms ----
   const armOut = {};
   for (const side of ['near', 'far']) {
     const a = arms[side];
     const Sp = T(SH[side][0], SH[side][1] + shoulderLift);
-    let W;
-    if (a.rel && P) W = add({ x: P.x, y: P.y }, rot({ x: a.rel[0], y: a.rel[1] }, P.ang));
-    else {
-      let tx = a.t[0], ty = a.t[1];
-      if (woman && !a.rel) tx *= side === 'near' ? 0.94 : 0.94;
-      if (walk && view === 'side') tx += (side === 'near' ? -1 : 1) * 72 * Math.sin(wk.ph);
-      if (walk && view === 'front') ty += (side === 'near' ? -1 : 1) * 10 * Math.sin(wk.ph);
-      W = T(tx, ty);
+    let W, ang, mir, hand = a.hand || 'relax', pw = 0, phh = 0;
+    if (a.grip && P) {
+      const hf = handFromProp(P, hand, [a.grip[0] * P.w, a.grip[1] * P.h], a.mir ?? -1, P.w, P.h, HK);
+      W = hf.W; ang = hf.ang; mir = a.mir ?? -1; pw = P.w; phh = P.h;
+      if (P.hidden) hand = hand === 'support' ? 'present' : hand === 'phone' ? 'pinch' : 'fist';
+    } else {
+      const tt = a.t || (a.chin ? [0, -900] : hangArm(side, view).t);
+      let tx = tt[0], ty = tt[1];
+      if (woman) tx *= 0.94;
+      ang = ((a.ang ?? 90) + body.lean + (A[side + 'Ang'] || 0)) * DEG;
+      if (walk && view === 'side') {
+        // arms swing opposite the legs; forward swing bends the elbow; the hand trails the forearm
+        const sw = -Math.cos(TAU * (wk.p - 0.03)) * (side === 'near' ? 1 : -1);
+        const swl = -Math.cos(TAU * (wk.p - 0.12)) * (side === 'near' ? 1 : -1);
+        tx += 62 * sw;
+        ty -= 20 * Math.max(0, sw) ** 1.5 + 6 * Math.abs(sw);
+        ang += (-16 * swl) * DEG;
+      }
+      if (walk && view === 'front') {
+        const sw = Math.sin(TAU * (wk.p - 0.03)) * (side === 'near' ? 1 : -1);
+        ty -= 12 * Math.max(0, sw); tx += (side === 'near' ? 1 : -1) * 6 * Math.max(0, sw);
+      }
+      if (a.chin) W = chinAt(a.chin[0], a.chin[1]);
+      else if (a.under && armOut[a.under[0]]) W = add(armOut[a.under[0]].E, { x: a.under[1], y: a.under[2] });
+      else W = T(tx, ty);
+      const th = a.thumb ? { x: a.thumb[0], y: a.thumb[1] } : { x: 1, y: 0 };
+      // local +y in world = (-sin, cos); flip the hand if that points away from the requested thumb side
+      mir = a.mir ?? ((-Math.sin(ang) * th.x + Math.cos(ang) * th.y) < 0 ? -1 : 1);
     }
     const ao = A[side];
-    if (ao) W = add(W, { x: ao[0], y: ao[1] });
+    if (ao && !(a.grip && P)) W = add(W, { x: ao[0], y: ao[1] });
     const k1 = a.len ? a.len[0] : 1, k2 = a.len ? a.len[1] : 1;
     const s1 = ik(Sp, W, L1 * k1, L2 * k2, 1), s2 = ik(Sp, W, L1 * k1, L2 * k2, -1);
     const pref = a.pref ? { x: a.pref[0], y: a.pref[1] } : view === 'side' ? { x: -0.35, y: 1 } : { x: side === 'near' ? -0.5 : 0.5, y: 1 };
@@ -169,150 +244,323 @@ export function buildRig(S, t) {
     const d1 = (s1.elbow.x - m.x) * pref.x + (s1.elbow.y - m.y) * pref.y;
     const d2 = (s2.elbow.x - m.x) * pref.x + (s2.elbow.y - m.y) * pref.y;
     const sol = d1 >= d2 ? s1 : s2;
-    let ang = ((a.ang ?? 90) + body.lean + (A[side + 'Ang'] || 0)) * DEG;
-    const th = a.thumb ? { x: a.thumb[0], y: a.thumb[1] } : { x: 1, y: 0 };
-    // local +y in world = (-sin, cos); flip the hand if that points away from the requested thumb side
-    const mir = (-Math.sin(ang) * th.x + Math.cos(ang) * th.y) < 0 ? -1 : 1;
-    let hand = a.hand || 'relax';
-    if (P && P.hidden && a.rel) hand = hand === 'open-up' ? 'open-up' : hand === 'phone' ? 'relax' : 'fist';
-    armOut[side] = { S: Sp, E: sol.elbow, W: sol.wrist, ang, mir, hand, z: a.z || (side === 'near' ? 'front' : 'back') };
+    // a short reach leaves the hand where it was asked to be (the wrist bends rather than detaching)
+    armOut[side] = { S: Sp, E: sol.elbow, W: sol.wrist, ang, mir, hand, pw, ph: phh, k: HK, z: a.z || (side === 'near' ? 'front' : 'back') };
   }
   // in the front view both arms are on the outside of the torso; nothing hides behind it
   if (view === 'front') for (const side of ['near', 'far']) { if (armOut[side].z === 'back') armOut[side].z = 'front'; else if (armOut[side].z === 'reach') armOut[side].z = 'mid'; }
 
   if (handProp) {
     const a = armOut[handProp.side];
-    const o = rot({ x: handProp.off[0], y: handProp.off[1] * a.mir }, a.ang);
-    P = { name: handProp.name, x: a.W.x + o.x, y: a.W.y + o.y, ang: a.ang - Math.PI / 2 + (handProp.ang || 0) * DEG, size: handProp.size, hold: handProp.side, hanging: true };
-    if (handProp.name === 'bag' || handProp.name === 'coffee') P.ang = 0;
+    const d = propDims(handProp.name, handProp.size);
+    const flipAt = view === 'front' && handProp.side === 'far' && handProp.mirFront;
+    const anchor = [(flipAt ? -handProp.at[0] : handProp.at[0]) * d.w, handProp.at[1] * d.h];
+    a.mir = handProp.hang ? a.mir : handProp.mirEff;
+    if (handProp.pAng != null && !handProp.hang) a.ang = ((handProp.pAng || 0) - 90 - a.mir * GRIPS[handProp.hand].up) * DEG + lean * 0.5;
+    let q = propFromHand(a.W, a.ang, a.mir, handProp.hand, anchor, d.w, d.h, HK);
+    if (handProp.hang) {
+      // a bag hangs plumb from the fist with a little lagging swing
+      const ct = add(a.W, rotv({ x: BAG_GRIP.x * HK, y: BAG_GRIP.y * a.mir * HK }, a.ang));
+      const pa = (Math.sin(t * 2.3 + ph * 5) * 2.5 + (walk ? -Math.cos(TAU * (wk.p - 0.18)) * 5 * (handProp.side === 'near' ? 1 : -1) : 0)) * DEG;
+      const an = rotv({ x: anchor[0], y: anchor[1] }, pa);
+      q = { x: ct.x - an.x, y: ct.y - an.y, ang: pa };
+    }
+    a.pw = d.w; a.ph = d.h;
+    P = { name: handProp.name, x: q.x, y: q.y, ang: q.ang, size: handProp.size, w: d.w, h: d.h, hold: handProp.side, hanging: true };
   }
 
-  // head
-  const turn = view === 'side' ? 1 - Math.abs(A.headTurn || 0) * 0.2 : clamp(A.headTurn || 0, -0.3, 0.3);
-  const tilt = ((headDef.tilt || 0) + (A.headTilt || 0) + (S.age === 'senior' ? 3 : 0) + (S.mood === 'proud' ? -5 : 0)) * DEG;
-  const neckTop = T(view === 'side' ? 4 : 0, -866);
-  const headRot = lean + tilt;
-  const headC = add(neckTop, rot({ x: view === 'side' ? 6 : 0, y: -62 }, headRot));
-  const look = A.look || headDef.look || [0, 0];
-
   return {
-    view, turn, T, body, sit, walk, wk, t, ph,
+    view, turn, T, body, sit, walk, wk, t, ph, ns,
     arms: armOut, prop: P,
-    head: { c: headC, rot: headRot, neckTop, look: { x: look[0], y: look[1] }, blink, thumbTap: A.thumbTap || 0 },
+    head: { c: headC, rot: headRot, neckTop, look, blink, thumbTap: A.thumbTap || 0 },
   };
 }
 
-// ---------- drawing helpers ----------
+function hangArm(side, view) {
+  if (view === 'front') return side === 'near' ? { t: [-100, -474], hand: 'relax', ang: 94, thumb: [1, 0], z: 'front' } : { t: [100, -474], hand: 'relax', ang: 86, thumb: [-1, 0], z: 'front' };
+  return side === 'near' ? { t: [-70, -474], hand: 'relax', ang: 92, thumb: [1, 0], z: 'front' } : { t: [64, -474], hand: 'relax', ang: 88, thumb: [1, 0], z: 'back' };
+}
+
+// ---------- hands ----------
 function lightFor(flip) { return { x: flip ? -LIGHT.x : LIGHT.x, y: LIGHT.y }; }
 
 function drawHand(c, arm, skin, L, layer, tap = 0) {
-  const shp = handShape(arm.hand, arm.hand === 'phone' ? tap : 0);
+  const shp = handShape(arm.hand, arm.pw, arm.ph, arm.hand === 'phone' ? tap : 0);
+  const parts = layer === 'back' ? shp.back : shp.front;
+  if (!parts.length) return;
   c.save();
   c.translate(arm.W.x, arm.W.y);
   c.rotate(arm.ang);
-  c.scale(1, arm.mir);
-  // light in hand space
+  c.scale(arm.k, arm.k * arm.mir);
   const ca = Math.cos(-arm.ang), sa = Math.sin(-arm.ang);
   const ll = { x: L.x * ca - L.y * sa, y: (L.x * sa + L.y * ca) * arm.mir };
-  if (layer === 'back') {
-    shade(c, shp.back, skin.base, { shadow: skin.shade, depth: 5, light: ll });
-    if (shp.lines.length) {
-      c.strokeStyle = skin.shade; c.lineWidth = 2; c.lineCap = 'round';
-      for (const [x1, y1, x2, y2] of shp.lines) { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
-    }
-  } else if (shp.front) {
-    shade(c, shp.front, skin.base, { shadow: skin.shade, depth: 3.5, light: ll });
-    c.strokeStyle = rgba(skin.deep, 0.5); c.lineWidth = 1.6;
-    c.stroke(shp.front);
-  }
+  drawHandParts(c, parts, skin, ll, palmTone(skin));
   c.restore();
 }
 
+// ---------- arms: one sleeve outline with a real elbow ----------
 function sleeveRadii(S) { return S.outfit === 'casual' ? CASUAL_SLEEVE[S.gender] : DIMS[S.gender].sleeve; }
 
-function upperArmPath(arm, rr) {
-  const p = new Path2D();
-  tube(p, arm.S, arm.E, rr[0], rr[1]);
-  return p;
-}
-function forearmPath(arm, rr) {
-  const p = new Path2D();
-  tube(p, arm.E, arm.W, rr[1], rr[2], 'round', 'flat');
-  return p;
-}
-
-function sleeveFabric(S) {
+function sleeveFabric(S, front) {
   // Sleeves in front of an abaya get a touch more light so arms stay readable over the dark robe.
-  if (S.outfit === 'abaya') { const f = S.robe; return { ...f, base: mix(f.base, f.hi, 0.3), shade: mix(f.shade, f.base, 0.2) }; }
+  if (front && S.outfit === 'abaya') { const f = S.robe; return { ...f, base: mix(f.base, f.hi, 0.3), shade: mix(f.shade, f.base, 0.2) }; }
   return S.robe;
 }
 
-function drawUpperArm(c, S, arm, L, front = false) {
-  const rr = sleeveRadii(S);
-  const f = front ? sleeveFabric(S) : S.robe;
-  const p = upperArmPath(arm, rr);
-  // Form shading fades out towards the shoulder so the sleeve cap melts into the robe's shoulder
-  // (a hard crescent round the cap reads as a shoulder pad). The tube has no self-overlap, so an
-  // even-odd "outside the shifted shape" crescent is safe here.
-  c.fillStyle = f.base;
-  c.fill(p);
-  const g = (col) => {
-    const a = arm.S, b = { x: lerp(arm.S.x, arm.E.x, 0.55), y: lerp(arm.S.y, arm.E.y, 0.55) };
-    const gr = c.createLinearGradient(a.x, a.y, b.x, b.y);
-    gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.45, rgba(col, 0)); gr.addColorStop(1, rgba(col, 1));
-    return gr;
-  };
-  const crescent = (dx, dy, col) => {
-    const q = new Path2D();
-    q.rect(-1e4, -1e4, 2e4, 2e4);
-    q.addPath(p, new DOMMatrix().translateSelf(dx, dy));
-    c.fillStyle = g(col);
-    c.fill(q, 'evenodd');
-  };
-  c.save();
-  c.clip(p);
-  crescent(L.x * 9, L.y * 9, f.shade);
-  if (S.outfit === 'abaya') crescent(-L.x * 3.5, -L.y * 3.5, f.hi);
-  c.restore();
-  if (front) {
-    // thin same-hue edge, but not round the shoulder cap (it would read as a shoulder pad)
-    c.save();
-    const ex = new Path2D();
-    ex.rect(-1e4, -1e4, 2e4, 2e4);
-    ex.arc(arm.S.x, arm.S.y, rr[0] * 1.9, 0, TAU);
-    c.clip(ex, 'evenodd');
-    c.strokeStyle = rgba(S.robe.deep, S.outfit === 'abaya' ? 0.9 : 0.35); c.lineWidth = 2; c.stroke(p);
-    c.restore();
-  }
+function lineHit(p1, d1, p2, d2) {
+  const den = d1.x * d2.y - d1.y * d2.x;
+  if (Math.abs(den) < 1e-6) return null;
+  const tt = ((p2.x - p1.x) * d2.y - (p2.y - p1.y) * d2.x) / den;
+  const uu = ((p2.x - p1.x) * d1.y - (p2.y - p1.y) * d1.x) / den;
+  return { x: p1.x + d1.x * tt, y: p1.y + d1.y * tt, t: tt, u: uu };
 }
 
-function drawForearm(c, S, arm, L, front = false) {
-  const rr = sleeveRadii(S);
-  const f = front ? sleeveFabric(S) : S.robe;
-  const p = forearmPath(arm, rr);
-  shade(c, p, f.base, { shadow: f.shade, depth: 8, hi: f.hi, hiDepth: S.outfit === 'abaya' ? 3.5 : 0, light: L });
-  if (front) { c.strokeStyle = rgba(S.robe.deep, S.outfit === 'abaya' ? 0.9 : 0.35); c.lineWidth = 2; c.stroke(p); }
-  // elbow crease + cuff
-  const u = norm(sub(arm.W, arm.E));
-  const n = { x: -u.y, y: u.x };
+/**
+ * Geometry of a sleeved arm: a single outline from the shoulder round a defined elbow corner to the
+ * cuff, back along the inside through the elbow crease. Strongly folded arms are drawn as an upper
+ * arm with the forearm lying over it.
+ */
+function armGeom(arm, rr) {
+  if (arm.geom) return arm.geom;
+  const s = arm.S, e = arm.E, w = arm.W;
+  const l1 = len(sub(e, s)) || 1, l2 = len(sub(w, e)) || 1;
+  const u1 = scl(sub(e, s), 1 / l1), u2 = scl(sub(w, e), 1 / l2);
+  const pu1 = { x: -u1.y, y: u1.x }, pu2 = { x: -u2.y, y: u2.x };
+  const turnS = pu1.x * u2.x + pu1.y * u2.y; // >0: the forearm turns towards +perp
+  const bend = Math.acos(clamp(u1.x * u2.x + u1.y * u2.y, -1, 1));
+  const sIn = turnS >= 0 ? 1 : -1;
+  const o1 = scl(pu1, -sIn), o2 = scl(pu2, -sIn); // outer normals (away from the bend)
+  const [r0, r1, r2] = rr;
+  const g = { u1, u2, o1, o2, bend, l1, l2, r: rr };
+  const cuffO = add(w, scl(o2, r2)), cuffI = add(w, scl(o2, -r2));
+  if (bend < 1.95) {
+    const A0 = add(s, scl(o1, r0)), A1 = add(s, scl(o1, -r0));
+    let X = lineHit(A0, u1, add(e, scl(o2, r1)), u2);
+    if (!X || bend < 0.06 || X.t < 0 || X.u > l2) X = add(e, scl(add(o1, o2), r1 * 0.5));
+    let Y = lineHit(A1, u1, add(e, scl(o2, -r1)), u2);
+    if (!Y || bend < 0.06) Y = add(e, scl(add(o1, o2), -r1 * 0.5));
+    else {
+      // keep the crease on both segments
+      const tt = clamp(Y.t, l1 * 0.35, l1 + r1 * 0.2), uu = clamp(Y.u, -r1 * 0.2, l2 * 0.6);
+      Y = Y.t !== tt || Y.u !== uu ? mid(add(A1, scl(u1, tt)), add(add(e, scl(o2, -r1)), scl(u2, uu))) : Y;
+    }
+    const bn = clamp(bend / 1.6);
+    const rc = Math.min(r1 * lerp(1.2, 0.5, bn), len(sub(X, A0)) * 0.6, len(sub(cuffO, X)) * 0.5);
+    const B = sub(X, scl(u1, rc)), C = add(X, scl(u2, rc));
+    const p = new Path2D();
+    p.moveTo(A0.x, A0.y);
+    p.lineTo(B.x, B.y);
+    p.quadraticCurveTo(X.x, X.y, C.x, C.y);
+    p.lineTo(cuffO.x, cuffO.y);
+    p.lineTo(cuffI.x, cuffI.y);
+    p.lineTo(Y.x, Y.y);
+    p.lineTo(A1.x, A1.y);
+    const k = r0 * 1.33;
+    p.bezierCurveTo(A1.x - u1.x * k, A1.y - u1.y * k, A0.x - u1.x * k, A0.y - u1.y * k, A0.x, A0.y);
+    p.closePath();
+    Object.assign(g, { path: p, X, Y, A0, A1, folded: false });
+  } else {
+    // folded: upper arm, then the forearm lying across it; the elbow point continues the upper arm
+    const up = new Path2D();
+    tube(up, s, e, r0, r1);
+    const td = norm(sub(u1, u2));
+    const tip = add(e, scl(td, r1 * 1.06));
+    const fo = new Path2D();
+    const a1 = add(add(e, scl(o2, r1)), scl(u2, r1 * 0.55));
+    const b1 = add(add(e, scl(o2, -r1)), scl(u2, r1 * 0.35));
+    const back = sub(e, scl(u2, r1 * 1.15));
+    fo.moveTo(a1.x, a1.y);
+    fo.lineTo(cuffO.x, cuffO.y);
+    fo.lineTo(cuffI.x, cuffI.y);
+    fo.lineTo(b1.x, b1.y);
+    fo.quadraticCurveTo(back.x - o2.x * r1 * 0.2, back.y - o2.y * r1 * 0.2, mid(back, tip).x, mid(back, tip).y);
+    fo.quadraticCurveTo(tip.x, tip.y, mid(tip, a1).x, mid(tip, a1).y);
+    fo.quadraticCurveTo(a1.x + o2.x * r1 * 0.1, a1.y + o2.y * r1 * 0.1, a1.x, a1.y);
+    fo.closePath();
+    const all = new Path2D(); all.addPath(up); all.addPath(fo);
+    Object.assign(g, { up, fo, path: all, X: tip, Y: e, folded: true });
+  }
+  // loose sleeves hang below a raised or reaching forearm
+  const dn = o2.y >= 0 ? o2 : scl(o2, -1);
+  g.dn = dn;
+  const pad = Math.max(r0, r1, r2) * 3 + 40;
+  const xs = [s.x, e.x, w.x], ys = [s.y, e.y, w.y];
+  g.box = { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad, w: Math.max(...xs) - Math.min(...xs) + pad * 2, h: Math.max(...ys) - Math.min(...ys) + pad * 2 };
+  arm.geom = g;
+  return g;
+}
+const boxRect = (q, b) => { q.rect(b.x, b.y, b.w, b.h); return q; };
+
+// tapered fold strip from a to b (width w0 → w1), appended to path p
+function foldStrip(p, a, b, w0, w1, bow = 0) {
+  const d = sub(b, a), L0 = len(d) || 1, n = { x: -d.y / L0, y: d.x / L0 };
+  const m = add(mid(a, b), scl(n, bow));
+  p.moveTo(a.x + n.x * w0 / 2, a.y + n.y * w0 / 2);
+  p.quadraticCurveTo(m.x + n.x * w1 * 0.4, m.y + n.y * w1 * 0.4, b.x + n.x * w1 / 2, b.y + n.y * w1 / 2);
+  p.lineTo(b.x - n.x * w1 / 2, b.y - n.y * w1 / 2);
+  p.quadraticCurveTo(m.x - n.x * w1 * 0.4, m.y - n.y * w1 * 0.4, a.x - n.x * w0 / 2, a.y - n.y * w0 / 2);
+  p.closePath();
+  return p;
+}
+
+function shadeArmPath(c, p, f, arm, L, fadeShoulder = true) {
+  c.fillStyle = f.base;
+  c.fill(p);
   c.save();
   c.clip(p);
-  c.strokeStyle = f.deep;
-  c.lineWidth = 2.6;
-  c.lineCap = 'round';
-  const cuff = S.outfit === 'abaya' ? 14 : 9;
+  const crescent = (dx, dy, col) => {
+    const q = new Path2D();
+    boxRect(q, arm.geom.box);
+    q.addPath(p, new DOMMatrix().translateSelf(dx, dy));
+    if (fadeShoulder) {
+      // form shading fades out towards the shoulder so the sleeve cap melts into the robe
+      const a = arm.S, b = mid(arm.S, arm.E, 0.6);
+      const gr = c.createLinearGradient(a.x, a.y, b.x, b.y);
+      gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.45, rgba(col, 0)); gr.addColorStop(1, rgba(col, 1));
+      c.fillStyle = gr;
+    } else c.fillStyle = col;
+    c.fill(q, 'evenodd');
+  };
+  crescent(L.x * 9, L.y * 9, f.shade);
+  c.restore();
+}
+
+/**
+ * Draw a sleeved arm. opts.front: in front of the torso (lighter abaya sleeve, edge line, cast
+ * shadow). opts.clip: 'outer' redraws only the part away from the shoulder (pass 2, over the
+ * head and scarf), 'fore' only the forearm side of the elbow (an arm reaching from behind).
+ */
+function drawArm(c, S, arm, L, opts = {}) {
+  const rr = sleeveRadii(S);
+  const g = armGeom(arm, rr);
+  const f = sleeveFabric(S, opts.front);
+  const abaya = S.outfit === 'abaya';
+  c.save();
+  if (opts.clip === 'outer') {
+    const q = new Path2D();
+    boxRect(q, g.box);
+    q.arc(arm.S.x, arm.S.y, rr[0] * 2.3, 0, TAU);
+    c.clip(q, 'evenodd');
+  } else if (opts.clip === 'fore') {
+    // half-plane beyond a line through the elbow, square to the upper arm
+    const n = g.u1, e = arm.E;
+    const back = sub(e, scl(n, rr[1] * 0.4));
+    const t1 = { x: -n.y, y: n.x };
+    const q = new Path2D();
+    const D = 1200;
+    q.moveTo(back.x + t1.x * D, back.y + t1.y * D);
+    q.lineTo(back.x + t1.x * D + n.x * D, back.y + t1.y * D + n.y * D);
+    q.lineTo(back.x - t1.x * D + n.x * D, back.y - t1.y * D + n.y * D);
+    q.lineTo(back.x - t1.x * D, back.y - t1.y * D);
+    q.closePath();
+    c.clip(q);
+  }
+  if (opts.castOn) {
+    // the arm's shadow on the body behind it
+    c.save();
+    c.clip(opts.castOn);
+    const sx = new Path2D(); // not round the shoulder: the sleeve cap grows out of the robe there
+    boxRect(sx, g.box);
+    sx.arc(arm.S.x, arm.S.y, rr[0] * 2.4, 0, TAU);
+    c.clip(sx, 'evenodd');
+    c.translate(-L.x * 10, -L.y * 10 + 2);
+    c.fillStyle = abaya ? rgba('#000000', 0.32) : rgba(S.robe.deep, S.outfit === 'casual' ? 0.45 : 0.55);
+    c.fill(g.path);
+    c.restore();
+  }
+  if (S.outfit !== 'casual') drawSleeveSag(c, S, arm, g, f, rr);
+  if (g.folded) {
+    shadeArmPath(c, g.up, f, arm, L);
+    // the forearm's shadow on the upper arm
+    c.save(); c.clip(g.up); c.translate(-L.x * 6, -L.y * 6); c.fillStyle = rgba(f.deep, 0.6); c.fill(g.fo); c.restore();
+    shadeArmPath(c, g.fo, f, arm, L, false);
+    if (opts.front) { c.strokeStyle = rgba(S.robe.deep, abaya ? 0.9 : 0.35); c.lineWidth = 2; c.stroke(g.fo); }
+  } else {
+    shadeArmPath(c, g.path, f, arm, L);
+    if (opts.front) {
+      // thin same-hue edge, but not round the shoulder cap (it would read as a shoulder pad)
+      c.save();
+      const ex = new Path2D();
+      boxRect(ex, g.box);
+      ex.arc(arm.S.x, arm.S.y, rr[0] * 1.9, 0, TAU);
+      c.clip(ex, 'evenodd');
+      c.strokeStyle = rgba(S.robe.deep, abaya ? 0.9 : 0.35); c.lineWidth = 2; c.stroke(g.path);
+      c.restore();
+    }
+  }
+  drawSleeveDetail(c, S, arm, g, f, rr, abaya);
+  c.restore();
+}
+
+function drawSleeveSag(c, S, arm, g, f, rr) {
+  const h = Math.abs(g.u2.x); // how horizontal the forearm is
+  const sag = (S.outfit === 'abaya' ? 0.7 : 0.32) * h * rr[2];
+  if (sag < 2 || g.l2 < 60) return;
+  const e = arm.E, w = arm.W, dn = g.dn, u2 = g.u2;
+  const A = add(add(e, scl(dn, rr[1] * 0.9)), scl(u2, rr[1] * 0.4));
+  const B = sub(add(w, scl(dn, rr[2] * 1.02)), scl(u2, 3));
+  const M = add(mid(e, w, 0.66), scl(dn, (rr[1] + rr[2]) / 2 + sag * 1.6));
+  const p = new Path2D();
+  p.moveTo(A.x, A.y);
+  p.quadraticCurveTo(M.x, M.y, B.x, B.y);
+  p.lineTo(w.x, w.y);
+  p.lineTo(e.x, e.y);
+  p.closePath();
+  c.fillStyle = mix(f.shade, f.deep, 0.35);
+  c.fill(p);
+}
+
+function drawSleeveDetail(c, S, arm, g, f, rr, abaya) {
+  const { u1, u2, o1, o2, bend } = g;
+  const e = arm.E, w = arm.W;
+  const foldCol = abaya ? rgba(f.hi, 0.32) : rgba(f.deep, S.outfit === 'casual' ? 0.75 : 0.8);
+  const folds = new Path2D();
+  const bn = clamp(bend / 1.4);
+  if (!g.folded) {
+    if (bend > 0.22) {
+      // creases radiating from the inside of the elbow
+      const Y = g.Y;
+      foldStrip(folds, add(Y, scl(u2, 2)), add(add(e, scl(u2, rr[1] * (1.1 + bn * 0.5))), scl(o2, rr[1] * 0.35)), 3.2 * bn + 1, 0.6, 2);
+      foldStrip(folds, sub(Y, scl(u1, 2)), add(sub(e, scl(u1, rr[1] * (0.9 + bn * 0.5))), scl(o1, rr[1] * 0.3)), 2.8 * bn + 1, 0.6, -2);
+      if (bend > 0.7) foldStrip(folds, add(Y, scl(u2, rr[1] * 0.5)), add(add(e, scl(u2, rr[1] * 1.9)), scl(o2, -rr[1] * 0.1)), 2.2, 0.5, 1);
+    } else {
+      // a nearly straight sleeve: fabric breaks softly across the elbow
+      const a = add(sub(e, scl(u1, rr[1] * 0.4)), scl(o1, -rr[1] * 0.95));
+      const b = add(add(e, scl(u2, rr[1] * 0.9)), scl(o2, rr[1] * 0.4));
+      foldStrip(folds, a, b, 2.6, 0.6, 3);
+    }
+    // a long drape line down the forearm of a loose sleeve
+    if (S.outfit !== 'casual' && g.l2 > 90) {
+      const a = add(add(e, scl(u2, g.l2 * 0.3)), scl(o2, rr[1] * 0.55));
+      const b = add(sub(w, scl(u2, 16)), scl(o2, -rr[2] * 0.35));
+      foldStrip(folds, a, b, 0.6, 2.4, 2);
+    }
+  } else {
+    const a = add(e, scl(u2, rr[1] * 1.1)), b = add(add(e, scl(u2, rr[1] * 2.4)), scl(o2, -rr[1] * 0.4));
+    foldStrip(folds, a, b, 2.4, 0.6, 1);
+  }
+  c.save();
+  c.clip(g.path);
+  c.fillStyle = foldCol;
+  c.fill(folds);
+  // cuff: hem line and (dishdasha / abaya) a fine embroidered band
+  const n = { x: -u2.y, y: u2.x };
+  const cuff = abaya ? 15 : S.outfit === 'casual' ? 10 : 11;
   const cw = rr[2] + 2;
-  const a = add(arm.W, scl(u, -cuff));
-  c.beginPath();
-  c.moveTo(a.x + n.x * cw, a.y + n.y * cw);
-  c.lineTo(a.x - n.x * cw, a.y - n.y * cw);
-  c.stroke();
-  if (S.outfit === 'abaya' || (S.outfit === 'dishdasha')) {
-    c.strokeStyle = S.outfit === 'abaya' ? S.accent : mix(S.robe.deep, S.accent, 0.35);
-    c.lineWidth = S.outfit === 'abaya' ? 3 : 1.8;
-    const b = add(arm.W, scl(u, -cuff + 5));
+  const a = sub(w, scl(u2, cuff));
+  c.strokeStyle = f.deep;
+  c.lineWidth = 2.4;
+  c.beginPath(); c.moveTo(a.x + n.x * cw, a.y + n.y * cw); c.lineTo(a.x - n.x * cw, a.y - n.y * cw); c.stroke();
+  if (S.outfit !== 'casual') {
+    c.strokeStyle = abaya ? S.accent : mix(S.robe.deep, S.accent, 0.35);
+    c.lineWidth = abaya ? 3 : 1.6;
+    const b = sub(w, scl(u2, cuff - 5));
     c.beginPath(); c.moveTo(b.x + n.x * cw, b.y + n.y * cw); c.lineTo(b.x - n.x * cw, b.y - n.y * cw); c.stroke();
   }
+  // the opening: a sliver of the sleeve's lining at the cuff edge
+  c.strokeStyle = abaya ? rgba('#000000', 0.55) : rgba(f.deep, 0.9);
+  c.lineWidth = abaya ? 4 : 2.6;
+  c.beginPath(); c.moveTo(w.x + n.x * cw, w.y + n.y * cw); c.lineTo(w.x - n.x * cw, w.y - n.y * cw); c.stroke();
   c.restore();
 }
 
@@ -371,17 +619,6 @@ function legTube(c, hip, knee, ankle, S, L, rr = [30, 24, 20]) {
 }
 
 // ---------- body silhouettes ----------
-function feetLayout(R, S) {
-  if (R.view === 'front') return null;
-  if (R.walk) {
-    const ph = R.wk.ph;
-    const A = 84;
-    const f = (p) => ({ x: 10 + A * Math.sin(p), lift: 30 * Math.max(0, Math.cos(p)) ** 1.5, ang: -0.18 * Math.max(0, Math.cos(p)) + 0.16 * Math.max(0, -Math.sin(p)) * Math.max(0, Math.cos(p + 0.6)) });
-    return { near: f(ph), far: f(ph + Math.PI) };
-  }
-  return { near: { x: -18, lift: 0, ang: 0 }, far: { x: 32, lift: 0, ang: 0 } };
-}
-
 function robePathSide(R, S, D, feet, hemY, hemK = 1) {
   const T = R.T;
   const sw = D.sw, ww = D.ww, hw = D.hw;
@@ -514,6 +751,23 @@ function drawSeat(c, R, S, L) {
   c.restore();
 }
 
+// ---------- feet layout ----------
+// Side view: foot origins (ankle at the sole) with angle. x matches the robe code's foot reference.
+function feetLayout(R) {
+  if (R.view === 'front') return null;
+  if (R.walk) {
+    const mk = (q) => { const f = walkFoot(q); return { ox: f.x - 10, oy: f.y, ang: f.ang, x: f.x + 6, lift: -f.y, swing: f.swing }; };
+    return { near: mk(R.wk.p), far: mk(R.wk.p + 0.5) };
+  }
+  return { near: { ox: -34, oy: 0, ang: 0, x: -18, lift: 0 }, far: { ox: 16, oy: 0, ang: 0, x: 32, lift: 0 } };
+}
+
+function legIK(hip, ank, side) {
+  if (!side) return add(mid(hip, ank), { x: Math.sign(hip.x) * 3, y: 0 }); // front view: the knee bends towards the viewer
+  const a = ik(hip, ank, 236, 226, 1), b = ik(hip, ank, 236, 226, -1);
+  return a.elbow.x > b.elbow.x ? a.elbow : b.elbow; // knees point the way the person faces
+}
+
 // ---------- held props ----------
 function drawHeld(c, R, S, flip) {
   const P = R.prop;
@@ -522,47 +776,29 @@ function drawHeld(c, R, S, flip) {
   c.translate(P.x, P.y);
   c.rotate(P.ang);
   if (flip) c.scale(-1, 1); // keep printed marks (999.9) readable when the figure is mirrored
-  const asp = PROP_ASPECT[P.name] || 1;
-  const w = asp >= 1 ? P.size : P.size * asp, h = asp >= 1 ? P.size / asp : P.size;
-  drawPropShape(c, P.name, -w / 2, -h / 2, w, h, { held: true, flip, theme: S.theme, accent: S.accent, glow: P.name === 'phone' }, R.t);
+  drawPropShape(c, P.name, -P.w / 2, -P.h / 2, P.w, P.h, { held: true, flip, theme: S.theme, accent: S.accent, glow: false }, R.t);
   c.restore();
 }
 
 // ---------- effects ----------
 function drawFx(c, R, S) {
-  if (!S.fx) return;
+  // Only the sweat drop remains (sparkles are retired by the brand); it is small, translucent and slow.
+  if (S.fx !== 'sweat') return;
   const t = R.t;
-  if (S.fx === 'sweat') {
-    const h = R.head;
-    c.save();
-    c.translate(h.c.x, h.c.y);
-    c.rotate(h.rot);
-    const k = ((t * 0.6 + R.ph) % 1);
-    const y = -30 + k * 18, a = k < 0.8 ? 1 : (1 - k) / 0.2;
-    const a0 = c.globalAlpha;
-    c.globalAlpha = a0 * a;
-    c.translate(R.view === 'side' ? 36 : -30, y - 8);
-    c.scale(0.8, 0.8);
-    c.fillStyle = '#E9F1F4';
-    c.beginPath(); c.moveTo(0, -16); c.bezierCurveTo(6, -6, 10, 0, 10, 5); c.arc(0, 5, 10, 0, Math.PI); c.bezierCurveTo(-10, 0, -6, -6, 0, -16); c.fill();
-    c.fillStyle = '#9FC3D3'; c.globalAlpha = a0 * a * 0.8;
-    c.beginPath(); c.arc(2.5, 6, 4.5, 0, Math.PI * 2); c.fill();
-    c.restore();
-  } else if (S.fx === 'sparkle') {
-    const pts = [[-170, -1080, 1], [190, -1060, 0.8], [-200, -880, 0.6], [220, -900, 0.7], [0, -1140, 0.9]];
-    pts.forEach(([x, y, s], i) => {
-      const tw = 0.5 + 0.5 * Math.sin(t * 5 + i * 1.7 + R.ph * 6);
-      const r = (12 + 10 * tw) * s;
-      c.save();
-      c.translate(x, y);
-      c.fillStyle = i % 2 ? COLORS.spark : COLORS.gold;
-      c.globalAlpha *= 0.45 + 0.55 * tw;
-      c.beginPath();
-      c.moveTo(0, -r); c.quadraticCurveTo(0, 0, r, 0); c.quadraticCurveTo(0, 0, 0, r); c.quadraticCurveTo(0, 0, -r, 0); c.quadraticCurveTo(0, 0, 0, -r);
-      c.fill();
-      c.restore();
-    });
-  }
+  const h = R.head;
+  c.save();
+  c.translate(h.c.x, h.c.y);
+  c.rotate(h.rot);
+  const k = ((t * 0.32 + R.ph) % 1);
+  const y = -26 + smooth(k) * 14, a = k < 0.15 ? k / 0.15 : k < 0.75 ? 1 : (1 - k) / 0.25;
+  c.globalAlpha *= a * 0.85;
+  c.translate(R.view === 'side' ? 40 : -34, y - 6);
+  c.scale(0.62, 0.62);
+  c.fillStyle = '#EAF2F4';
+  c.beginPath(); c.moveTo(0, -16); c.bezierCurveTo(6, -6, 10, 0, 10, 5); c.arc(0, 5, 10, 0, Math.PI); c.bezierCurveTo(-10, 0, -6, -6, 0, -16); c.fill();
+  c.fillStyle = rgba('#9FC3D3', 0.7);
+  c.beginPath(); c.arc(2.5, 6, 4.5, 0, Math.PI * 2); c.fill();
+  c.restore();
 }
 
 // ---------- main ----------
@@ -570,30 +806,29 @@ export function drawFigure(c, S, R, flip) {
   const L = lightFor(flip);
   const D = DIMS[S.gender];
   const skin = SKIN[S.skin];
-  const robe = S.robe;
   const woman = S.gender === 'woman';
   const casual = S.outfit === 'casual';
   const side = R.view === 'side';
-  const feet = feetLayout(R, S);
+  const feet = feetLayout(R);
   const hemY = casual && !woman ? -470 : D.hemY;
 
   // ground shadow
   groundShadow(c, R.sit ? -20 : 8, 0, R.sit ? 220 : 170, 24, 0.24, '#1A120B');
-
   if (R.sit) drawSeat(c, R, S, L);
 
-  // 1. arms that sit behind the torso
   const arms = R.arms;
   const order = ['far', 'near'];
-  const holding = (side) => R.prop && (R.prop.hold === side || R.prop.hold === 'both');
+  const holdsAlone = (s) => R.prop && R.prop.hold === s;
+  const tapOf = (s) => (s === 'near' ? R.head.thumbTap : 0);
+
+  // 1. arms behind the torso (whole arm), and the reaching arm's upper half
   for (const s of order) {
     const a = arms[s];
-    if (a.z === 'reach') { drawUpperArm(c, S, a, L); continue; }
+    if (a.z === 'reach') { drawArm(c, S, a, L); continue; }
     if (a.z !== 'back') continue;
-    drawUpperArm(c, S, a, L);
-    drawForearm(c, S, a, L);
     drawHand(c, a, skin, L, 'back');
-    if (R.prop && R.prop.hold === s && !holding(s === 'near' ? 'far' : 'near')) drawHeld(c, R, S, flip);
+    drawArm(c, S, a, L);
+    if (holdsAlone(s)) drawHeld(c, R, S, flip);
     drawHand(c, a, skin, L, 'front');
   }
 
@@ -626,27 +861,25 @@ export function drawFigure(c, S, R, flip) {
       footFront(c, -40, 0, -1, S, L);
     }
   } else if (side) {
-    const fs = [['far', feet.far], ['near', feet.near]];
-    for (const [nm, f] of fs) {
-      const ay = -f.lift;
+    for (const nm of ['far', 'near']) {
+      const f = feet[nm];
       if (casual && !woman) {
         const hip = R.T(nm === 'near' ? -22 : 24, -500);
-        const ank = { x: f.x - 4, y: ay - 40 };
-        const k = ik(hip, ank, 236, 226, 1), k2 = ik(hip, ank, 236, 226, -1);
-        const knee = k.elbow.x > k2.elbow.x ? k.elbow : k2.elbow;
-        legTube(c, hip, knee, ank, S, L, rLeg);
+        const ank = add({ x: f.ox, y: f.oy }, rot({ x: 12, y: -40 }, f.ang));
+        legTube(c, hip, legIK(hip, ank, true), ank, S, L, rLeg);
       }
-      footSide(c, f.x - 16, ay + (nm === 'near' ? 2 : -2), f.ang, S, L);
+      footSide(c, f.ox, f.oy + (nm === 'near' ? 2 : -2), f.ang, S, L);
     }
   } else {
-    const lift = R.walk ? (s) => 14 * Math.max(0, Math.sin(R.wk.ph + (s > 0 ? Math.PI : 0))) : () => 0;
+    // front view: the swing foot lifts and tucks in a little under the body; the hip over it drops
+    const lift = R.walk ? (s) => 24 * Math.max(0, Math.sin(R.wk.ph + (s > 0 ? Math.PI : 0))) ** 1.2 : () => 0;
     for (const sd of [-1, 1]) {
+      const tuck = -sd * lift(sd) * 0.22;
       if (casual && !woman) {
-        const hip = R.T(sd * 40, -500), ank = { x: sd * 44, y: -40 - lift(sd) };
-        const k = ik(hip, ank, 236, 226, 1), k2 = ik(hip, ank, 236, 226, -1);
-        legTube(c, hip, Math.abs(k.elbow.x) > Math.abs(k2.elbow.x) ? k2.elbow : k.elbow, ank, S, L, rLeg);
+        const hip = add(R.T(sd * 40, -500), { x: 0, y: lift(sd) * 0.18 }), ank = { x: sd * 44 + tuck, y: -40 - lift(sd) };
+        legTube(c, hip, legIK(hip, ank, false), ank, S, L, rLeg);
       }
-      footFront(c, sd * 34, -lift(sd), sd, S, L);
+      footFront(c, sd * 34 + tuck, -lift(sd), sd, S, L);
     }
   }
 
@@ -658,19 +891,29 @@ export function drawFigure(c, S, R, flip) {
     const np = new Path2D();
     tube(np, nt, nb, D.neck, D.neck * 1.05, 'round', 'flat');
     shade(c, np, skin.base, { shadow: skin.shade, depth: 7, light: L });
-    // soft shadow cast by the chin
     c.save(); c.clip(np); c.fillStyle = skin.shade;
     c.beginPath(); c.ellipse(H.c.x + (side ? 10 : 0), H.c.y + 64, 46, 22, H.rot, 0, TAU); c.fill(); c.restore();
   }
 
   // 4. robe / clothing body
-  drawClothes(c, R, S, D, L, feet, hemY);
+  const bodyPath = drawClothes(c, R, S, D, L, feet, hemY);
 
-  // 5. upper arms for arms in front of the torso
+  // 5. arms in front of the torso. An arm (and hand) clear of the head and scarf is drawn complete
+  // here; one that reaches over them gets a first pass now and its outer part again after the head.
+  const H0 = R.head;
+  const nearHead = (a) => {
+    const rr = sleeveRadii(S);
+    const hx = H0.c.x, hy = H0.c.y + (woman ? 40 : 10), hr = woman ? 150 : 120;
+    const hit = (q, r) => Math.hypot(q.x - hx, q.y - hy) < hr + r;
+    const hw = add(a.W, rot({ x: 44 * a.k, y: 0 }, a.ang));
+    return hit(a.E, rr[1]) || hit(a.W, rr[2] + 10) || hit(hw, 40) || hit(mid(a.E, a.W), rr[1]);
+  };
   for (const s of order) {
     const a = arms[s];
     if (a.z === 'back' || a.z === 'reach') continue;
-    drawUpperArm(c, S, a, L, true);
+    a.twoPass = nearHead(a);
+    if (!a.twoPass) drawHand(c, a, skin, L, 'back', tapOf(s));
+    drawArm(c, S, a, L, { front: true, castOn: bodyPath });
   }
 
   // 6. headscarf drape over the shoulders, then the head
@@ -690,13 +933,17 @@ export function drawFigure(c, S, R, flip) {
   drawHead(c, hd, 'head');
   c.restore();
 
-  // 7. forearms + hands (mid, then front), with the held prop between hand layers
-  const mids = order.filter((s) => arms[s].z === 'mid' || arms[s].z === 'reach');
-  const fronts = order.filter((s) => arms[s].z === 'front');
-  for (const s of [...mids, ...fronts]) { drawForearm(c, S, arms[s], L, true); drawHand(c, arms[s], skin, L, 'back', s === 'near' ? H.thumbTap : 0); }
+  // 7. hands and forearms over the head (second pass), the held prop between the hand layers
+  const fronts = order.filter((s) => arms[s].z !== 'back');
+  for (const s of fronts) {
+    const a = arms[s];
+    if (a.z !== 'reach' && !a.twoPass) continue;
+    drawHand(c, a, skin, L, 'back', tapOf(s));
+    drawArm(c, S, a, L, { front: true, clip: a.z === 'reach' ? 'fore' : 'outer' });
+  }
   const backOnly = R.prop && ((R.prop.hold === 'far' && arms.far.z === 'back') || (R.prop.hold === 'near' && arms.near.z === 'back'));
   if (R.prop && !backOnly) drawHeld(c, R, S, flip);
-  for (const s of [...mids, ...fronts]) drawHand(c, arms[s], skin, L, 'front', s === 'near' ? H.thumbTap : 0);
+  for (const s of fronts) drawHand(c, arms[s], skin, L, 'front', tapOf(s));
 
   drawFx(c, R, S);
 }
@@ -723,7 +970,7 @@ function drawClothes(c, R, S, D, L, feet, hemY) {
     const a = T(side ? 30 : 0, -826), b = side ? T(46, -360) : T(0, -360);
     c.beginPath(); c.moveTo(a.x, a.y); c.quadraticCurveTo((a.x + b.x) / 2 + (side ? 8 : 0), (a.y + b.y) / 2, b.x, b.y); c.stroke();
     c.restore();
-    return;
+    return tun;
   }
 
   if (casual) {
@@ -751,7 +998,7 @@ function drawClothes(c, R, S, D, L, feet, hemY) {
     c.fillStyle = robe.hi;
     c.beginPath(); c.moveTo(n1.x, n1.y); c.lineTo(nm.x - 6, nm.y); c.lineTo(nm.x - 20, n1.y + 8); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(n2.x, n2.y); c.lineTo(nm.x + 6, nm.y); c.lineTo(nm.x + 22, n2.y + 10); c.closePath(); c.fill();
-    return;
+    return shirt;
   }
 
   // dishdasha / abaya
@@ -821,6 +1068,7 @@ function drawClothes(c, R, S, D, L, feet, hemY) {
   }
   c.restore();
   if (!abaya) drawFurakha(c, R, S);
+  return body;
 }
 
 function drawFurakha(c, R, S) {

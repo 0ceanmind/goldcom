@@ -1,17 +1,18 @@
 // QA harness for the character & prop illustration system.
 // Serves studio/ over a tiny static server, renders contact sheets in headless Chromium and saves PNGs.
 // Usage: node scripts/character-sheet.mjs [sheet ...] [--out DIR]
-//   sheets: poses-34 poses-front poses-left variety moods props scenes compare anim hero detail sit holds (default: all)
+//   sheets: hands upper upper-front upper-left poses-34 poses-front poses-left variety moods props scenes compare anim hero detail sit holds (default: all)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const oi = args.indexOf('--out');
-const outDir = oi >= 0 ? args.splice(oi, 2)[1] : '/tmp/claude-0/-home-user-goldcom/a5f0477e-92a2-5866-8ff4-c02fb841d143/scratchpad/characters';
+const outDir = oi >= 0 ? args.splice(oi, 2)[1] : path.join(os.tmpdir(), 'goldcom-character-sheets');
 const wanted = args.filter((a) => !a.startsWith('--'));
 fs.mkdirSync(outDir, { recursive: true });
 

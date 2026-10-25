@@ -1,8 +1,9 @@
 // 3D scene modules, image/3D generation, the director (autonomous Claude), feedback, memory and self-repair.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { send, readJson } from '../http-util.mjs';
-import { DATA_DIR, getDocument, saveDocument, assetPath, mimeOf } from '../store.mjs';
+import { DATA_DIR, STUDIO_ROOT, getDocument, saveDocument, assetPath, mimeOf } from '../store.mjs';
 import { setSceneRegistry } from '../../shared/templates.js';
 import { renderScene, rasterizeSvg } from '../browser.mjs';
 import { generate, generatorStatus, rankProviders, publicGeneratorSettings, writeGeneratorSettings, INTENTS, KEY_NAMES } from '../generators.mjs';
@@ -11,6 +12,8 @@ import { recordError, listErrors, updateError, recordFeedback, listFeedback, fee
 import { agentStatus, startTask, getTask, listTasks, cancelTask, maybeRepair, setAgentBroadcast } from '../agent.mjs';
 
 const PREVIEW_CACHE = path.join(DATA_DIR, 'cache', 'scene-previews');
+const BUILD_PAGE = path.join(STUDIO_ROOT, 'dist', 'render.html');
+const buildStamp = () => { try { return Math.round(fs.statSync(BUILD_PAGE).mtimeMs).toString(36); } catch { return 'dev'; } };
 let broadcast = () => {};
 
 /** Start the module watcher (editors reload a scene the moment its file changes) and the self-repair hook. */
@@ -82,7 +85,8 @@ export async function autonomyRoutes(req, res, url, { base }) {
     const meta = (await listModules()).find((x) => x.id === mm[1]);
     const opts = { id: mm[1], params, t: sp.get('t'), w: Math.min(2160, Number(sp.get('w') || 1080)), h: Math.min(3840, Number(sp.get('h') || 1350)), theme: sp.get('theme') || 'onyx', lang: sp.get('lang') || 'en', transparent: sp.get('transparent') === '1', dur: Number(sp.get('dur') || 6), focusY: sp.get('focusY'), post: sp.get('post') || undefined };
     // Thumbnails are rendered once per module version and cached on disk.
-    const key = `${mm[1]}-${meta?.version || 0}-${Buffer.from(JSON.stringify(opts)).toString('base64url').slice(0, 120)}`;
+    // Keyed by module version and by the studio build, so a new kit or renderer never serves stale thumbnails.
+    const key = `${mm[1]}-${meta?.version || 0}-${buildStamp()}-${crypto.createHash('sha1').update(JSON.stringify(opts)).digest('hex').slice(0, 20)}`;
     const cached = path.join(PREVIEW_CACHE, `${key}.png`);
     if (fs.existsSync(cached)) { send(res, 200, fs.readFileSync(cached), { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' }); return true; }
     const r = await renderScene({ base, ...opts });

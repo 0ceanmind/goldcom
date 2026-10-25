@@ -21,11 +21,11 @@ export const CHARACTER_OPTIONS = {
   },
   accent: { _: 'Brand colour token for embroidery, trims and the tassel: gold, bullion (default), bronze, amber, sand, spark, bronzeDeep, espresso' },
   pose: Object.fromEntries(Object.entries(POSES).map(([k, v]) => [k, v.label])),
-  // 3D figures are faceless by design: moods are body language (head, shoulders, chest, rhythm).
+  // Moods are subtle: brows, lids and the mouth line, with the body (head, shoulders, chest) agreeing.
   mood: {
-    neutral: 'Relaxed, attentive', happy: 'Head up, chest open, a light bounce', worried: 'Head down, shoulders raised (stress, confusion)',
-    surprised: 'Head back, leaning back a touch', calm: 'Slow breathing, head softly tilted (reassured)', proud: 'Chest lifted, chin up',
-    thinking: 'Head tilted and turned, chin up',
+    neutral: 'Relaxed, attentive', happy: 'Closed smile, eyes softly narrowed, head up', worried: 'Inner brows lifted, a small frown, shoulders raised (stress, confusion)',
+    surprised: 'Brows up, eyes a little wider, lips parted', calm: 'Relaxed lids and a soft smile (reassured)', proud: 'Gentle smile, chin up, chest lifted',
+    thinking: 'One brow raised, mouth to the side, eyes up',
   },
   facing: { right: '3/4 view looking to the right (default)', left: '3/4 view looking to the left (mirrored, light stays consistent)', front: 'Facing the viewer' },
   prop: {
@@ -40,7 +40,7 @@ export const CHARACTER_OPTIONS = {
   scarf: { _: 'Optional headscarf fabric override (same list as robe)' },
   glasses: { true: 'Thin glasses', false: 'No glasses' },
   seat: { cushion: "For pose 'sit': draws a low ottoman (default)", none: "For pose 'sit': no seat (place a sofa prop behind instead)" },
-  fx: { sweat: 'Animated sweat drop by the temple (default for stressed)', sparkle: 'Gold glints around the head (default for celebrate)', false: 'No effect' },
+  fx: { sweat: 'Small translucent sweat drop by the temple (default for stressed)', sparkle: 'Retired (the brand has no sparkles): accepted for compatibility, draws nothing', false: 'No effect' },
 };
 
 export const PROP_NAMES = Object.keys(PROPS);

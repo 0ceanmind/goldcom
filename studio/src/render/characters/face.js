@@ -1,6 +1,6 @@
 // Heads, faces and headwear (kumma, massar, hijab, sheila) in head-local units.
 // Head origin = centre of the skull; crown at y ≈ -68, chin at y ≈ +64. +x = facing side.
-import { shade, tube, clamp, lerp, rgba, mix, tone, TAU } from './util.js';
+import { shade, tube, clamp, lerp, rgba, mix, TAU } from './util.js';
 
 // ---------- head silhouette ----------
 export function headPath(turn, woman) {
@@ -31,183 +31,212 @@ function earPath(x, turn) {
 }
 
 // ---------- features ----------
+// Editorial flat faces: small solid eyes under a fine upper lid, tapered brows, a minimal nose and a
+// short tapered mouth line. Moods live in brows, lids and the mouth's curve and tilt; all subtle.
+//   bi/bo   brow inner / outer lift        arch  brow arch      knit  inner brow ends drawn together
+//   lidT    upper lid coverage (− = lifted) lidB  lower lid push (cheeks)   es  eye scale
+//   mw/mc   mouth half-width / curve (+ smile)  mt  tilt (+ raises the facing-side corner)
+//   mo      mouth opening                   ms   mouth shift towards the facing side
 const MOODS = {
-  //        brow inner lift, outer lift, arch, eye kind, mouth kind
-  neutral: { bi: 0, bo: 0, arch: 2, eye: 'dot', mouth: 'flat', bh: 0 },
-  happy: { bi: 2, bo: 1, arch: 4, eye: 'smile', mouth: 'open-smile', bh: -2 },
-  worried: { bi: 7, bo: -3, arch: 0, eye: 'dot-wide', mouth: 'wobble', bh: -2 },
-  surprised: { bi: 6, bo: 6, arch: 6, eye: 'round', mouth: 'o', bh: -6 },
-  calm: { bi: -1, bo: 0, arch: 3, eye: 'closed', mouth: 'soft-smile', bh: 1 },
-  proud: { bi: 0, bo: 2, arch: 4, eye: 'smile', mouth: 'smile', bh: -2 },
-  thinking: { bi: 3, bo: 0, arch: 2, eye: 'dot-up', mouth: 'side', bh: -1, asym: 5 },
+  neutral: { bi: 0, bo: 0, arch: 1.6, knit: 0, lidT: 0.06, lidB: 0, es: 1, mw: 7.4, mc: 1.9, mt: 0, mo: 0, ms: 0 },
+  happy: { bi: 1.4, bo: 0.6, arch: 2.4, knit: 0, lidT: 0.04, lidB: 0.17, es: 1, mw: 9.2, mc: 4.4, mt: 0.2, mo: 0, ms: 0, dimple: 1 },
+  worried: { bi: 5.4, bo: -1.8, arch: 0.4, knit: 1.6, lidT: 0.1, lidB: 0, es: 1.03, mw: 6.4, mc: -2.2, mt: -1, mo: 0, ms: -0.6, lowLip: 0.5 },
+  surprised: { bi: 5, bo: 4.6, arch: 3.6, knit: 0, lidT: -0.14, lidB: 0, es: 1.13, mw: 4.8, mc: 0, mt: 0, mo: 3.8, ms: 0 },
+  calm: { bi: -0.4, bo: -0.6, arch: 1.4, knit: 0, lidT: 0.38, lidB: 0.06, es: 1, mw: 7.4, mc: 2.8, mt: 0, mo: 0, ms: 0 },
+  proud: { bi: 0.2, bo: 1.8, arch: 1.8, knit: 0, lidT: 0.2, lidB: 0.1, es: 1, mw: 8.4, mc: 3.2, mt: 1.5, mo: 0, ms: 0.4, dimple: 0.6 },
+  thinking: { bi: 0.6, bo: 1.6, arch: 1.8, knit: 0, lidT: 0.14, lidB: 0, es: 1, mw: 5.8, mc: -0.4, mt: 1.8, mo: 0, ms: 3, asym: 1 },
 };
 
+function pathEye(ex, ey, rx, ry) { const p = new Path2D(); p.ellipse(ex, ey, rx, ry, 0, 0, TAU); return p; }
+
 /**
- * Draw facial features. f = { mood, turn, blink (0..1), look: {x,y}, skin, ink, woman, talk }
+ * Draw facial features. f = { mood, turn, blink (0..1), look: {x,y}, skin, ink, woman, senior, brow, L }
  */
 export function drawFeatures(c, f) {
   const m = MOODS[f.mood] || MOODS.neutral;
   const turn = f.turn;
   const cx = 9 * turn;
-  const spread = 18.5 - 2.5 * turn;
+  const spread = 18.5 - 2.6 * turn;
   const eyeY = 4;
   const ink = f.ink;
   const look = f.look || { x: 0, y: 0 };
+  const lx = clamp(look.x, -1.2, 1.2), ly = clamp(look.y, -1.4, 1.4);
   const eyes = [
     { x: cx - spread, k: 1, side: -1 },
-    { x: cx + spread, k: 1 - 0.22 * turn, side: 1 },
+    { x: cx + spread, k: 1 - 0.24 * turn, side: 1 },
   ];
+  const woman = f.woman;
   c.lineCap = 'round';
   c.lineJoin = 'round';
 
-  // brows
-  c.strokeStyle = f.brow || ink;
-  c.lineWidth = f.woman ? 3.6 : 4.6;
+  // ---- brows: blunt inner end, tapering to a point outside ----
+  c.fillStyle = f.brow || ink;
   for (const e of eyes) {
-    const w = 15 * e.k;
-    const inner = e.x - e.side * 3;
-    const outer = e.x + e.side * (w - 3);
-    const asym = m.asym && e.side > 0 ? -m.asym : 0;
-    const yb = eyeY - 17 + m.bh + asym;
-    const yi = yb - m.bi;
-    const yo = yb - m.bo + 1;
-    c.beginPath();
-    c.moveTo(inner, yi);
-    c.quadraticCurveTo((inner + outer) / 2, Math.min(yi, yo) - m.arch, outer, yo);
-    c.stroke();
+    const k = e.k;
+    const up = m.asym ? (e.side > 0 ? 2.4 : -0.8) : 0; // thinking: the facing-side brow lifts
+    const yb = eyeY - 12.6 - (m.es - 1) * 6 - up;
+    const ix = e.x - e.side * (5.6 - m.knit) * k, ox = e.x + e.side * 9.4 * k;
+    const iy = yb - m.bi, oy = yb + 0.5 - m.bo;
+    const mx = lerp(ix, ox, 0.55), my = Math.min(iy, oy) - m.arch - (up > 0 ? 0.8 : 0);
+    const t0 = woman ? 3.2 : 4.4; // inner thickness
+    const p = new Path2D();
+    p.moveTo(ix, iy - t0 * 0.5);
+    p.quadraticCurveTo(mx, my - t0 * 0.55, ox, oy);
+    p.quadraticCurveTo(mx, my + t0 * 0.5, ix, iy + t0 * 0.55);
+    p.quadraticCurveTo(ix - e.side * 1.2, iy, ix, iy - t0 * 0.5);
+    p.closePath();
+    c.fill(p);
   }
 
-  // eyes
+  // ---- eyes: solid iris under a fine upper lid ----
   const blink = clamp(f.blink || 0);
-  c.fillStyle = ink;
-  c.strokeStyle = ink;
   for (const e of eyes) {
-    const ex = e.x + look.x * 2.2, ey = eyeY + look.y * 2;
-    let kind = m.eye;
-    if (blink > 0.5 && kind !== 'closed' && kind !== 'smile') kind = 'blink';
-    c.lineWidth = 3.4;
-    if (kind === 'dot' || kind === 'dot-wide' || kind === 'dot-up' || kind === 'round') {
-      const ry = kind === 'round' ? 6.2 : kind === 'dot-wide' ? 5.6 : 5.2;
-      const rx = (kind === 'round' ? 5.4 : 4.3) * e.k;
-      const oy = kind === 'dot-up' ? -2 : 0;
-      c.beginPath();
-      c.ellipse(ex, ey + oy, rx, ry * (1 - blink * 0.8), 0, 0, TAU);
-      c.fill();
-      if (f.woman) { // a single elegant lash flick at the outer corner
-        c.lineWidth = 2.2;
-        c.beginPath();
-        c.moveTo(ex + e.side * rx * 0.7, ey - ry * 0.55 + oy);
-        c.lineTo(ex + e.side * (rx + 3.2), ey - ry - 0.5 + oy);
-        c.stroke();
-      }
-      if (kind === 'round' || kind === 'dot-wide') {
-        c.fillStyle = rgba('#FFFFFF', 0.85);
-        c.beginPath(); c.arc(ex - 1.4, ey - 1.8 + oy, 1.2, 0, TAU); c.fill();
-        c.fillStyle = ink;
-      }
-    } else if (kind === 'smile') { // closed, happy crescents ( ^ ^ )
-      c.beginPath();
-      c.moveTo(ex - 5.5 * e.k, ey + 1.5);
-      c.quadraticCurveTo(ex, ey - 5.5, ex + 5.5 * e.k, ey + 1.5);
-      c.stroke();
-    } else if (kind === 'closed' || kind === 'blink') { // serene lids ( ‿ ‿ )
-      c.beginPath();
-      c.moveTo(ex - 5.5 * e.k, ey - 0.5);
-      c.quadraticCurveTo(ex, ey + 4, ex + 5.5 * e.k, ey - 0.5);
-      c.stroke();
-      if (f.woman) {
-        c.lineWidth = 2;
-        c.beginPath(); c.moveTo(ex + e.side * 5.2 * e.k, ey - 0.5); c.lineTo(ex + e.side * 8 * e.k, ey - 3); c.stroke();
-      }
-    } else if (kind === 'lid') { // half-closed, content
-      c.beginPath();
-      c.ellipse(ex, ey + 1, 4.5 * e.k, 3.6, 0, 0, Math.PI);
-      c.fill();
-      c.lineWidth = 3;
-      c.beginPath(); c.moveTo(ex - 5.5 * e.k, ey); c.lineTo(ex + 5.5 * e.k, ey); c.stroke();
+    const k = e.k;
+    const ex = e.x + lx * 1.6 * k, ey = eyeY + ly * 1.3;
+    const rx = (woman ? 4.4 : 4.3) * k * m.es, ry = (woman ? 5.6 : 5.5) * m.es;
+    const lidT = lerp(m.lidT, 1.04, blink); // 0 = lid at the top of the iris, 1 = closed
+    const lidB = m.lidB * (1 - blink);
+    const ix = e.x - e.side * 5.6 * k, ox = e.x + e.side * 6.4 * k; // corners (lid stays put; iris moves)
+    if (lidT >= 0.97) {
+      // closed: a soft downward arc
+      c.strokeStyle = ink; c.lineWidth = woman ? 2.1 : 1.9;
+      c.beginPath(); c.moveTo(ix, eyeY + 0.6); c.quadraticCurveTo(e.x, eyeY + 3.4, ox, eyeY + 0.2); c.stroke();
+      if (woman) { c.lineWidth = 1.5; c.beginPath(); c.moveTo(ox, eyeY + 0.2); c.lineTo(ox + e.side * 2.4 * k, eyeY - 1.6); c.stroke(); }
+      continue;
+    }
+    const top = eyeY - (woman ? 5.6 : 5.5) * m.es; // resting lid height
+    const lidY = top + Math.max(0, lidT) * 2 * ry; // lid line at the iris centre
+    const lift = Math.min(0, lidT) * 2 * ry; // surprised: lid raised off the iris
+    const botY = eyeY + ry - lidB * 2 * ry;
+    // iris clipped by the lids
+    c.save();
+    const clip = new Path2D();
+    clip.moveTo(ix - e.side * 4, lidY + 2.4);
+    clip.quadraticCurveTo(e.x, lidY - 2.2, ox + e.side * 4, lidY + 1.6);
+    clip.lineTo(ox + e.side * 4, botY + 1.2);
+    clip.quadraticCurveTo(e.x, botY - (lidB > 0 ? 3 : -1.5), ix - e.side * 4, botY + 1.2);
+    clip.closePath();
+    c.clip(clip);
+    c.fillStyle = ink;
+    c.fill(pathEye(ex, ey, rx, ry));
+    // a tiny warm catch-light keeps the eye alive at close range
+    c.fillStyle = rgba('#FFFFFF', 0.55);
+    c.beginPath(); c.arc(ex - 1.2 * k, ey - ry * 0.42, 0.95, 0, TAU); c.fill();
+    c.restore();
+    // upper lid line: hugs the top of the iris and runs a little past the outer corner
+    const ly0 = lidY + lift;
+    c.strokeStyle = ink;
+    c.lineWidth = woman ? 2.2 : 1.8;
+    c.beginPath();
+    c.moveTo(ix, ly0 + 2.4);
+    c.quadraticCurveTo(e.x - e.side * 0.6, ly0 - 1.9 + Math.max(0, lidT) * 1.2, ox, ly0 + 1.2);
+    if (woman) c.quadraticCurveTo(ox + e.side * 1.4 * k, ly0 + 1, ox + e.side * 2.6 * k, ly0 - 0.2); // a short soft wing
+    else c.lineTo(ox + e.side * 1.2 * k, ly0 + 1.6);
+    c.stroke();
+    if (lidB > 0.05) { // cheeks pushing up: a faint lower lid
+      c.strokeStyle = rgba(f.skin.deep, 0.5 * clamp(lidB * 3));
+      c.lineWidth = 1.3;
+      c.beginPath(); c.moveTo(ix + e.side * 1 * k, botY + 1.6); c.quadraticCurveTo(e.x, botY - 0.8, ox - e.side * 0.6 * k, botY + 1.2); c.stroke();
     }
   }
 
-  // nose: a small soft shadow on the side away from the light, plus the underside
-  const nx = cx + 3 + 4 * turn;
-  c.fillStyle = f.skin.deep;
+  // ---- nose: a soft shadow plane and the underside, no outline ----
+  const shSide = (f.L && f.L.x > 0) ? -1 : 1; // which side of the nose faces away from the light
+  const nx = cx + 3.6 * turn;
+  c.fillStyle = f.skin.shade;
+  if (turn > 0.5) {
+    // 3/4: the far side of the nose and its tip project towards the facing side
+    const tx = nx + 7.4, ty = 24.6;
+    const p = new Path2D();
+    if (shSide > 0) {
+      p.moveTo(nx + 3.6, 12.5);
+      p.quadraticCurveTo(tx + 0.6, 18, tx + 0.4, ty - 0.6);
+      p.quadraticCurveTo(tx - 0.6, ty + 3, tx - 5.6, ty + 2.6);
+      p.quadraticCurveTo(tx - 2.4, ty + 0.8, tx - 2, ty - 2.6);
+      p.quadraticCurveTo(tx - 2.2, 17.5, nx + 3.6, 12.5);
+    } else {
+      p.moveTo(tx - 1.6, ty - 3);
+      p.quadraticCurveTo(tx + 0.8, ty + 1.6, tx - 3, ty + 2.8);
+      p.quadraticCurveTo(tx - 8, ty + 3.6, tx - 10.4, ty + 0.8);
+      p.quadraticCurveTo(tx - 6.6, ty + 1.2, tx - 1.6, ty - 3);
+    }
+    c.fill(p);
+    c.fillStyle = rgba(f.skin.deep, 0.75);
+    c.beginPath(); c.ellipse(tx - 4.4, ty + 1.3, 1.9, 1, -0.25, 0, TAU); c.fill();
+  } else {
+    const p = new Path2D();
+    const x0 = nx + shSide * 1.6;
+    p.moveTo(x0, 11);
+    p.quadraticCurveTo(x0 + shSide * 3.4, 19, x0 + shSide * 3.6, 23.4);
+    p.quadraticCurveTo(x0 + shSide * 2.6, 26.6, nx - shSide * 0.6, 26.4);
+    p.quadraticCurveTo(nx - shSide * 4.6, 26, nx - shSide * 5, 24);
+    p.quadraticCurveTo(nx, 25, x0 + shSide * 1.4, 22.6);
+    p.quadraticCurveTo(x0 + shSide * 1.6, 17, x0, 11);
+    c.fill(p);
+  }
+
+  // ---- mouth: a short tapered line; curve and tilt carry the mood ----
+  const my = f.beard ? 40.8 : 40.4, mx = cx + 1.8 * turn + m.ms * (0.4 + 0.6 * turn);
+  const wl = m.mw * (1 + 0.12 * turn), wr = m.mw * (1 - 0.16 * turn);
+  const L0 = { x: mx - wl, y: my - m.mc * 0.45 + m.mt * 0.5 }, R0 = { x: mx + wr, y: my - m.mc * 0.45 - m.mt * 0.5 };
+  const midY = my + m.mc * 0.55;
+  const lipCol = mix(f.skin.lip, ink, f.beard ? (f.beardLight ? 0.6 : 0.3) : 0.5); // keep the mouth readable against the beard
+  if (m.mo > 0) {
+    // slightly parted lips: a small dark lens, wider than tall
+    const o = m.mo + (f.talk || 0);
+    c.fillStyle = mix(f.skin.lip, ink, 0.62);
+    c.beginPath();
+    c.moveTo(L0.x + 1, L0.y + 0.6);
+    c.quadraticCurveTo(mx, my - o * 0.45, R0.x - 1, R0.y + 0.6);
+    c.quadraticCurveTo(mx, my + o * 1.1, L0.x + 1, L0.y + 0.6);
+    c.fill();
+  } else {
+    const th = woman ? 2.5 : 2.8;
+    c.fillStyle = lipCol;
+    c.beginPath();
+    c.moveTo(L0.x, L0.y);
+    c.quadraticCurveTo(mx, midY - th * 0.65, R0.x, R0.y);
+    c.quadraticCurveTo(mx, midY + th * 0.75, L0.x, L0.y);
+    c.fill();
+    if (m.dimple) { // the smile lifting the corners
+      c.strokeStyle = rgba(f.skin.deep, 0.55 * m.dimple); c.lineWidth = 1.3;
+      for (const [q, s] of [[L0, -1], [R0, 1]]) { c.beginPath(); c.moveTo(q.x + s * 0.6, q.y - 1.6); c.quadraticCurveTo(q.x + s * 2.2, q.y - 0.2, q.x + s * 1.2, q.y + 1.6); c.stroke(); }
+    }
+  }
+  // lower lip: a soft shadow beneath (fuller and faintly tinted for women)
+  c.fillStyle = woman ? rgba(f.skin.lip, 0.34) : rgba(f.skin.shade, 0.75);
+  const lw = (wl + wr) * (woman ? 0.32 : 0.26), lyp = midY + (m.mo > 0 ? m.mo * 1.1 + 2.2 : 3.4) + (m.lowLip || 0);
   c.beginPath();
-  c.moveTo(nx + 1.5, 12);
-  c.quadraticCurveTo(nx + 5, 22, nx + 2.5, 26);
-  c.quadraticCurveTo(nx - 2.5, 28.5, nx - 6.5, 25.5);
-  c.quadraticCurveTo(nx - 1.5, 25, nx + 0.2, 21.5);
-  c.quadraticCurveTo(nx + 1, 17, nx + 1.5, 12);
+  c.moveTo(mx - lw, lyp - 1);
+  c.quadraticCurveTo(mx, lyp + (woman ? 3.2 : 2.4), mx + lw, lyp - 1);
+  c.quadraticCurveTo(mx, lyp + 0.6, mx - lw, lyp - 1);
   c.fill();
 
-  // mouth
-  const my = 41, mx = cx + 1.5 * turn;
-  const lip = f.lip || f.skin.lip;
-  c.strokeStyle = mix(lip, ink, 0.45);
-  c.fillStyle = mix(lip, ink, 0.55);
-  c.lineWidth = 3.4;
-  const talk = f.talk || 0;
-  switch (m.mouth) {
-    case 'open-smile': {
-      c.beginPath();
-      c.moveTo(mx - 10, my - 2);
-      c.quadraticCurveTo(mx, my - 0.5, mx + 10, my - 2);
-      c.quadraticCurveTo(mx + 7, my + 9 + talk, mx, my + 9 + talk);
-      c.quadraticCurveTo(mx - 7, my + 9 + talk, mx - 10, my - 2);
-      c.fill();
-      c.fillStyle = rgba('#FFFFFF', 0.9);
-      c.beginPath();
-      c.moveTo(mx - 8, my - 1.2); c.quadraticCurveTo(mx, my + 0.4, mx + 8, my - 1.2); c.lineTo(mx + 6.5, my + 1.8); c.quadraticCurveTo(mx, my + 3, mx - 6.5, my + 1.8);
-      c.fill();
-      break;
-    }
-    case 'smile':
-      c.beginPath(); c.moveTo(mx - 9, my - 1); c.quadraticCurveTo(mx, my + 7, mx + 9, my - 2); c.stroke();
-      break;
-    case 'soft-smile':
-      c.beginPath(); c.moveTo(mx - 7, my); c.quadraticCurveTo(mx, my + 4.5, mx + 7, my - 0.5); c.stroke();
-      break;
-    case 'wobble':
-      c.beginPath(); c.moveTo(mx - 8, my + 3); c.quadraticCurveTo(mx - 4, my - 1.5, mx, my + 1); c.quadraticCurveTo(mx + 4, my + 3.5, mx + 8, my + 1); c.stroke();
-      break;
-    case 'o':
-      c.beginPath(); c.ellipse(mx, my + 2, 4.6, 6 + talk, 0, 0, TAU); c.fill();
-      break;
-    case 'side':
-      c.beginPath(); c.moveTo(mx - 6, my + 1); c.quadraticCurveTo(mx + 1, my + 2, mx + 8, my - 2); c.stroke();
-      break;
-    default:
-      c.beginPath(); c.moveTo(mx - 7, my); c.quadraticCurveTo(mx, my + 1.5, mx + 7, my); c.stroke();
-  }
-
-  // cheeks: soft warmth for positive moods
-  if (f.mood === 'happy' || f.mood === 'proud' || f.mood === 'calm') {
-    c.fillStyle = rgba(f.skin.blush, f.woman ? 0.32 : 0.22);
-    for (const e of eyes) { c.beginPath(); c.ellipse(e.x + e.side * 4, eyeY + 19, 7.5 * e.k, 4.5, 0, 0, TAU); c.fill(); }
-  }
-
-  // age lines
+  // ---- age ----
   if (f.senior) {
-    c.strokeStyle = rgba(f.skin.deep, 0.75);
-    c.lineWidth = 2;
-    for (const e of eyes) {
-      c.beginPath(); c.moveTo(e.x + e.side * 9 * e.k, eyeY + 2); c.lineTo(e.x + e.side * 12 * e.k, eyeY + 5); c.stroke();
+    c.strokeStyle = rgba(f.skin.deep, 0.42);
+    c.lineWidth = 1.4;
+    for (const e of eyes) { // under-eye
+      c.beginPath(); c.moveTo(e.x - 3.4 * e.k, eyeY + 7.6); c.quadraticCurveTo(e.x, eyeY + 9.4, e.x + 3.6 * e.k * e.side, eyeY + 7.8); c.stroke();
     }
-    c.beginPath(); c.moveTo(cx - 14, 30); c.quadraticCurveTo(cx - 17, 38, cx - 14, 44); c.stroke();
-    c.beginPath(); c.moveTo(cx + 16 - 3 * turn, 30); c.quadraticCurveTo(cx + 19 - 3 * turn, 38, cx + 16 - 3 * turn, 44); c.stroke();
+    c.beginPath(); c.moveTo(cx - 11, 29); c.quadraticCurveTo(cx - 14.6, 36, cx - 12.4, 43); c.stroke();
+    c.beginPath(); c.moveTo(cx + 14 - 4 * turn, 29); c.quadraticCurveTo(cx + 17 - 4 * turn, 36, cx + 15 - 4 * turn, 42); c.stroke();
   }
 }
 
 function drawGlasses(c, turn, col) {
-  const cx = 9 * turn, spread = 18.5 - 2.5 * turn;
+  // thin rounded frames centred on the eyes; the far lens narrows with the turn
+  const cx = 9 * turn, spread = 18.5 - 2.6 * turn;
   c.strokeStyle = col;
-  c.lineWidth = 2.6;
-  for (const [x, k] of [[cx - spread, 1], [cx + spread, 1 - 0.22 * turn]]) {
+  c.lineWidth = 2;
+  const lens = [[cx - spread, 1], [cx + spread, 1 - 0.24 * turn]];
+  for (const [x, k] of lens) {
     c.beginPath();
-    c.roundRect(x - 10 * k, -4, 20 * k, 15, 5);
+    c.roundRect(x - 9.6 * k, -3.4, 19.2 * k, 14, 5.5 * k);
     c.stroke();
   }
-  c.beginPath(); c.moveTo(cx - spread + 10, 1); c.quadraticCurveTo(cx, -2, cx + spread - 10, 1); c.stroke();
-  c.beginPath(); c.moveTo(cx - spread - 10, 0); c.lineTo(-44, -3); c.stroke();
+  c.beginPath(); c.moveTo(lens[0][0] + 9.6, 1.4); c.quadraticCurveTo(cx, -1.4, lens[1][0] - 9.6 * lens[1][1], 1.4); c.stroke();
+  c.beginPath(); c.moveTo(lens[0][0] - 9.6, 0.6); c.lineTo(-44, -2.4); c.stroke();
 }
 
 // ---------- hair & beard ----------
@@ -242,10 +271,13 @@ function beardPath(turn, full) {
   p.quadraticCurveTo(cx + 1, 52, -14 + cx, 48);
   p.bezierCurveTo(-30, 42, -Lw + 2 + 7 * k, 22, -Lw + 1 + 7 * k, top);
   p.closePath();
-  // moustache
-  p.moveTo(-13 + cx, 37.5);
-  p.quadraticCurveTo(cx + 1, 29, 15 + cx, 37.5);
-  p.quadraticCurveTo(cx + 1, 34, -13 + cx, 37.5);
+  // moustache: a flat, full band over the upper lip, centred on the mouth (not an arch, which reads as a frown)
+  const mc = 10.8 * turn, w0 = 13 - 1 * turn, w1 = 13 - 3.8 * turn;
+  p.moveTo(mc - w0, 35.8);
+  p.bezierCurveTo(mc - w0 * 0.7, 33.4, mc - w0 * 0.4, 32.2, mc, 32.4);
+  p.bezierCurveTo(mc + w1 * 0.4, 32.2, mc + w1 * 0.7, 33.4, mc + w1, 35.6);
+  p.bezierCurveTo(mc + w1 * 0.6, 34.8, mc + w1 * 0.3, 35, mc, 35.4);
+  p.bezierCurveTo(mc - w0 * 0.3, 35, mc - w0 * 0.6, 34.8, mc - w0, 35.8);
   p.closePath();
   return p;
 }
@@ -462,7 +494,7 @@ export function drawHead(c, h, layer) {
 
   drawFeatures(c, {
     mood: h.mood, turn, blink: h.blink, look: h.look, skin, ink: h.ink, woman, senior: h.age === 'senior',
-    brow: h.beard || h.headwear === 'none' ? mix(h.hair, h.ink, 0.5) : h.ink, talk: h.talk,
+    brow: h.beard || h.headwear === 'none' ? mix(h.hair, h.ink, 0.5) : mix(h.ink, h.hair, 0.25), talk: h.talk, L, beard: h.beard, beardLight: h.age === 'senior',
   });
   if (h.glasses) drawGlasses(c, turn, h.ink);
 

@@ -123,8 +123,9 @@ function coin(c, o, t) {
   c.fillStyle = rgba(COLORS.gold, 0.95); c.beginPath(); c.moveTo(cx, cy - g); c.lineTo(cx + g, cy); c.lineTo(cx, cy); c.closePath(); c.fill();
   c.fillStyle = rgba(COLORS.amber, 0.95); c.beginPath(); c.moveTo(cx + g, cy); c.lineTo(cx, cy + g); c.lineTo(cx, cy); c.closePath(); c.fill();
   c.fillStyle = rgba(COLORS.bullion, 0.95); c.beginPath(); c.moveTo(cx, cy + g); c.lineTo(cx - g, cy); c.lineTo(cx, cy); c.closePath(); c.fill();
-  const tw = 0.5 + 0.5 * Math.sin(t * 3);
-  sparkle(c, cx - 22, cy - 22, 5 + 3 * tw, rgba('#FFFFFF', 0.6 + 0.4 * tw));
+  // a quiet, static sheen on the rim (no twinkling glints: the brand retires sparkles)
+  c.strokeStyle = rgba('#FFFFFF', 0.35); c.lineWidth = 3;
+  c.beginPath(); c.arc(cx, cy, r - 12, Math.PI * 1.05, Math.PI * 1.35); c.stroke();
 }
 
 // ---------------------------------------------------------------- gift box (3/4, extruded at 45°)
@@ -199,32 +200,50 @@ function coffee(c, o, t) {
 }
 
 // ---------------------------------------------------------------- receipts
+function receiptSheet(c, w, h, i, r) {
+  const p = P((q) => {
+    q.moveTo(-w / 2, -h / 2); q.lineTo(w / 2, -h / 2); q.lineTo(w / 2, h / 2);
+    const teeth = 6;
+    for (let k = 0; k < teeth; k++) { const xx = w / 2 - (k + 0.5) * (w / teeth); q.lineTo(xx, h / 2 - 3.5); q.lineTo(w / 2 - (k + 1) * (w / teeth), h / 2); }
+    q.closePath();
+  });
+  c.fillStyle = rgba('#000000', 0.1); c.save(); c.translate(1.5, 2); c.fill(p); c.restore();
+  shade(c, p, i % 3 === 1 ? '#F4EFE4' : '#FFFFFF', { shadow: '#E2DACB', depth: 3, light: L });
+  c.fillStyle = rgba(COLORS.stoneDark, 0.55);
+  const rows = Math.floor((h - 18) / 7);
+  for (let k = 0; k < rows; k++) {
+    const lw = (k === 0 ? 0.55 : 0.35 + r() * 0.5) * (w - 10);
+    c.fillRect(-w / 2 + 5, -h / 2 + 7 + k * 7, lw, k === 0 ? 2.6 : 1.6);
+    if (k > 0 && k < rows - 1) c.fillRect(w / 2 - 5 - 7, -h / 2 + 7 + k * 7, 7, 1.6);
+  }
+  c.fillStyle = rgba(COLORS.charcoal, 0.7); c.fillRect(w / 2 - 17, h / 2 - 12, 12, 2.6);
+}
+
 function receipts(c, o, t) {
   const r = rng(o.seed || 7);
-  const n = o.held ? 4 : 6;
+  if (o.held) {
+    // a loose bunch held at its base: slips fan out from the bottom centre (where the hands hold it)
+    const fan = [[-0.36, -3, 2, 38, 76], [-0.13, 1, -1, 40, 84], [0.12, 2, 1, 37, 80], [0.34, 4, 3, 39, 72]];
+    fan.forEach(([a, dx, dy, w, h], i) => {
+      c.save();
+      c.translate(55 + dx, 104 + dy);
+      c.rotate(a + (r() - 0.5) * 0.06);
+      c.translate(0, -h / 2);
+      c.rotate(Math.PI); // torn edge at the free (top) end
+      receiptSheet(c, w, h, i, r);
+      c.restore();
+    });
+    return;
+  }
+  const n = 6;
   for (let i = 0; i < n; i++) {
     const w = 34 + r() * 10, h = 52 + r() * 26;
-    const x = 18 + r() * (o.held ? 34 : 54), y = 18 + r() * (o.held ? 18 : 30);
-    const a = (r() - 0.5) * (o.held ? 0.7 : 1.3);
+    const x = 18 + r() * 54, y = 18 + r() * 30;
+    const a = (r() - 0.5) * 1.3;
     c.save();
     c.translate(x + w / 2, y + h / 2);
     c.rotate(a);
-    const p = P((q) => {
-      q.moveTo(-w / 2, -h / 2); q.lineTo(w / 2, -h / 2); q.lineTo(w / 2, h / 2);
-      const teeth = 6;
-      for (let k = 0; k < teeth; k++) { const xx = w / 2 - (k + 0.5) * (w / teeth); q.lineTo(xx, h / 2 - 3.5); q.lineTo(w / 2 - (k + 1) * (w / teeth), h / 2); }
-      q.closePath();
-    });
-    c.fillStyle = rgba('#000000', 0.1); c.save(); c.translate(1.5, 2); c.fill(p); c.restore();
-    shade(c, p, i % 3 === 1 ? '#F4EFE4' : '#FFFFFF', { shadow: '#E2DACB', depth: 3, light: L });
-    c.fillStyle = rgba(COLORS.stoneDark, 0.55);
-    const rows = Math.floor((h - 18) / 7);
-    for (let k = 0; k < rows; k++) {
-      const lw = (k === 0 ? 0.55 : 0.35 + r() * 0.5) * (w - 10);
-      c.fillRect(-w / 2 + 5, -h / 2 + 7 + k * 7, lw, k === 0 ? 2.6 : 1.6);
-      if (k > 0 && k < rows - 1) c.fillRect(w / 2 - 5 - 7, -h / 2 + 7 + k * 7, 7, 1.6);
-    }
-    c.fillStyle = rgba(COLORS.charcoal, 0.7); c.fillRect(w / 2 - 17, h / 2 - 12, 12, 2.6);
+    receiptSheet(c, w, h, i, r);
     c.restore();
   }
 }
@@ -309,11 +328,9 @@ function shopfront(c, o, t) {
     c.fillStyle = woodL; c.fillRect(40, y + 12, 120, 3);
     for (let i = 0; i < 7; i++) {
       const x = 52 + i * 16;
-      const tw = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 1.3 + s * 2);
       if ((i + s) % 3 === 0) { c.strokeStyle = COLORS.gold; c.lineWidth = 2.2; c.beginPath(); c.ellipse(x, y + 4, 5.5, 7, 0, 0, TAU); c.stroke(); }
       else if ((i + s) % 3 === 1) { c.strokeStyle = COLORS.bullion; c.lineWidth = 1.4; c.beginPath(); c.arc(x, y - 4, 6, 0.2, Math.PI - 0.2); c.stroke(); gem(c, x, y + 4, 3, COLORS.gold); }
       else { c.fillStyle = COLORS.sand; c.fillRect(x - 4, y + 2, 8, 9); }
-      if (tw > 0.92) sparkle(c, x + 4, y - 4, 4, rgba('#FFFFFF', 0.8));
     }
   }
   // glass counter front
@@ -537,9 +554,8 @@ function jewelryBox(c, o, t) {
   c.strokeStyle = COLORS.sand; c.lineWidth = 2.4; c.beginPath(); c.ellipse(76, 47, 11, 5, 0, Math.PI, TAU); c.stroke();
   gem(c, 76, 40, 4, COLORS.gold);
   c.fillStyle = COLORS.gold; c.fillRect(56, 64, 8, 8); c.fillStyle = COLORS.bullion; c.fillRect(6, 64, 108, 2);
-  const tw = 0.5 + 0.5 * Math.sin(t * 3.1);
-  sparkle(c, 30, 36, 4 + 3 * tw, rgba('#FFFFFF', 0.5 + 0.5 * tw));
-  sparkle(c, 88, 34, 3 + 2 * (1 - tw), rgba(COLORS.spark, 0.9));
+  c.strokeStyle = rgba('#FFFFFF', 0.4); c.lineWidth = 1.4; // soft static sheen on the bangle
+  c.beginPath(); c.ellipse(40, 46, 11, 4.2, 0, Math.PI * 1.15, Math.PI * 1.5); c.stroke();
 }
 
 // ---------------------------------------------------------------- question cloud (speech bubble with a 45° tail)
@@ -582,7 +598,6 @@ function badge(c, o, t, kind) {
   else { c.moveTo(cx - 12, cy - 12); c.lineTo(cx + 12, cy + 12); c.moveTo(cx + 12, cy - 12); c.lineTo(cx - 12, cy + 12); }
   c.stroke();
   c.restore();
-  if (ok) { const tw = 0.5 + 0.5 * Math.sin(t * 3.3); sparkle(c, cx - 30, cy - 30, 5 + 4 * tw, rgba('#FFFFFF', 0.4 + 0.6 * tw)); }
 }
 
 // ---------------------------------------------------------------- sweat drop
@@ -601,14 +616,14 @@ export function sparkle(c, x, y, r, col) {
   c.fill();
 }
 function sparkleBurst(c, o, t) {
-  const pts = [[60, 60, 30, 0], [24, 30, 13, 1.3], [98, 28, 15, 2.1], [100, 92, 11, 0.7], [22, 94, 9, 2.8], [62, 12, 7, 3.5], [112, 60, 7, 4.2], [8, 62, 6, 1.9]];
-  for (const [x, y, r, ph] of pts) {
-    const tw = 0.5 + 0.5 * Math.sin(t * 4 + ph * 2);
-    const rr = r * (0.65 + 0.35 * tw);
-    sparkle(c, x, y, rr, r > 20 ? COLORS.spark : r > 10 ? COLORS.gold : COLORS.sand);
-    if (r > 20) sparkle(c, x, y, rr * 0.45, rgba('#FFFFFF', 0.85));
-  }
-  gem(c, 84, 76, 4, COLORS.gold); gem(c, 38, 52, 3, COLORS.sand);
+  // Retired twinkle: kept under its old name for compatibility, now a calm cluster of three faceted
+  // gold gem marks (static, the brand's 45° motif) that reads as "value" without glitter.
+  const facet = (x, y, r) => {
+    const tri = (a, b, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(x, y); c.lineTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.closePath(); c.fill(); };
+    const T = [x, y - r], R = [x + r, y], B = [x, y + r], Lp = [x - r, y];
+    tri(Lp, T, COLORS.spark); tri(T, R, COLORS.gold); tri(R, B, COLORS.amber); tri(B, Lp, COLORS.bullion);
+  };
+  facet(60, 58, 22); facet(28, 86, 10); facet(94, 30, 8);
 }
 
 // ---------------------------------------------------------------- heart (faceted)
@@ -683,7 +698,7 @@ export const PROPS = {
   'check-badge': { w: 100, h: 100, draw: (c, o, t) => badge(c, o, t, 'check'), label: 'Gold gem badge with a check' },
   'cross-badge': { w: 100, h: 100, draw: (c, o, t) => badge(c, o, t, 'cross'), label: 'Loss-colour gem badge with a cross' },
   'sweat-drop': { w: 60, h: 80, draw: sweatDrop, label: 'Sweat drop (worry accent)' },
-  'sparkle-burst': { w: 120, h: 120, draw: sparkleBurst, label: 'Twinkling gold glints' },
+  'sparkle-burst': { w: 120, h: 120, draw: sparkleBurst, label: 'Three static faceted gold gem marks (the old twinkling glints are retired)' },
   queue: { w: 240, h: 150, draw: queue, ground: true, label: 'Four small people waiting in line (opts.flip to face left, opts.count)' },
   heart: { w: 100, h: 90, draw: heart, label: 'Faceted gold heart with a soft beat' },
   lock: { w: 84, h: 102, draw: lock, label: 'Gold padlock (security)' },

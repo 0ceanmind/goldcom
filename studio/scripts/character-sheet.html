@@ -14,6 +14,9 @@
 <script type="module">
 import { drawCharacter, drawProp, drawScene, PROP_NAMES, SCENE_NAMES, CHARACTER_OPTIONS, characterAnchors } from '../src/render/characters/index.js';
 import { COLORS } from '/shared/brand.js';
+import { handShape, drawHandParts, palmTone, propFromHand } from '../src/render/characters/hands.js';
+import { drawPropShape, PROP_ASPECT } from '../src/render/characters/props.js';
+import { SKIN } from '../src/render/characters/palette.js';
 
 const POSES = Object.keys(CHARACTER_OPTIONS.pose);
 const MOODS = Object.keys(CHARACTER_OPTIONS.mood);
@@ -181,18 +184,21 @@ function compareSheet() {
 }
 
 function animSheet() {
-  const ts = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-  const cw = 220, ch = 440;
+  // gesture timing over time: frames are sampled where each gesture happens (see the labels)
+  const cw = 220, ch = 440, n = 9;
+  const span = (a, b) => Array.from({ length: n }, (_, i) => +(a + (i * (b - a)) / (n - 1)).toFixed(2));
   const rows = [
-    { spec: { gender: 'man', skin: 'medium', pose: 'phone', facing: 'right', seed: 1 }, bg: COLORS.cream },
-    { spec: { gender: 'woman', skin: 'tan', pose: 'celebrate', facing: 'front', seed: 2 }, bg: COLORS.onyx },
-    { spec: { gender: 'man', skin: 'deep', pose: 'walk', facing: 'right', seed: 3, outfit: 'dishdasha' }, bg: COLORS.cream },
-    { spec: { gender: 'man', skin: 'light', pose: 'walk', facing: 'left', seed: 3, outfit: 'casual', age: 'young' }, bg: COLORS.onyx },
+    { spec: { gender: 'man', skin: 'medium', pose: 'phone', facing: 'right', seed: 1 }, bg: COLORS.cream, ts: span(0.4, 3.6) },
+    { spec: { gender: 'woman', skin: 'tan', pose: 'celebrate', facing: 'front', seed: 2 }, bg: COLORS.onyx, ts: span(0, 0.96) },
+    { spec: { gender: 'man', skin: 'light', pose: 'wave', facing: 'right', seed: 1, outfit: 'casual', age: 'young' }, bg: COLORS.cream, ts: span(0, 0.96) },
+    { spec: { gender: 'woman', skin: 'medium', pose: 'stand', facing: 'front', seed: 3, headwear: 'sheila' }, bg: COLORS.onyx, ts: span(0, 8) },
+    { spec: { gender: 'man', skin: 'deep', pose: 'walk', facing: 'right', seed: 3, outfit: 'dishdasha' }, bg: COLORS.cream, ts: span(0, 0.98) },
+    { spec: { gender: 'man', skin: 'light', pose: 'walk', facing: 'left', seed: 3, outfit: 'casual', age: 'young' }, bg: COLORS.onyx, ts: span(0, 0.98) },
   ];
-  const [cv, c] = canvas(ts.length * cw, rows.length * (ch + 26));
+  const [cv, c] = canvas(n * cw, rows.length * (ch + 26));
   rows.forEach((r, ri) => {
     c.fillStyle = r.bg; c.fillRect(0, ri * (ch + 26), cv.width, ch + 26);
-    ts.forEach((t, i) => {
+    r.ts.forEach((t, i) => {
       drawCharacter(c, r.spec, { x: i * cw + 20, y: ri * (ch + 26) + 30, w: cw - 40, h: ch - 20 }, t);
       label(c, `${r.spec.pose} t=${t}`, i * cw + cw / 2, ri * (ch + 26) + ch + 16, ri % 2 ? COLORS.stone : COLORS.stoneDark, 13);
     });
@@ -275,22 +281,137 @@ function perf() {
   const specs = POSES.map((pose, i) => ({ gender: i % 2 ? 'woman' : 'man', pose, facing: ['left', 'right', 'front'][i % 3], seed: i }));
   // warm-up
   for (const s of specs) drawCharacter(c, s, { x: 0, y: 0, w: 1080, h: 1800 }, 0);
+  c.getImageData(0, 0, 1, 1); // flush deferred GPU work so each phase is timed on its own
   const N = 6;
   const t0 = performance.now();
   for (let k = 0; k < N; k++) for (const s of specs) drawCharacter(c, s, { x: 0, y: 0, w: 1080, h: 1800 }, k * 0.1);
+  c.getImageData(0, 0, 1, 1);
   const per = (performance.now() - t0) / (N * specs.length);
   const t1 = performance.now();
   for (let k = 0; k < 3; k++) for (const n of PROP_NAMES) drawProp(c, n, { x: 0, y: 0, w: 600, h: 600 }, {}, k);
+  c.getImageData(0, 0, 1, 1);
   const perProp = (performance.now() - t1) / (3 * PROP_NAMES.length);
   const t2 = performance.now();
   for (let k = 0; k < 3; k++) for (const n of SCENE_NAMES) drawScene(c, n, { x: 0, y: 0, w: 1080, h: 1920 }, {}, k);
+  c.getImageData(0, 0, 1, 1);
   const perScene = (performance.now() - t2) / (3 * SCENE_NAMES.length);
   // state hygiene: transform and alpha must be untouched afterwards
   const m = c.getTransform();
   return { msPerCharacter: +per.toFixed(3), msPerProp: +perProp.toFixed(3), msPerScene: +perScene.toFixed(3), transformClean: m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1 && m.e === 0 && m.f === 0, alpha: c.globalAlpha };
 }
 
+// Hand library close-up: every hand shape alone, then every grip with its prop (model units × 3.2).
+function handsSheet() {
+  const kinds = ['relax', 'open', 'fist', 'point', 'chin', 'present', 'support', 'pinch', 'cup', 'bag', 'phone'];
+  const cw = 230, ch = 300, S = 3.2;
+  const grips = [
+    ['phone', 'phone', [0, 0], -50, -1], ['phone', 'goldbar', [0, 0], -50, -1], ['pinch', 'receipts', [-12, 38], -60, -1],
+    ['pinch', 'receipts', [30, 6], -130, 1], ['support', 'giftbox', [-20, 50], -6, -1], ['cup', 'coffee', [-14, 8], -4, -1], ['bag', 'bag', [-9, -56], 92, 1],
+  ];
+  const sizes = { phone: 92, goldbar: 80, receipts: 100, giftbox: 112, coffee: 78, bag: 128 };
+  const [cv, c] = canvas(kinds.length * cw, ch * 3 + 60 * 3, COLORS.cream);
+  const L = { x: -0.8, y: -0.6 };
+  const hand = (kind, x, y, ang, mir, skin, prop) => {
+    const sk = SKIN[skin];
+    c.save(); c.translate(x, y); c.scale(S, S);
+    const a = ang * Math.PI / 180;
+    let shp;
+    if (prop) {
+      const asp = PROP_ASPECT[prop.name];
+      const sz = sizes[prop.name];
+      const w = asp >= 1 ? sz : sz * asp, h = asp >= 1 ? sz / asp : sz;
+      shp = handShape(kind, w, h);
+      const P = propFromHand({ x: 0, y: 0 }, a, mir, kind, prop.anchor, w, h);
+      c.save(); c.rotate(a); c.scale(1, mir);
+      const ca = Math.cos(-a), sa = Math.sin(-a);
+      const ll = { x: L.x * ca - L.y * sa, y: (L.x * sa + L.y * ca) * mir };
+      drawHandParts(c, shp.back, sk, ll, palmTone(sk));
+      c.restore();
+      c.save(); c.translate(P.x, P.y); c.rotate(P.ang); drawPropShape(c, prop.name, -w / 2, -h / 2, w, h, { held: true }, 0.3); c.restore();
+      c.save(); c.rotate(a); c.scale(1, mir); drawHandParts(c, shp.front, sk, ll, palmTone(sk)); c.restore();
+    } else {
+      shp = handShape(kind, 46, 92);
+      c.rotate(a); c.scale(1, mir);
+      const ca = Math.cos(-a), sa = Math.sin(-a);
+      const ll = { x: L.x * ca - L.y * sa, y: (L.x * sa + L.y * ca) * mir };
+      drawHandParts(c, shp.back, sk, ll, palmTone(sk));
+      drawHandParts(c, shp.front, sk, ll, palmTone(sk));
+    }
+    // cuff stub for scale
+    c.restore();
+  };
+  kinds.forEach((k, i) => {
+    hand(k, i * cw + cw / 2, ch - 40, -90, 1, 'medium');
+    label(c, k, i * cw + cw / 2, ch + 30, COLORS.stoneDark);
+  });
+  c.fillStyle = COLORS.onyx; c.fillRect(0, ch + 60, cv.width, ch + 60);
+  kinds.forEach((k, i) => {
+    hand(k, i * cw + cw / 2, ch + 60 + 50, 90, -1, i % 2 ? 'deep' : 'light');
+  });
+  grips.forEach(([kind, name, anchor, ang, mir], i) => {
+    const x = i * cw * 1.5 + cw * 0.75, y = 2 * (ch + 60) + ch / 2 + 20;
+    hand(kind, x, y, ang, mir, ['medium', 'tan', 'light', 'deep'][i % 4], { name, anchor });
+    label(c, kind + ' + ' + name, x, 3 * (ch + 60) + 20, COLORS.stoneDark);
+  });
+  return out(cv);
+}
+
+// Upper bodies for every pose at near-production scale (hands ~45 px): elbows, grips, faces.
+function upperSheet(facing) {
+  const cw = 250, ch = 400;
+  const rows = [
+    { spec: { gender: 'man', skin: 'medium', seed: 1, beard: true }, bg: COLORS.cream },
+    { spec: { gender: 'woman', skin: 'tan', seed: 2 }, bg: COLORS.onyx },
+    { spec: { gender: 'man', skin: 'deep', seed: 3, outfit: 'casual', age: 'young' }, bg: COLORS.onyx },
+    { spec: { gender: 'woman', skin: 'light', seed: 4, outfit: 'casual', headwear: 'sheila' }, bg: COLORS.cream },
+  ];
+  const [cv, c] = canvas(POSES.length * cw, rows.length * ch + 30);
+  rows.forEach((r, ri) => {
+    c.fillStyle = r.bg; c.fillRect(0, ri * ch, cv.width, ch);
+    POSES.forEach((pose, i) => {
+      c.save(); c.beginPath(); c.rect(i * cw, ri * ch, cw, ch); c.clip();
+      const H = 760;
+      const spec = { ...r.spec, pose, facing };
+      const box = { x: i * cw + cw / 2 - 300, y: 0, w: 600, h: H };
+      const a = characterAnchors(spec, box, 0.8);
+      box.y = ri * ch + 70 - a.head.y + (pose === 'sit' ? -60 : 0) + (pose === 'celebrate' || pose === 'wave' ? 40 : 0);
+      drawCharacter(c, spec, box, 0.8);
+      c.restore();
+      if (ri === 0) label(c, pose, i * cw + cw / 2, rows.length * ch + 21, COLORS.stone);
+    });
+  });
+  return out(cv);
+}
+
+// One walk cycle (1.1 s) in 12 frames: knees, heel strike / toe-off, arm swing, body bob.
+function walkSheet() {
+  const n = 12, cw = 170, ch = 380;
+  const rows = [
+    { spec: { gender: 'man', skin: 'deep', seed: 3, facing: 'right' }, bg: COLORS.cream },
+    { spec: { gender: 'man', skin: 'light', seed: 3, outfit: 'casual', age: 'young', facing: 'right' }, bg: COLORS.onyx },
+    { spec: { gender: 'woman', skin: 'tan', seed: 2, facing: 'right' }, bg: COLORS.onyx },
+    { spec: { gender: 'woman', skin: 'medium', seed: 4, outfit: 'casual', facing: 'left' }, bg: COLORS.cream },
+    { spec: { gender: 'man', skin: 'medium', seed: 5, outfit: 'casual', facing: 'front' }, bg: COLORS.cream },
+  ];
+  const [cv, c] = canvas(n * cw, rows.length * ch);
+  rows.forEach((r, ri) => {
+    c.fillStyle = r.bg; c.fillRect(0, ri * ch, cv.width, ch);
+    // guide lines: ground and head height at t=0
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * 1.1;
+      drawCharacter(c, { ...r.spec, pose: 'walk' }, { x: i * cw + 10, y: ri * ch + 20, w: cw - 20, h: ch - 40 }, t);
+      label(c, t.toFixed(2), i * cw + cw / 2, ri * ch + ch - 6, ri % 2 ? COLORS.stone : COLORS.stoneDark, 12);
+    }
+  });
+  return out(cv);
+}
+
 window.sheets = {
+  hands: handsSheet,
+  walk: walkSheet,
+  upper: () => upperSheet('right'),
+  'upper-front': () => upperSheet('front'),
+  'upper-left': () => upperSheet('left'),
   'poses-34': () => poseSheet('right'),
   'poses-front': () => poseSheet('front'),
   'poses-left': () => poseSheet('left'),
