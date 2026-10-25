@@ -145,7 +145,13 @@ class SceneRuntime {
   async preload(doc) {
     await Promise.all([this.loadRegistry(), loadType3d().catch(() => null)]);
     const layers = [];
-    for (const s of doc.slides || []) for (const l of s.layers || []) if (l.type === 'scene3d' && !l.hidden) layers.push(l);
+    for (const s of doc.slides || []) {
+      for (const l of s.layers || []) {
+        if (l.hidden) continue;
+        if (l.type === 'scene3d') layers.push(l);
+        else if ((l.type === 'character' || l.type === 'set') && l.style !== 'flat') layers.push({ scene: 'people', params: {} });
+      }
+    }
     const mods = await Promise.all([...new Set(layers.map((l) => l.scene))].map((id) => this.ensure(id)));
     const urls = [];
     for (const l of layers) {
@@ -175,6 +181,9 @@ class SceneRuntime {
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.NeutralToneMapping;
     r.setClearColor(0x000000, 0);
+    // Soft shadow maps; a scene opts in per light (light.castShadow) and per mesh.
+    r.shadowMap.enabled = true;
+    r.shadowMap.type = THREE.PCFShadowMap;
     this.renderer = r;
     this.pmrem = new THREE.PMREMGenerator(r);
     return r;
@@ -225,7 +234,7 @@ class SceneRuntime {
     composer.addPass(finish);
     c = { composer, renderPass, bloom, output, finish, used: performance.now() };
     this.composers.set(key, c);
-    if (this.composers.size > 5) {
+    if (this.composers.size > 3) {
       const old = [...this.composers.entries()].sort((a, b) => a[1].used - b[1].used)[0];
       old[1].composer.renderTarget1.dispose(); old[1].composer.renderTarget2.dispose();
       old[1].bloom.dispose?.();
@@ -234,13 +243,29 @@ class SceneRuntime {
     return c;
   }
 
+  /**
+   * Keep GPU memory bounded (the headless renderer is a CPU rasteriser with a hard memory cap): at most 10 live
+   * scene instances, and anything not drawn for 30 s is released. Scenes rebuild on demand, deterministically.
+   */
+  trim(keep) {
+    const now = performance.now();
+    for (const [k, inst] of this.instances) if (k !== keep && now - inst.used > 30000) { this.disposeInstance(inst); this.instances.delete(k); }
+    while (this.instances.size > 10) {
+      const old = [...this.instances.entries()].filter(([k]) => k !== keep).sort((a, b) => a[1].used - b[1].used)[0];
+      if (!old) break;
+      this.disposeInstance(old[1]); this.instances.delete(old[0]);
+    }
+  }
+
   disposeInstance(inst) {
     try { inst.dispose?.(); } catch { /* ignore */ }
     inst.scene?.traverse?.((o) => {
       o.geometry?.dispose?.();
+      o.skeleton?.dispose?.(); // bone textures
+      o.shadow?.dispose?.(); // shadow-casting lights hold their own depth targets
       const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       for (const m of mats) {
-        for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap']) m[k]?.dispose?.();
+        for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'bumpMap', 'aoMap', 'clearcoatNormalMap']) m[k]?.dispose?.();
         m.dispose?.();
       }
       o.dispose?.();
@@ -305,10 +330,7 @@ class SceneRuntime {
         inst = { ...made, moduleId: id, layerId: layer.id, used: 0 };
         if (!inst.scene.environment && made.envVariant !== 'none') inst.scene.environment = this.env(made.envVariant || 'studio');
         this.instances.set(key, inst);
-        if (this.instances.size > 24) {
-          const old = [...this.instances.entries()].sort((a, b) => a[1].used - b[1].used)[0];
-          this.disposeInstance(old[1]); this.instances.delete(old[0]);
-        }
+        this.trim(key);
       }
       inst.used = performance.now();
       const still = mod.still ?? Math.min(dur, mod.duration || 6) * 0.7;

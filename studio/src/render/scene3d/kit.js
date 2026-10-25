@@ -8,6 +8,8 @@ import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { COLORS, FONTS, THEMES } from '../../../shared/brand.js';
 import { SYMBOL_ROOF, SYMBOL_G, SYMBOL_GEM } from '../../../shared/logo.js';
 import { textGeometry, glyphGeometries } from './type3d.js';
+import { figure, figurePoses, prop3d } from './figure.js';
+import { diorama, setNames } from './sets.js';
 
 // ---------- motion ----------
 export const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -525,6 +527,31 @@ export function stage(scene, { theme = 'onyx', aspect = 0.8, floor = true, floor
   return { floor: floorMesh, key, rim, colors: b };
 }
 
+/**
+ * Photographic cyclorama: floor that curves up into a back wall with no corner, so light falls off into a
+ * seamless gradient. Receives shadows. Returns the mesh; set scene.background to the same colour.
+ */
+export function cyclorama({ color = '#151513', width = 30, depth = 9, height = 12, radius = 2.4, back = -3.2, roughness = 0.92 } = {}) {
+  const pts = [];
+  const front = depth;
+  pts.push([front, 0]);
+  for (let i = 0; i <= 24; i++) { const a = (i / 24) * (Math.PI / 2); pts.push([back + radius - Math.sin(a) * radius, radius - Math.cos(a) * radius]); }
+  pts.push([back, height]);
+  const shape = [];
+  for (const [z, y] of pts) shape.push(new THREE.Vector2(z, y));
+  const geo = new THREE.BufferGeometry();
+  const cols = 2, pos = [], uv = [], idx = [];
+  shape.forEach((p, j) => { for (let i = 0; i < cols; i++) { pos.push((i - 0.5) * width, p.y, p.x); uv.push(i, j / (shape.length - 1)); } });
+  for (let j = 0; j < shape.length - 1; j++) { const a = j * cols, b = a + cols; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, envMapIntensity: 0.4 }));
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
 /** Distance at which an object of `size` (world units, the larger of its width and height) fills `fill` of the frame. */
 export function fitDistance(camera, size, aspect, fill = 0.7) {
   const vfov = (camera.fov * Math.PI) / 180;
@@ -612,4 +639,5 @@ export const kit = {
   clamp, mix, seg, ease, bezier, rand, noise1, phase, brand, backdropColors, backdropTexture, radialTexture, reliefMaps, drawText, drawSymbol,
   canvasTexture, GOLD, materials, roundedRectShape, BAR_SIZES, barGeometry, coinGeometry, discGeometry, symbolGeometries, roundedBox,
   mergeVertices, barStamp, coinStamp, reedingMap, studioEnvScene, reflectiveFloor, contactShadow, stage, fitDistance, fitBox, orbit, softPoints, samplePoints,
+  figure, figurePoses, prop3d, cyclorama, diorama, setNames,
 };

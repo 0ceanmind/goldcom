@@ -8,6 +8,7 @@ import {
   createFromSpec, saveAsset, listAssets, assetPath,
 } from './store.mjs';
 import { templateCatalog } from '../shared/templates.js';
+import { uid } from '../shared/schema.js';
 import { COLORS, THEMES, FORMATS, BRAND, DISCLAIMER } from '../shared/brand.js';
 import { lintDocument } from '../shared/lint.js';
 import { capturePage, renderDocument, browserAvailable, closeBrowser } from './browser.mjs';
@@ -83,7 +84,8 @@ async function handle(req, res) {
   if (p === '/api/documents' && req.method === 'GET') return send(res, 200, await listDocuments());
   if (p === '/api/documents' && req.method === 'POST') {
     const body = await readJson(req);
-    const doc = body.slides?.some((s) => s.template && !s.layers?.length) && !body.id ? await createFromSpec(body) : await saveDocument(body);
+    // A new document without an id gets one (it used to be saved as undefined.json, overwriting the last one).
+    const doc = body.slides?.some((s) => s.template && !s.layers?.length) && !body.id ? await createFromSpec(body) : await saveDocument(body.id ? body : { ...body, id: uid('doc') });
     return send(res, 201, doc);
   }
   if ((mm = m(/^\/api\/documents\/([\w-]+)$/))) {

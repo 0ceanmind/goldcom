@@ -7,7 +7,7 @@ import { sceneRuntime } from './scene3d/runtime.js';
 import { EASE, evalKeys, evalCamera, applyCamera, mapTime } from './motion.js';
 import { drawDevice, screenRect } from './device.js';
 import { isVideoSrc } from './media.js';
-import { drawGlow, drawStep, drawCheck, drawFocus, drawBubble, drawPlates, drawCharacter, drawProp, drawSet } from './extras.js';
+import { drawGlow, drawStep, drawCheck, drawFocus, drawBubble, drawPlates, drawCharacter, drawProp, drawSet, drawScrim } from './extras.js';
 
 // ---------- fonts & images ----------
 export async function loadFonts() {
@@ -1511,10 +1511,11 @@ function drawScene3D(c, layer, ctx) {
     c.save();
     if (layer.radius) { rr(c, layer.x, layer.y, layer.w, layer.h, layer.radius); c.clip(); }
     c.drawImage(cv, layer.x, layer.y, layer.w, layer.h);
+    if (layer.scrim) drawScrim(c, { ...layer, scrim: true }, ctx, layer.params?.setTheme && layer.params.setTheme !== 'auto' ? layer.params.setTheme : ctx.theme);
     c.restore();
-    return;
+    return true;
   }
-  if (!ctx.guides) return; // exports and previews never show the placeholder
+  if (!ctx.guides || layer.type !== 'scene3d') return false; // exports and previews never show the placeholder
   const st = sceneRuntime.status(layer.scene);
   c.save();
   c.fillStyle = 'rgba(255,255,255,0.03)';
@@ -1525,6 +1526,18 @@ function drawScene3D(c, layer, ctx) {
   c.textBaseline = 'middle';
   c.fillText(st.state === 'error' ? `Scene "${layer.scene}" failed: reported for repair` : `Loading 3D scene "${layer.scene}"…`, layer.x + layer.w / 2, layer.y + layer.h / 2);
   c.restore();
+  return false;
+}
+
+// People and settings render in 3D through the "people" scene module (same spec as the flat illustrations).
+// style: 'flat' keeps the illustration; if the 3D module is broken the illustration is used as a fallback.
+const use3d = (layer) => layer.style !== 'flat' && sceneRuntime.status('people').state !== 'error';
+function drawPerson(c, layer, ctx) {
+  if (!use3d(layer)) { drawCharacter(c, layer, ctx); return; }
+  drawScene3D(c, { id: `${layer.id}:3d`, type: 'person3d', scene: 'people', x: layer.x, y: layer.y, w: layer.w, h: layer.h, transparent: true, params: { set: 'none', spec: JSON.stringify(layer.spec || {}) } }, ctx);
+}
+function drawSetting(c, layer, ctx) {
+  drawSet(c, layer, ctx, use3d(layer) ? () => (drawScene3D(c, { id: `${layer.id}:3d`, type: 'set3d', scene: 'people', x: layer.x, y: layer.y, w: layer.w, h: layer.h, params: { set: layer.set || 'studio', setTheme: layer.setTheme || 'auto', mood: layer.mood || 'warm', a_person: 'none', floorAt: 0.81, fill: 0.9 } }, ctx) || 'pending') : null);
 }
 
 // ---------- layer dispatch & animation ----------
@@ -1618,9 +1631,9 @@ function drawLayerBody(c, layer, ctx, st, images) {
     case 'check': drawCheck(c, layer, ctx, layer.anim?.in === 'draw' ? st.p : 1); break;
     case 'focus': drawFocus(c, layer, ctx); break;
     case 'bubble': drawBubble(c, layer, ctx); break;
-    case 'character': drawCharacter(c, layer, ctx); break;
+    case 'character': drawPerson(c, layer, ctx); break;
     case 'prop': drawProp(c, layer, ctx); break;
-    case 'set': drawSet(c, layer, ctx); break;
+    case 'set': drawSetting(c, layer, ctx); break;
     default: break;
   }
 }

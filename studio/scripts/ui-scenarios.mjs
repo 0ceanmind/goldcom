@@ -34,6 +34,7 @@ async function scenario(name, fn) {
     if (errors.length) throw new Error(errors.slice(0, 3).join(' | '));
     results.push({ name, ok: true, ms: Date.now() - t0 });
     console.log(`  ✓ ${name}`);
+    if (process.env.MEMLOG) console.log('    mem', await page.evaluate(() => JSON.stringify({ heapMB: Math.round((performance.memory?.usedJSHeapSize || 0) / 1e6), scenes: window.__goldcomScenes?.instances?.size, composers: window.__goldcomScenes?.composers?.size })).catch(() => '?'));
   } catch (e) {
     results.push({ name, ok: false, err: e.message });
     console.log(`  ✕ ${name}\n      ${e.message.split('\n')[0]}`);

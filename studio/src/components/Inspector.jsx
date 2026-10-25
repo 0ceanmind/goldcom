@@ -234,13 +234,17 @@ function LayerPanel({ layer: l, api, doc, focusText }) {
                 <Field label="Outfit"><Select value={l.spec?.outfit || 'dishdasha'} onChange={(v) => up({ spec: { ...l.spec, outfit: v } })} options={['dishdasha', 'abaya', 'casual']} /></Field>
                 <Field label="Head"><Select value={l.spec?.headwear || 'kumma'} onChange={(v) => up({ spec: { ...l.spec, headwear: v } })} options={['kumma', 'massar', 'none', 'hijab', 'sheila']} /></Field>
               </div>
-              <Field label="Skin"><Select value={l.spec?.skin || 'medium'} onChange={(v) => up({ spec: { ...l.spec, skin: v } })} options={['light', 'medium', 'tan', 'deep']} /></Field>
+              <div className="row">
+                <Field label="Skin"><Select value={l.spec?.skin || 'medium'} onChange={(v) => up({ spec: { ...l.spec, skin: v } })} options={['light', 'medium', 'tan', 'deep']} /></Field>
+                <Field label="Style"><Select value={l.style || '3d'} onChange={(v) => up({ style: v === '3d' ? undefined : v })} options={{ '3d': '3D figure', flat: 'Flat illustration' }} /></Field>
+              </div>
             </>
           )}
           {l.type === 'set' && (
             <div className="row">
               <Field label="Setting"><Select value={l.set || 'room'} onChange={(v) => up({ set: v })} options={SETS} /></Field>
               <Field label="Light"><Select value={l.setTheme || 'onyx'} onChange={(v) => up({ setTheme: v })} options={{ onyx: 'Evening (dark)', cream: 'Daylight (light)', bullion: 'Gold', sand: 'Sand' }} /></Field>
+              <Field label="Style"><Select value={l.style || '3d'} onChange={(v) => up({ style: v === '3d' ? undefined : v })} options={{ '3d': '3D set', flat: 'Flat illustration' }} /></Field>
             </div>
           )}
           {l.type === 'prop' && <Field label="Prop"><Select value={l.prop} onChange={(v) => up({ prop: v })} options={PROP_LIST} /></Field>}

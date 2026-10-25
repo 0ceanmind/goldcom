@@ -21,10 +21,11 @@ export const CHARACTER_OPTIONS = {
   },
   accent: { _: 'Brand colour token for embroidery, trims and the tassel: gold, bullion (default), bronze, amber, sand, spark, bronzeDeep, espresso' },
   pose: Object.fromEntries(Object.entries(POSES).map(([k, v]) => [k, v.label])),
+  // 3D figures are faceless by design: moods are body language (head, shoulders, chest, rhythm).
   mood: {
-    neutral: 'Relaxed, attentive', happy: 'Open smile, closed happy eyes', worried: 'Raised inner brows, uneasy mouth (stress, confusion)',
-    surprised: 'High brows, round eyes, small open mouth', calm: 'Serene closed eyes and a soft smile (reassured)', proud: 'Half-closed content eyes, confident smile',
-    thinking: 'One brow raised, eyes up, mouth to the side',
+    neutral: 'Relaxed, attentive', happy: 'Head up, chest open, a light bounce', worried: 'Head down, shoulders raised (stress, confusion)',
+    surprised: 'Head back, leaning back a touch', calm: 'Slow breathing, head softly tilted (reassured)', proud: 'Chest lifted, chin up',
+    thinking: 'Head tilted and turned, chin up',
   },
   facing: { right: '3/4 view looking to the right (default)', left: '3/4 view looking to the left (mirrored, light stays consistent)', front: 'Facing the viewer' },
   prop: {

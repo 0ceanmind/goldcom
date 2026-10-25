@@ -151,7 +151,29 @@ export function drawProp(c, layer, ctx) {
   if (illustrator?.drawProp) illustrator.drawProp(c, layer.prop, { x: layer.x, y: layer.y, w: layer.w, h: layer.h }, layer.opts || {}, ctx.live ? ctx.lt : 0.8);
 }
 
-export function drawSet(c, layer, ctx) {
+/** Scrim over a panel so captions stay readable: from one side (scrimSide) or from the top (scrimH). */
+export function drawScrim(c, layer, ctx, themeName) {
+  const { x, y, w, h } = layer;
+  const th = themeName || layer.setTheme || ctx.theme;
+  const light = th === 'cream' || th === 'sand';
+  const sh = layer.scrimH ?? 0.42;
+  const tint = (a) => (light ? `rgba(255,248,234,${a})` : `rgba(14,14,13,${a})`);
+  if (layer.scrim === false) return;
+  if (layer.scrimSide) {
+    // Side scrim: the caption column stays clean, the person's side of the set stays untouched.
+    const fromLeft = layer.scrimSide === 'left';
+    const g = c.createLinearGradient(fromLeft ? x : x + w, 0, fromLeft ? x + w * 0.72 : x + w * 0.28, 0);
+    g.addColorStop(0, tint(0.9)); g.addColorStop(0.55, tint(0.82)); g.addColorStop(1, tint(0));
+    c.fillStyle = g; c.fillRect(x, y, w, h);
+  } else {
+    const g = c.createLinearGradient(0, y, 0, y + h * sh);
+    g.addColorStop(0, tint(0.82)); g.addColorStop(1, tint(0));
+    c.fillStyle = g; c.fillRect(x, y, w, h * sh);
+  }
+}
+
+/** A setting panel. `body3d()` draws the 3D set and returns true; otherwise the flat illustration is used. */
+export function drawSet(c, layer, ctx, body3d) {
   const { x, y, w, h } = layer;
   c.save();
   if (layer.radius) {
@@ -162,30 +184,17 @@ export function drawSet(c, layer, ctx) {
     c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r);
     c.closePath(); c.clip();
   }
-  if (illustrator?.drawScene) illustrator.drawScene(c, layer.set || 'studio', { x, y, w, h }, { theme: layer.setTheme || ctx.theme, mood: layer.mood }, ctx.live ? ctx.lt : 0.8);
-  else {
-    const th = THEMES[ctx.theme] || THEMES.onyx;
+  const drew3d = body3d ? body3d() : false;
+  if (drew3d === 'pending') { c.restore(); return; }
+  if (!drew3d && illustrator?.drawScene) illustrator.drawScene(c, layer.set || 'studio', { x, y, w, h }, { theme: layer.setTheme || ctx.theme, mood: layer.mood }, ctx.live ? ctx.lt : 0.8);
+  else if (!drew3d) {
     c.fillStyle = layer.mood === 'dim' ? '#1b1b19' : isLight(ctx.theme) ? COLORS.mist : COLORS.graphite;
     c.fillRect(x, y, w, h);
     c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y + h * 0.78, w, h * 0.22);
-    void th;
   }
-  if (layer.mood === 'dim' && (layer.setTheme || ctx.theme) !== 'cream') { c.fillStyle = 'rgba(12,12,11,0.18)'; c.fillRect(x, y, w, h); }
+  if (!drew3d && layer.mood === 'dim' && (layer.setTheme || ctx.theme) !== 'cream') { c.fillStyle = 'rgba(12,12,11,0.18)'; c.fillRect(x, y, w, h); }
   // Top scrim keeps the panel's caption readable over busy sets.
-  const light = (layer.setTheme || ctx.theme) === 'cream' || (layer.setTheme || ctx.theme) === 'sand';
-  const sh = layer.scrimH ?? 0.42;
-  const tint = (a) => (light ? `rgba(255,248,234,${a})` : `rgba(14,14,13,${a})`);
-  if (layer.scrim !== false && layer.scrimSide) {
-    // Side scrim: the caption column stays clean, the person's side of the set stays untouched.
-    const fromLeft = layer.scrimSide === 'left';
-    const g = c.createLinearGradient(fromLeft ? x : x + w, 0, fromLeft ? x + w * 0.72 : x + w * 0.28, 0);
-    g.addColorStop(0, tint(0.9)); g.addColorStop(0.55, tint(0.82)); g.addColorStop(1, tint(0));
-    c.fillStyle = g; c.fillRect(x, y, w, h);
-  } else if (layer.scrim !== false) {
-    const g = c.createLinearGradient(0, y, 0, y + h * sh);
-    g.addColorStop(0, tint(0.82)); g.addColorStop(1, tint(0));
-    c.fillStyle = g; c.fillRect(x, y, w, h * sh);
-  }
+  drawScrim(c, layer, ctx);
   c.restore();
 }
 

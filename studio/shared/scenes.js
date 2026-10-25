@@ -144,6 +144,22 @@ function personSpec(c, prefix, defaults = {}) {
   };
 }
 
+// Props the 3D people stage can place on its floor; others stay as flat prop layers.
+const PROPS3D = new Set(['giftbox', 'bag', 'shopping-bag', 'coffee', 'goldbar', 'phone']);
+
+/**
+ * One 3D stage: a set with up to two people standing in it, shared light and real shadows (scene module "people").
+ * box = the panel; people = [{ spec, cx, feetY, h }] in slide pixels so captions can be laid out around them.
+ */
+function stageLayer(box, { set = 'room', setTheme = 'onyx', mood = 'warm', people = [], props = [], name = 'stage', a = anim('fade', 0, 0.9), radius = 0, scrim } = {}) {
+  const [A, B] = people;
+  const params = { set, setTheme, mood, framing: 'full', props: props.join(',') };
+  if (A) Object.assign(params, { spec: JSON.stringify(A.spec), a_at: (A.cx - box.x) / box.w, floorAt: (A.feetY - box.y) / box.h, fill: (A.h * 0.92) / box.h });
+  else params.a_person = 'none';
+  if (B) Object.assign(params, { specB: JSON.stringify(B.spec), b_at: (B.cx - box.x) / box.w });
+  return L('scene3d', { name, scene: 'people', x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.w), h: Math.round(box.h), radius, params, anim: a, ...(scrim || {}) });
+}
+
 function characterLayer(h, spec, box, { delay = 0.2, name = 'character', from = 'up' } = {}) {
   const k = from === 'side' ? anim('slide-start', delay, 0.8) : anim('fade-up', delay, 0.8);
   return L('character', { name, spec, x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.w), h: Math.round(box.h), anim: k });
@@ -345,7 +361,7 @@ export const SCENES = {
   split: {
     name: 'Split: without vs with',
     group: 'production',
-    description: 'Comparison of two people or two ways: side A (without Goldcom, the old way) and side B (with Goldcom). Each side has an illustrated person in a setting, a label and one short line. Top/bottom on 9:16, left/right on 4:5 and 1:1.',
+    description: 'Comparison of two people or two ways: side A (without Goldcom, the old way) and side B (with Goldcom). Each side is a lit 3D set with a 3D person in it, a label and one short line. Top/bottom on 9:16, left/right on 4:5 and 1:1.',
     fields: [
       { key: 'title', label: 'Title (optional)', type: 'textarea' },
       { key: 'a_label', label: 'A label', type: 'text' },
@@ -395,14 +411,18 @@ export const SCENES = {
         const pad = Math.round(22 * h.s);
         const inner = { x: r.x + pad / (stacked ? 1 : 2), y: r.y + pad / 2, w: r.w - pad * (stacked ? 2 : 1), h: r.h - pad };
         const light = setTheme === 'cream';
-        res.push(L('set', { name: `${p}set`, set: c[`${p}scene`] || set, setTheme, mood: light ? 'warm' : 'dim', scrimH: 0.42, scrimSide: stacked ? ((i === 0) !== h.rtl ? 'right' : 'left') : null, x: inner.x, y: inner.y, w: inner.w, h: inner.h, radius: Math.round(28 * h.s), facet: i === 1, anim: anim(i === 0 ? 'fade' : 'scale', delay, 0.7) }));
         const spec = personSpec(c, p, def);
         const chH = stacked ? inner.h * 0.94 : inner.h * 0.7;
         const chW = chH * 0.5;
         let chX = stacked ? (i === 0 ? inner.x + inner.w * 0.06 : inner.x + inner.w * 0.94 - chW) : inner.x + (inner.w - chW) / 2;
         if (h.rtl && stacked) chX = W - chX - chW;
         spec.facing = stacked ? ((chX + chW / 2 < W / 2) ? 'right' : 'left') : (i === 0) !== h.rtl ? 'right' : 'left';
-        res.push(characterLayer(h, spec, { x: chX, y: inner.y + inner.h - chH - inner.h * 0.03, w: chW, h: chH }, { delay: delay + 0.15 }));
+        // Each side is one 3D stage: the person stands in the set; a scrim keeps the caption side readable.
+        res.push(stageLayer(inner, {
+          name: `${p}stage`, set: c[`${p}scene`] || set, setTheme, mood: light ? 'warm' : 'dim', radius: Math.round(28 * h.s), a: anim(i === 0 ? 'fade' : 'scale', delay, 0.7),
+          people: [{ spec, cx: chX + chW / 2, feetY: inner.y + inner.h - inner.h * 0.03, h: chH }],
+          scrim: { scrim: true, scrimH: 0.42, scrimSide: stacked ? ((i === 0) !== h.rtl ? 'right' : 'left') : null },
+        }));
         // Label chip + one line on the open side of the panel, coloured for the set behind it.
         const tw = stacked ? inner.w * 0.5 : inner.w - pad * 2;
         let tx = stacked ? (chX + chW / 2 < W / 2 ? inner.x + inner.w * 0.46 : inner.x + pad * 1.5) : inner.x + pad;
@@ -430,7 +450,7 @@ export const SCENES = {
   cast: {
     name: 'Cast (meet the people)',
     group: 'production',
-    description: 'Introduces one or two illustrated people with name tags, e.g. "Salim buys gold the old way · Aisha uses Goldcom". Use at the start of a story carousel or Reel.',
+    description: 'Introduces one or two 3D people standing together in one set, with name tags, e.g. "Salim buys gold the old way · Aisha uses Goldcom". Use at the start of a story carousel or Reel.',
     fields: [
       { key: 'kicker', label: 'Kicker', type: 'text' },
       { key: 'title', label: 'Title (*accent*)', type: 'textarea' },
@@ -460,7 +480,10 @@ export const SCENES = {
       const tall = ctx.fullH / ctx.W > 1.5;
       const below = tall ? Math.max(0, ctx.fullH - ctx.H - ctx.top) : 0;
       // On 9:16 the stage runs off the bottom edge; names stay inside the safe area.
-      res.push(L('set', { name: 'set', set: c.scene || 'studio', setTheme: ['cream', 'sand'].includes(ctx.theme) ? 'cream' : 'onyx', mood: 'warm', scrim: false, x: tall ? 0 : h.m * 0.5, y: stageTop, w: tall ? h.W : h.W - h.m, h: ctx.H - stageTop - (tall ? -below : h.m * 0.5), radius: tall ? 0 : Math.round(32 * h.s), anim: anim('fade', 0, 0.8) }));
+      const stageBox = { x: tall ? 0 : h.m * 0.5, y: stageTop, w: tall ? h.W : h.W - h.m, h: ctx.H - stageTop - (tall ? -below : h.m * 0.5) };
+      const stage = stageLayer(stageBox, { set: c.scene || 'studio', setTheme: ['cream', 'sand'].includes(ctx.theme) ? 'cream' : 'onyx', mood: 'warm', radius: tall ? 0 : Math.round(32 * h.s), a: anim('fade', 0, 0.8) });
+      res.push(stage);
+      const cast = [];
       const two = !!c.b_name;
       const chH = (ctx.H - stageTop) * 0.74;
       const chW = chH * 0.5;
@@ -470,7 +493,7 @@ export const SCENES = {
         const spec = personSpec(c, p, { ...def, facing: h.rtl && facing !== 'front' ? (facing === 'left' ? 'right' : 'left') : facing, seed: i + 3 });
         const setH = tall ? ctx.H - stageTop + below : ctx.H - stageTop - h.m * 0.5;
         const by = Math.min(ctx.H - Math.round(150 * h.s), stageTop + setH * 0.8) - chH;
-        res.push(characterLayer(h, spec, { x: cx - chW / 2, y: by, w: chW, h: chH }, { delay: 0.3 + i * 0.35 }));
+        cast.push({ spec, cx, feetY: by + chH, h: chH });
         const tagW = Math.round(Math.min(h.W * 0.42, 420 * h.s));
         const name = textLayer(h, { name: `${p}name`, text: c[`${p}name`] || '', role: 'h3', x: 0, y: by + chH + Math.round(18 * h.s), w: tagW, lang: ctx.lang, delay: 0.55 + i * 0.35, a: 'fade-up' });
         name.x = cx - tagW / 2; name.align = 'center';
@@ -481,6 +504,9 @@ export const SCENES = {
           res.push(note);
         }
       });
+      // Both people stand in the same 3D stage.
+      const filled = stageLayer(stageBox, { set: c.scene || 'studio', setTheme: ['cream', 'sand'].includes(ctx.theme) ? 'cream' : 'onyx', mood: 'warm', radius: stage.radius, a: stage.anim, people: cast });
+      res[res.indexOf(stage)] = { ...filled, id: stage.id };
       return res;
     },
   },
@@ -488,7 +514,7 @@ export const SCENES = {
   moment: {
     name: 'Story moment (character)',
     group: 'production',
-    description: 'One illustrated person in a setting with a headline and a line of narration, optionally a speech bubble. Use for story beats ("Saturday, 4 pm: Salim is still queuing").',
+    description: 'One 3D person standing in a lit 3D set (room, souq, office, night room, corniche, studio) with a headline and a line of narration, optionally a speech bubble. Use for story beats ("Saturday, 4 pm: Salim is still queuing").',
     fields: [
       { key: 'kicker', label: 'Kicker (time/place)', type: 'text' },
       { key: 'title', label: 'Headline (*accent*)', type: 'textarea' },
@@ -512,18 +538,21 @@ export const SCENES = {
       const below = Math.max(0, ctx.fullH - ctx.H - ctx.top);
       const setTotal = setH + below;
       const floorY = setY + setTotal * 0.81;
-      res.push(L('set', { name: 'set', set: c.scene || 'room', setTheme: ['cream', 'sand'].includes(ctx.theme) ? 'cream' : 'onyx', mood: /worried|stressed/.test(String(c.b_mood) + String(c.b_pose)) ? 'dim' : 'warm', scrim: false, x: 0, y: setY, w: h.W, h: setTotal, radius: 0, anim: anim('fade', 0, 0.9) }));
       const spec = personSpec(c, 'b_', { person: 'woman', pose: 'stand', mood: 'calm', facing: h.rtl ? 'right' : 'left', seed: 7 });
       const chH = Math.min(setH * 1.02, floorY - setY + setH * 0.12);
       const chW = chH * 0.5;
       const cx = h.rtl ? h.W * 0.32 : h.W * 0.68;
-      const ch = characterLayer(h, spec, { x: cx - chW / 2, y: floorY - chH, w: chW, h: chH }, { delay: 0.25 });
-      ch.keys = [{ t: 0, scale: 1.02 }, { t: ctx.dur, scale: 1, ease: 'out' }];
-      for (const [i, pr] of list(String(c.props || '').split(',')).entries()) {
+      // The person stands in a 3D set: one stage, shared light, real shadows. Props it knows go on its floor.
+      const props = list(String(c.props || '').split(','));
+      res.push(stageLayer({ x: 0, y: setY, w: h.W, h: setTotal }, {
+        set: c.scene || 'room', setTheme: ['cream', 'sand'].includes(ctx.theme) ? 'cream' : 'onyx',
+        mood: /worried|stressed/.test(String(c.b_mood) + String(c.b_pose)) ? 'dim' : 'warm',
+        people: [{ spec, cx, feetY: floorY, h: chH }], props: props.filter((p) => PROPS3D.has(p)),
+      }));
+      for (const [i, pr] of props.filter((p) => !PROPS3D.has(p)).entries()) {
         const ps = Math.round(setH * 0.22);
         res.push(L('prop', { name: `prop${i}`, prop: pr, x: h.rtl ? h.W * 0.62 + i * ps * 0.7 : h.W * 0.1 + i * ps * 0.7, y: floorY - ps, w: ps, h: ps, anim: anim('pop', 0.6 + i * 0.15, 0.6) }));
       }
-      res.push(ch);
       if (c.bubble) {
         const bw = Math.round(h.W * 0.46);
         const t = textLayer(h, { name: 'bubble', text: c.bubble, role: 'body', x: 0, y: setY + setH * 0.06, w: bw - 48 * h.s, lang: ctx.lang, delay: 0.9, a: 'type', color: 'charcoal' });
