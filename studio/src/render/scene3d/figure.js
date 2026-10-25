@@ -155,34 +155,42 @@ const HAND_SHAPES = {
   flat: { c1: 0.0, c2: 0.0, thumb: 0.55, spread: 0 },
 };
 
-/** Mitten hand: palm, two-segment finger block, thumb, optional index. Wrist at origin, fingers +Y, palm faces +Z, thumb +X. */
+/** Hand: palm, four two-segment fingers, thumb. Wrist at origin, fingers +Y, palm faces +Z, thumb +X. */
+const FINGERS = [ // x across the palm (thumb side +), radius, proximal and distal length, spread, extra curl
+  { x: 0.0225, r: 0.0084, l1: 0.029, l2: 0.025, spread: 0.05, curl: 0 },
+  { x: 0.0075, r: 0.0088, l1: 0.032, l2: 0.027, spread: 0, curl: 0.04 },
+  { x: -0.0075, r: 0.0084, l1: 0.03, l2: 0.025, spread: -0.04, curl: 0.08 },
+  { x: -0.0222, r: 0.0074, l1: 0.023, l2: 0.02, spread: -0.1, curl: 0.14 },
+];
 function makeHand(mat, left) {
   const g = new THREE.Group();
   const inner = new THREE.Group();
   if (left) inner.scale.x = -1;
   g.add(inner);
-  const palm = new THREE.Mesh(new RoundedBoxGeometry(0.066, 0.078, 0.027, 4, 0.012), mat);
-  palm.position.set(0, 0.036, 0);
-  const k1 = new THREE.Group(); k1.position.set(-0.003, 0.074, 0.001);
-  const f1 = new THREE.Mesh(new RoundedBoxGeometry(0.062, 0.036, 0.022, 4, 0.0105), mat); f1.position.y = 0.016;
-  const k2 = new THREE.Group(); k2.position.y = 0.032;
-  const f2 = new THREE.Mesh(new RoundedBoxGeometry(0.058, 0.032, 0.019, 4, 0.0094), mat); f2.position.y = 0.014;
-  k2.add(f2); k1.add(f1, k2);
-  const tb = new THREE.Group(); tb.position.set(0.026, 0.018, 0.006);
-  const thumb = new THREE.Mesh(capsule(0.0118, 0.036), mat); thumb.position.y = 0.024;
-  tb.add(thumb);
-  const ib = new THREE.Group(); ib.position.set(0.019, 0.074, 0.002);
-  const index = new THREE.Mesh(capsule(0.0098, 0.05), mat); index.position.y = 0.032;
-  ib.add(index); ib.visible = false;
-  inner.add(palm, k1, tb, ib);
-  for (const m of [palm, f1, f2, thumb, index]) { m.castShadow = true; m.receiveShadow = true; }
+  const parts = [];
+  const add = (parent, m) => { m.castShadow = true; m.receiveShadow = true; parent.add(m); parts.push(m); return m; };
+  const palm = add(inner, new THREE.Mesh(new RoundedBoxGeometry(0.066, 0.08, 0.026, 4, 0.0115), mat));
+  palm.position.set(0, 0.037, 0);
+  const fingers = FINGERS.map((f) => {
+    const k1 = new THREE.Group(); k1.position.set(f.x, 0.072, 0.001);
+    const p1 = add(k1, new THREE.Mesh(capsule(f.r, f.l1 - f.r * 2, 10), mat)); p1.position.y = f.l1 / 2;
+    const k2 = new THREE.Group(); k2.position.y = f.l1;
+    const p2 = add(k2, new THREE.Mesh(capsule(f.r * 0.94, f.l2 - f.r * 2, 10), mat)); p2.position.y = f.l2 / 2 - f.r * 0.3;
+    k1.add(k2); inner.add(k1);
+    return { ...f, k1, k2 };
+  });
+  const tb = new THREE.Group(); tb.position.set(0.027, 0.016, 0.006);
+  const t1 = add(tb, new THREE.Mesh(capsule(0.0112, 0.024, 10), mat)); t1.position.y = 0.022;
+  inner.add(tb);
   g.userData.set = (shape = 'relax', tap = 0) => {
     const s = HAND_SHAPES[shape] || HAND_SHAPES.relax;
-    k1.rotation.x = s.c1; k2.rotation.x = s.c2;
+    fingers.forEach((f, i) => {
+      const straight = s.index && i === 0;
+      f.k1.rotation.set(straight ? 0.05 : s.c1 + f.curl * (0.5 + s.c1), 0, f.spread * (0.6 + (s.spread || 0) * 6));
+      f.k2.rotation.x = straight ? 0.04 : s.c2 + f.curl;
+    });
     // Thumb swings from alongside the palm (0) to opposing the fingers (≈1.2).
     tb.rotation.set(0.3 + 0.7 * s.thumb - tap * 0.4, 0, -0.18 - 0.3 * Math.min(1, s.thumb));
-    ib.visible = !!s.index;
-    if (s.index) { k1.position.x = -0.006; f1.scale.x = 0.7; f2.scale.x = 0.7; } else { k1.position.x = -0.003; f1.scale.x = 1; f2.scale.x = 1; }
   };
   g.userData.set('relax');
   return g;
@@ -193,7 +201,7 @@ function phoneScreen(lang = 'en') {
   return cached(`phone-ui:${lang}`, () => canvasTexture(240, 512, (c, w, h) => {
     c.fillStyle = '#111110'; c.fillRect(0, 0, w, h);
     c.fillStyle = COLORS.gold; drawSymbol(c, w / 2, 70, 44);
-    c.fillStyle = '#F6F1E7'; drawText(c, lang === 'ar' ? '١ غرام' : '1 g', w / 2, 150, { size: 54, weight: 700 });
+    c.fillStyle = '#F6F1E7'; drawText(c, lang === 'ar' ? '1 جرام' : '1 g', w / 2, 150, { size: 54, weight: 700 });
     c.fillStyle = 'rgba(246,241,231,0.55)'; drawText(c, '24K · 999.9', w / 2, 196, { size: 20, weight: 500 });
     c.strokeStyle = COLORS.gold; c.lineWidth = 5; c.lineJoin = 'round'; c.beginPath();
     for (let i = 0; i <= 20; i++) { const x = 24 + (i / 20) * (w - 48); const y = 330 - i * 4.2 - Math.sin(i * 0.9) * 14; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
@@ -338,7 +346,7 @@ export const POSES3D = {
     label: 'Thinking: hand at the chin, other arm across the waist, eyes up',
     head: { tilt: -0.14, roll: 0.14, turn: 0.12 },
     R: { t: [-0.035, 1.43, 0.16], palm: [0.5, 0.1, -0.85], shape: 'relax', pole: [-0.3, -1, 0.1] },
-    L: { t: [-0.02, 1.08, 0.17], palm: [0, 1, 0.2], shape: 'relax', pole: [1, -0.3, -0.6] },
+    L: { t: [-0.035, 1.14, 0.17], palm: [0, 1, 0.15], shape: 'relax', pole: [1, -0.3, -0.5], bend: 0.15 }, // cups the other elbow
     anim: (t, ph) => ({ headTurn: 0.05 * wave(t, 4.2, ph) }),
   },
   celebrate: {
@@ -539,6 +547,7 @@ export function figure(input = {}) {
     const sx = (s === 'R' ? -1 : 1) * SHOULDER.x * slim;
     const sh = new THREE.Bone(); sh.position.set(sx, SHOULDER.y - 1.25, -0.004);
     const el = new THREE.Bone(); el.position.set(0, -UPPER, 0);
+    sh.name = `shoulder${s}`; el.name = `elbow${s}`;
     sh.add(el); chest.add(sh);
     shoulders[s] = sh; elbows[s] = el;
   }

@@ -106,6 +106,14 @@ export const LIBRARY = [
     }),
   },
   {
+    id: 'post-eid-moment', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['gifting', 'occasion', 'people'], notes: NOTE_GIFTBOX,
+    name: { en: 'Eid moment', ar: 'لحظة العيد' },
+    build: (lang, t = P(lang)) => ({
+      slides: [V('people', { set: 'room', setTheme: 'cream', a_person: 'woman', a_pose: 'give-gift', b_person: 'young-woman', b_pose: 'receive-gift', b_prop: 'none', b_skin: 'light', seed: 2 }, { title: t('An Eid gift that *lasts*.', 'عيدية *تدوم*.') }, { theme: 'cream' })],
+      caption: { text: t('This Eid, give gold from one gram. She can keep it in the app or collect the bar.', 'هذا العيد، أهدِ ذهبًا بدءًا من جرام واحد. تحتفظ به في التطبيق أو تستلم السبيكة.'), hashtags: tags(lang, t('#Eid', '#العيد'), t('#GoldGift', '#هدية_ذهب')) },
+    }),
+  },
+  {
     id: 'post-keep', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['trust'], notes: NOTE_STORAGE,
     name: { en: 'Keep it or collect it', ar: 'احتفظ به أو استلمه' },
     build: (lang, t = P(lang)) => ({
@@ -221,6 +229,19 @@ export const LIBRARY = [
         LOGO_END(t, { transition: 'zoom' }),
       ],
       caption: { text: t('Real gold, from one gram, in three taps.', 'ذهب حقيقي، من جرام واحد، بثلاث نقرات.'), hashtags: tags(lang) },
+    }),
+  },
+  {
+    id: 'reel-two-ways', category: 'reel', format: 'story', kind: 'reel', tags: ['app', 'people', 'story'], notes: NOTE_SCREEN,
+    name: { en: 'Two ways to buy gold', ar: 'طريقتان لشراء الذهب' },
+    build: (lang, t = P(lang)) => ({
+      slides: [
+        V('people', { set: 'souq', mood: 'dim', a_person: 'man', a_pose: 'stressed', a_mood: 'worried', a_facing: 'right', a_at: 0.42 }, { title: t('Three shops. *Three prices.*', 'ثلاثة محلات. *ثلاثة أسعار.*') }, { duration: 4 }),
+        V('people', { set: 'room', setTheme: 'cream', a_person: 'woman', a_pose: 'phone-happy', a_mood: 'happy', a_at: 0.56, seed: 3 }, { title: t('Or one app, *one live price*.', 'أو تطبيق واحد، *وسعر مباشر واحد*.') }, { duration: 4, transition: 'slide', theme: 'cream' }),
+        V('phone-taps', {}, { title: t('Buy in *three taps*.', 'اشترِ *بثلاث نقرات*.') }, { duration: 5, transition: 'wipe' }),
+        LOGO_END(t, { transition: 'zoom' }),
+      ],
+      caption: { text: t('No queue, no guessing: see the live price and buy 24K gold from one gram.', 'لا طوابير ولا تخمين: شاهد السعر المباشر واشترِ ذهب عيار 24 بدءًا من جرام واحد.'), hashtags: tags(lang, t('#GoldPrice', '#سعر_الذهب')) },
     }),
   },
   {
