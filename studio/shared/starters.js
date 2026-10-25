@@ -1,29 +1,28 @@
 // Starter packs: ready-made, on-brand slide sets. Each returns { name, format, kind, lang, slides: [{ template, theme, content }] }.
+// Brand starters are visual first: one 3D scene per slide with one short line (knowledge/design-dna.md).
+const T = (lang) => (en, ar) => (lang === 'ar' ? ar : en);
+const V = (scene, params, content = {}, more = {}) => ({ template: 'scene', theme: more.theme || 'onyx', pattern: 'none', duration: more.duration || 5, transition: more.transition || 'fade', content: { scene, params, ...content } });
+// The price snapshot is dated the day the design is made; update the figure and time before posting.
+const stamp = (t) => {
+  const d = new Date();
+  return `${t('Indicative · ', 'استرشادي · ')}${t(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), d.toLocaleDateString('ar-OM-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }))} · 14:05 ${t('GST', 'بتوقيت عُمان')}`;
+};
 export const STARTERS = {
   launch: {
     name: 'App launch carousel',
-    description: '7-slide launch carousel: cover, problem, gifting, live screen, steps, price, call to action.',
+    description: 'Six visual slides, one idea each: the minted bar, the old way (souq), gifting, three taps, the price, the logo.',
     kind: 'carousel', format: 'feed-portrait',
-    build: (lang) => ({
-      ar: [
-        { template: 'cover', theme: 'onyx', content: { kicker: 'جديد من جولدكم', title: 'ذهب حقيقي، *من جوالك*', subtitle: 'ابدأ من جرام واحد. تابع ذهبك، أهدِه، بِعه أو استلمه.', visual: 'device', device: 'phone' } },
-        { template: 'statement', theme: 'charcoal', content: { kicker: 'التحدي', title: 'شراء الذهب لا يجب أن يكون *معقدًا*.', body: 'الأسعار تتغير، والتحقق من النقاء صعب، والتخزين غير مريح.' } },
-        { template: 'feature', theme: 'onyx', content: { icon: 'gift', kicker: 'الإهداء', title: 'أهدِ ذهبًا حقيقيًا في ثوانٍ', body: 'اختر الوزن، أضف رسالتك، وتصل هديتك فورًا.', device: 'phone' } },
-        { template: 'screenshot', theme: 'bullion', content: { title: 'تصفح أسعار الذهب الفورية', caption: 'أسعار استرشادية تتحدث على مدار اليوم.', device: 'phone', label: 'yes' } },
-        { template: 'steps', theme: 'cream', content: { kicker: 'كيف تعمل', title: 'امتلك الذهب في ثلاث خطوات', items: ['اختر سبيكة معتمدة من 1 جرام', 'ثبّت السعر عند الشراء', 'احتفظ بها، أهدِها، بِعها أو استلمها'] } },
-        { template: 'price', theme: 'onyx', content: { title: 'اعرف سعرك قبل أن تشتري', label: 'ذهب عيار 24 · للجرام', price: '31.204 ر.ع.', change: '+0.42%', time: 'استرشادي · 24 أكتوبر 2026 · 14:05' } },
-        { template: 'cta', theme: 'onyx', content: { title: 'ابدأ قصتك مع الذهب اليوم', subtitle: 'حمّل جولدكم من App Store و Google Play.', button: 'حمّل التطبيق', link: 'goldcom.om', disclaimer: 'yes' } },
-      ],
-      en: [
-        { template: 'cover', theme: 'onyx', content: { kicker: 'New on Goldcom', title: 'Real gold, *from your phone*', subtitle: 'Start from one gram. Track, gift, sell or collect.', visual: 'device', device: 'phone' } },
-        { template: 'statement', theme: 'charcoal', content: { kicker: 'The problem', title: 'Buying gold should not feel *complicated*.', body: 'Prices change, purity is hard to judge and storage is inconvenient.' } },
-        { template: 'feature', theme: 'onyx', content: { icon: 'gift', kicker: 'Gifting', title: 'Send real gold in seconds', body: 'Choose a weight, add a message and your gift arrives instantly.', device: 'phone' } },
-        { template: 'screenshot', theme: 'bullion', content: { title: 'Browse live gold prices', caption: 'Indicative prices update throughout the day.', device: 'phone', label: 'yes' } },
-        { template: 'steps', theme: 'cream', content: { kicker: 'How it works', title: 'Own gold in three steps', items: ['Choose a certified bar from 1 g', 'Lock the price at checkout', 'Hold, gift, sell or collect'] } },
-        { template: 'price', theme: 'onyx', content: { title: 'Know your price before you buy', label: 'Gold 24K · per gram', price: 'OMR 31.204', change: '+0.42%', time: 'Indicative · 24 Oct 2026 · 14:05' } },
-        { template: 'cta', theme: 'onyx', content: { title: 'Start your gold story today', subtitle: 'Download Goldcom on the App Store and Google Play.', button: 'Download the app', link: 'goldcom.om', disclaimer: 'yes' } },
-      ],
-    })[lang],
+    build: (lang) => {
+      const t = T(lang);
+      return [
+        V('bar-hero', { weight: '10 g', motion: 'reveal' }, { title: t('Real gold, *from your phone*.', 'ذهب حقيقي، *من جوالك*.') }),
+        V('people', { set: 'souq', mood: 'dim', a_person: 'man', a_pose: 'stressed', a_mood: 'worried', a_facing: 'right', a_at: 0.42 }, { title: t('No more shop to shop.', 'لا تنقّل بين المحلات بعد اليوم.') }),
+        V('gift-box', { weight: '5 g' }, { title: t('Gift it *in seconds*.', 'أهدِه *في ثوانٍ*.') }),
+        V('phone-taps', {}, { title: t('Buy in *three taps*.', 'اشترِ *بثلاث نقرات*.') }),
+        V('gold-number', { text: '31.204' }, { title: t('See the price *before you buy*.', 'اعرف السعر *قبل أن تشتري*.'), caption: `${t('OMR per gram', 'ر.ع. للجرام')} · ${stamp(t)}`, textZone: 'bottom', disclaimer: 'yes' }),
+        V('logo-mark', { mode: 'assemble' }, { title: t('Download Goldcom', 'حمّل جولدكم'), caption: 'App Store · Google Play · goldcom.om', textZone: 'bottom' }),
+      ];
+    },
   },
   project: {
     name: 'Project showcase',
@@ -52,29 +51,25 @@ export const STARTERS = {
   },
   price: {
     name: 'Gold price post',
-    description: 'Single post with a price card, chart and the mandatory disclaimer.',
+    description: 'The price as a minted 3D number, with the time of the snapshot and the mandatory disclaimer.',
     kind: 'post', format: 'feed-portrait',
-    build: (lang) => ({
-      ar: [{ template: 'price', theme: 'onyx', content: { title: 'سعر الذهب اليوم', label: 'ذهب عيار 24 · للجرام', price: '31.204 ر.ع.', change: '+0.42%', time: 'استرشادي · 24 أكتوبر 2026 · 14:05' } }],
-      en: [{ template: 'price', theme: 'onyx', content: { title: 'Gold today', label: 'Gold 24K · per gram', price: 'OMR 31.204', change: '+0.42%', time: 'Indicative · 24 Oct 2026 · 14:05' } }],
-    })[lang],
+    build: (lang) => {
+      const t = T(lang);
+      return [V('gold-number', { text: '31.204' }, { title: t('24K gold, *per gram*', 'ذهب عيار 24، *للجرام*'), caption: `${t('OMR', 'ر.ع.')} · ${stamp(t)}`, textZone: 'bottom', disclaimer: 'yes' }, { duration: 5 })];
+    },
   },
   gift: {
     name: 'Gifting reel',
-    description: 'Short animated story video for gifting occasions (Eid, weddings, newborns).',
+    description: 'Eid gifting in three shots: the moment between two people, the gift box opening, the logo.',
     kind: 'reel', format: 'story',
-    build: (lang) => ({
-      ar: [
-        { template: 'statement', theme: 'bullion', duration: 3.5, content: { kicker: 'هدية العيد', title: 'هدية *تدوم*.', body: 'أهدِ من تحب ذهبًا حقيقيًا.' } },
-        { template: 'cover', theme: 'onyx', duration: 4, transition: 'wipe', content: { kicker: 'الإهداء', title: 'أرسل الذهب *في ثوانٍ*', subtitle: 'اختر الوزن وأضف رسالتك.', visual: 'goldbar', barLabel: '5 g' } },
-        { template: 'cta', theme: 'onyx', duration: 4, transition: 'fade', content: { title: 'أهدِ من تحب ذهبًا حقيقيًا', button: 'أهدِ ذهبًا', link: 'goldcom.om', disclaimer: 'no' } },
-      ],
-      en: [
-        { template: 'statement', theme: 'bullion', duration: 3.5, content: { kicker: 'Eid gifting', title: 'A gift that *lasts*.', body: 'Gift real gold to the people you love.' } },
-        { template: 'cover', theme: 'onyx', duration: 4, transition: 'wipe', content: { kicker: 'Gifting', title: 'Send gold *in seconds*', subtitle: 'Choose a weight and add your message.', visual: 'goldbar', barLabel: '5 g' } },
-        { template: 'cta', theme: 'onyx', duration: 4, transition: 'fade', content: { title: 'Gift real gold to the people you love', button: 'Gift gold', link: 'goldcom.om', disclaimer: 'no' } },
-      ],
-    })[lang],
+    build: (lang) => {
+      const t = T(lang);
+      return [
+        V('people', { set: 'room', setTheme: 'cream', a_person: 'woman', a_pose: 'give-gift', b_person: 'young-woman', b_pose: 'receive-gift', b_prop: 'none', b_skin: 'light', seed: 2 }, { title: t('A gift that *lasts*.', 'هدية *تدوم*.') }, { theme: 'cream', duration: 4 }),
+        V('gift-box', { weight: '5 g' }, { title: t('Send gold *in seconds*.', 'أرسل الذهب *في ثوانٍ*.') }, { duration: 5, transition: 'wipe' }),
+        V('logo-mark', { mode: 'assemble' }, { title: t('Gift gold with Goldcom', 'أهدِ الذهب مع جولدكم'), caption: 'App Store · Google Play · goldcom.om', textZone: 'bottom' }, { duration: 4 }),
+      ];
+    },
   },
   appstore: {
     name: 'App Store screenshots',

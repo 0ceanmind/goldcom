@@ -15,8 +15,15 @@ For a complete Reel, carousel, Story or post about Goldcom (e.g. "step-by-step r
 - `export_video` renders any design to MP4 on the server (frame-exact, with sound effects).
 Use the manual workflow below for designs about other projects, or when the user wants hands-on control.
 
-## 1. Load the rules
-Call `studio_guide` first, every session. It returns the brand rules (voice, claims register, colours, Arabic rules), the templates with their fields, and the formats and themes. Follow it over anything here if they differ.
+## 1. Load the rules and what the studio has learned
+Call `studio_guide` first, every session. It returns the brand rules (voice, claims register, colours, Arabic rules), **the lessons learned from the owner's feedback** (`knowledge/lessons.md`, they override defaults), the visual-first standard, the 3D scenes, the generators, open renderer errors and the templates with their fields. Follow it over anything here if they differ.
+
+## 1b. Visual first
+The owner's standard: social posts **show** the idea with one strong visual and at most one short line. Text-heavy slides, flat yellow gold, scattered sparkles and flat cartoon people read as "AI slop" to them.
+- Build slides with the `scene` template: one 3D scene per slide (`list_scenes`), a title of a few words, an optional caption. Gold is real metal under studio light; heavy things land slowly.
+- People: use the `people` scene (3D figures in Omani dress, faceless by design, standing in a lit 3D set: room, souq, office, night room, corniche, studio). Choose poses that read from across the room: give-gift, receive-gift, phone-happy, thinking, celebrate, wave, hold-goldbar. The production scenes `moment`, `cast` and `split` use the same 3D people.
+- **When the visual you need does not exist, build it.** Read a similar module (`get_scene_source`), write a new one with `create_scene_module` (no imports; `api.THREE` and `api.kit`, see `studio/modules/README.md`, including `kit.figure` and `kit.diorama` for people and sets), look at it with `test_scene` at several times, fix it, then use it. Never fall back to a text slide.
+- Photographic or illustrated imagery that 3D cannot make: `generate_image` picks the best generator that is set up (OpenAI, Gemini, ChatGPT via Codex, Claude, or a scene render) and can place the result into a slide. `generate_3d_model` turns text into a GLB for the `model-showcase` scene.
 
 ## 2. Understand the subject
 When the design is about the current project, study it before writing anything:
@@ -40,7 +47,13 @@ Goldcom posts mostly on **Instagram**. Pick the kind first:
 - `post` (4:5 feed image) · `carousel` (swipeable 4:5 slides) · `motion` (one animated 4:5 slide, exported as MP4) · `reel` (one 9:16 video) · `story` (separate 9:16 frames).
 - Reels and Stories use format `story`. Templates keep text out of the Instagram interface (Reels: top 220 px, bottom 420 px; Stories: top 250 px, bottom 260 px). Feed posts are cropped to 3:4 on the profile grid, so keep text off the side edges.
 
-Use one idea per slide and titles of 8 words or fewer. Default recipes:
+Use one idea per slide and titles of 8 words or fewer (a visual slide: 6 or fewer). Default recipes, visual first:
+
+**Brand post:** one `scene` slide: `bar-hero`, `gold-number`, `gift-box`, `gram-steps`, `coin-stack`, `vault-tile`, `phone-taps` or `people`, with one line.
+
+**Brand Reel (12–20 s):** 3–4 `scene` slides of 4–5 s, each one idea (e.g. people in the souq → people at home with the phone → `phone-taps` → `logo-mark`), varied transitions.
+
+Classic recipes (for projects that are not about gold, or when the user asks for them):
 
 **Project carousel (7 slides, feed-portrait):** `cover` (promise + screenshot) → `statement` (problem) → `feature` × 2 (with screenshots) → `list` or `code` (what is inside / how it works) → `stat` (only with real proof) or `comparison` → `cta`.
 
@@ -68,11 +81,16 @@ The live templates are what make Goldcom content feel current rather than static
 - For projects that are not about gold: keep the Goldcom identity (logo, colours, type, voice) but do not add gold claims.
 
 ## 7. Build, check, refine
-1. `create_design` with name, format, kind, lang, slides, caption and notes. It opens the studio in the browser.
+1. `create_design` with name, format, kind, lang, slides, caption and notes. It opens the studio in the browser. (`create_from_library` for a library design.)
 2. Read the returned `brand_check` and fix every `[error]` and `[warn]` with `edit_slide`.
 3. `render_preview` and look at every slide: text fit, hierarchy, screenshot crop, theme rhythm, Arabic direction. Refine with `edit_slide` (content is merged; `template` and `theme` can change).
 4. If the user has hand-edited a slide, `edit_slide` only updates text and media. Do not pass `force_layout` without asking.
 5. Optional: `export_pngs({ out_dir: "marketing/carousel" })` saves full-size PNGs into the project.
+
+## 7b. When the owner is not satisfied
+Ask what is wrong (or read it with `get_feedback`: the Rate dialog records reasons such as "too much text" or "looks generic"). Turn the answer into a short rule with `add_lesson` (category, rule, why), then fix the design. Lessons are read by every later task, so the same mistake does not come back. Research worth keeping (references, a technique that worked) goes into `save_knowledge`.
+
+If `get_errors` lists open renderer errors in a scene you use, fix the module (`get_scene_source` → `create_scene_module` → `test_scene`) and `resolve_error` with what you changed.
 
 ## 8. Audit (required)
 Every design is reviewed by the **goldcom-auditor** agent before you hand it over. Launch it with the Task/Agent tool (`subagent_type: "goldcom-auditor"`), giving it the design id(s) and the rendered PNG paths. It checks visual consistency, claims, Instagram readiness, and whether the copy sounds robotic or like AI filler in English and Arabic.

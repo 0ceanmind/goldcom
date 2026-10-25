@@ -3,6 +3,9 @@
 Rules the studio has learned from feedback and mistakes. Every task reads this file first (`studio_guide`), and it overrides the defaults. The director adds to it with `add_lesson`; you can edit it by hand. Newest first within each section.
 
 ## Visual
+- People are 3D figures standing in lit 3D sets (`people` scene, `kit.figure`), faceless by design: the pose carries the moment. Never draw flat vector people with emoji faces, blush cheeks or stiff A-poses. _(why: "the characters looks suck they don't look good at all", owner, 2026-10-24)_ <!-- feedback, 2026-10-25 -->
+- A person and their setting share one 3D stage (one light, real shadows on the floor). Do not stack a flat person on a separately drawn room. <!-- self-review, 2026-10-25 -->
+- Pick poses that read from across the room (give-gift, phone-happy, thinking, celebrate, wave). Check the silhouette: a resting hand that floats beside the body reads as a different gesture. <!-- self-review, 2026-10-25 -->
 - Show the idea with one strong visual and at most one short line. A slide that needs a kicker, a headline and a subline to make its point is the wrong visual. _(why: "the designs are focusing more text, and that's not actually good for social media", owner, 2026-10-24)_ <!-- feedback, 2026-10-24 -->
 - Gold is reflective metal under studio light: use the 3D scenes (polished field, frosted stamp, strip highlights, contact shadow), never a flat yellow shape with a highlight stripe. _(why: the old flat gold bars and phones looked cheap, "not a professional designs level")_ <!-- feedback, 2026-10-24 -->
 - No scattered sparkles, stars, glints or confetti particles. If a frame needs life, give it motion (camera drift, a light sweep, a landing), not decoration. _(why: the owner called the old look "AI slop")_ <!-- feedback, 2026-10-24 -->
@@ -14,6 +17,9 @@ Rules the studio has learned from feedback and mistakes. Every task reads this f
 - The camera never fully stops: a slow push-in or drift keeps a still frame alive. <!-- design-dna, 2026-10-24 -->
 
 ## Scenes
+- Keep the people camera level (lookAt at camera height) so walls and doors stay vertical, and place feet with floorAt instead of tilting the camera. <!-- self-review, 2026-10-25 -->
+- Skinned meshes (robes, sleeves, hijab) need `frustumCulled = false`, and every scene must stay inside the runtime memory budget: build meshes once in create(), never per frame. <!-- self-repair, 2026-10-25 -->
+- Fog distances are measured from the camera: set them from the camera distance (dist + n), or a light set washes out completely. <!-- self-review, 2026-10-25 -->
 - Never scale a mesh to (near) zero to hide it: degenerate normals produce NaN pixels that bloom smears across the frame. Hide it with `visible = false` and keep scale ≥ 0.03. <!-- self-repair, 2026-10-24 -->
 - Flat gold faces that point straight at the camera mirror the dark room and read brown. Tilt them back 0.1–0.2 rad, or angle them, so they catch the top-back key and the front softbox. <!-- self-repair, 2026-10-24 -->
 - Avoid `anisotropy` on rounded-box geometry (bad tangents → NaN pixels). Use roughness for a brushed look. <!-- self-repair, 2026-10-24 -->

@@ -1,6 +1,6 @@
 # Goldcom Studio
 
-An **AI production studio** for Goldcom's Instagram. You describe what you want in plain words, in Arabic or English, and Claude produces it end to end: a finished Reel (MP4 with sound), a carousel, a Story or a post. It uses **real footage of the Goldcom app**, motion-designed scenes, illustrated Omani characters and the Goldcom brand system, and an AI art director reviews every piece before you see it. Everything it makes stays fully editable in the studio's editor.
+An **AI production studio** for Goldcom's Instagram. You describe what you want in plain words, in Arabic or English, and Claude produces it end to end: a finished Reel (MP4 with sound), a carousel, a Story or a post. It uses **real footage of the Goldcom app**, 3D scenes (minted gold, coins, the app on a phone, Omani people in lit sets), generated images and the Goldcom brand system, and an AI art director reviews every piece before you see it. Everything it makes stays fully editable in the studio's editor.
 
 > "Make a step-by-step guide on how to buy gold in the app" → a 25-second Reel: a hook, one scene per step with the real app recording playing inside a phone, the camera pushing in on every tap, a close-up on the locked price, a recap and the outro, rendered to MP4 with sound effects.
 >
@@ -52,19 +52,31 @@ Claude composes with motion-designed scenes, each built for 9:16 first and adapt
 | `app-step` | Step badge + instruction, real footage in a phone, camera eases to each tap, tap ripples; a "tap here" hint on stills |
 | `app-hero` | 3D-tilted phone (or two) slowly turning, like the App Store creatives |
 | `ui-zoom` | Spotlight on one part of a real screen with a callout, camera pushes in |
-| `split` | Without / with comparison: two people in contrasting settings |
-| `cast` | Meet the people: one or two illustrated characters with name tags |
-| `moment` | A story beat: a person in a setting, narration and a speech bubble |
+| `split` | Without / with comparison: each side a lit 3D set with a person in it |
+| `cast` | Meet the people: one or two 3D people standing together, with name tags |
+| `moment` | A story beat: a person standing in a 3D set, narration and a speech bubble |
 | `checklist` | Items tick in with gem checks |
 | `title-card`, `outro` | Chapter card; logo reveal + call to action + disclaimer |
 
 The classic templates (price board, notifications, stickers, chat, countdown, facts, myths…) remain available too.
 
-**Illustrations:** 15 poses (phone, stressed, celebrate, give a gift, hold a gold bar…), 7 moods, men in dishdasha with kumma or massar, women in abaya with hijab or sheila, 28 props and 6 settings (room, souq, office, evening room, studio, Muscat outdoors), each in light and dark versions.
+**People:** soft-matte 3D figures, faceless by design so the pose carries the moment: men in dishdasha (furakha tassel) with kumma or massar, women in abaya (gold trim) with hijab or sheila, casual outfits, four skin tones and three ages. 15 poses (phone, stressed, celebrate, give and receive a gift, hold a gold bar, thinking, wave, walk, sit…), moods as body language, props held in the hand (phone, gold bar, gift box, receipts, bag, coffee). They stand in 3D sets with real window light and shadows: living room with a Muscat window, souq arcade with a glowing gold shop, office, night room, corniche at golden hour, or a seamless studio sweep, in light and dark versions. The flat illustrations remain available per layer (**Style → Flat illustration**).
 
 **Motion engine:** keyframes on any layer, camera moves, premium phone mockups with true 3D perspective, video footage inside phones with speed ramps and holds, push / whip-pan / zoom-through / blur / gold-edged facet transitions.
 
 **Sound:** every export gets synthesized sound design (soft whooshes on transitions, taps, notification and success chimes, logo sting) and optionally one of three music beds (calm, modern, warm Eid), mixed to −14 LUFS for Instagram. You can also leave the music off and add Instagram audio when posting.
+
+## Visual first: 3D, generated images and a studio that improves itself
+
+**3D scenes.** Every library design is one 3D scene per slide with at most one short line: a minted bar turning in the light, coins stacking, a price struck in gold, a gift box opening, the app in three taps, a vault tile, the logo assembling, a crescent, people in a set. Scenes are small modules in `modules/scenes/` that load at runtime: a new file appears in the editor's **3D** picker without a rebuild and renders the same in the editor, previews, PNGs and frame-exact MP4s. The lighting, materials and motion follow `knowledge/design-dna.md` (studied from Tendril, ManvsMachine, BUCK, DIA, Giant Ant, Ordinary Folk, Stash and Motionographer).
+
+**Generated images and 3D models.** The wand button (and `generate_image` for Claude) picks the best available generator for the request (photo, illustration, product, texture, typography, icon) from what is set up: OpenAI and Gemini by API key, ChatGPT through the Codex CLI on a subscription, Claude (Messages API or Claude Code login) for vector art, or a 3D scene render. It learns which provider wins from your ratings, falls back automatically when one fails, rediscovers model names when a model is retired, and adds the brand's art direction to every prompt. Meshy and Tripo turn text into GLB models that the `model-showcase` scene lights and turns. The result can be placed straight into the open design. Keys live in **Generators** (key icon) and never leave this computer.
+
+**Ask Claude (the director).** Give Claude a brief from the editor or the header and it works on its own with the studio's tools: plans, builds a missing capability when a brief needs one (a new 3D scene module, written, tested and used), renders, checks itself against the brand and fixes what it finds. You can watch every step live. It uses your Claude Code login (your plan) unless you choose the API key.
+
+**It fixes itself.** When a scene fails to load or render, the slide still renders without it, the error is reported, and (with **self-repair** on) Claude opens a repair task with the error and the module source, fixes it, tests it, resolves the error and writes down the lesson.
+
+**It learns from you.** **Rate** a design: a thumbs-down asks why (too much text, looks generic, wrong colours…), turns the answer into a rule in `knowledge/lessons.md`, and optionally starts a revision. Every task reads the lessons first. The brain icon shows what the studio has learned, open errors and which generators win.
 
 ## Install once, update with one click
 
@@ -130,6 +142,10 @@ The repository root also ships a `.mcp.json`, so Claude Code sessions opened **i
 | `produce` / `production_status` / `revise_production` | Hand a request to the studio's AI production pipeline, follow it, ask for changes |
 | `list_footage` / `import_footage` | Real app recordings and screenshots: list them (steps, screens, taps) or add one from a path |
 | `export_video` / `job_status` | Studio-quality MP4 (frame-exact, with sound) rendered on the server |
+| `list_scenes` / `get_scene_source` / `test_scene` / `create_scene_module` | The 3D scene modules: browse, read, render frames to look at, and write new ones (restored automatically if the new file fails to load) |
+| `generate_image` / `generate_3d_model` | Best-available image generator (OpenAI, Gemini, Codex subscription, Claude, scene render) and text-to-3D (Meshy, Tripo), optionally placed into a design |
+| `get_feedback` / `add_lesson` / `read_knowledge` / `save_knowledge` | The owner's ratings and reasons, the learned rules, and research notes the studio keeps |
+| `get_errors` / `resolve_error` | The self-repair inbox: renderer errors with their context |
 
 Prompts `project_carousel` and `project_video` are also exposed as slash commands. If the studio isn't running, the MCP server builds and starts it automatically when it needs to render.
 
@@ -161,7 +177,7 @@ Hand-edited template slides are marked "edited". Content changes then update tex
 ```bash
 npm run dev     # API on :5177 + Vite with hot reload on :5173
 npm test        # end-to-end test that drives the MCP server like Claude Code does
-npm run test:ui # 29 editor scenarios in a headless browser, best and worst cases (needs the studio running)
+npm run test:ui # 32 editor scenarios in a headless browser, best and worst cases (needs the studio running; ONLY=<regex> runs some, MEMLOG=1 prints 3D memory use)
 node scripts/character-sheet.mjs   # contact sheets of every pose, mood, prop and setting
 node scripts/audio-demo.mjs        # renders the sound library and a demo soundtrack
 ```
@@ -170,10 +186,14 @@ node scripts/audio-demo.mjs        # renders the sound library and a demo soundt
 studio/
 ├── shared/        brand tokens, schema, templates, production scenes (scenes.js), layout helpers, library, brand lint
 ├── src/           React app (Create, Production, Footage, editor) · render/: canvas renderer, motion (keyframes, camera),
-│                  device (3D phones), media (footage frames), extras + characters/ (illustrations)
+│                  device (3D phones), media (footage frames), extras + characters/ (flat illustrations),
+│                  scene3d/ (three.js runtime, kit, 3D type, people: figure.js, sets.js)
 ├── server/        HTTP API + SSE · ai/ (Claude engine, pipeline, knowledge, footage indexing) · capture/ (Android driver,
 │                  Claude-operated capture) · footage/ (library, scene detection, tap alignment) · render/ (MP4 export,
-│                  review frames, soundtrack) · audio/ (synthesized SFX, music beds, mixer) · updater.mjs · routes/
+│                  review frames, soundtrack) · audio/ (synthesized SFX, music beds, mixer) · updater.mjs · routes/ ·
+│                  generators.mjs (image/3D router) · agent.mjs (director, self-repair) · memory.mjs · modules.mjs
+├── modules/       3D scene modules loaded at runtime (modules/README.md: the contract and the kit)
+├── knowledge/     lessons learned, design DNA, art direction, scene backlog (read by every task)
 ├── mcp/           MCP server for Claude Code
 ├── skill/         /goldcom-studio Claude Code skill
 ├── samples/       documents seeded on first run
@@ -187,7 +207,7 @@ Environment variables: `PORT` (default 5177), `HOST` (default 127.0.0.1), `GOLDC
 ## Notes
 
 - The studio binds to `127.0.0.1` and is meant for local use. URL capture fetches any address you give it, so don't expose the server publicly.
-- Studio exports render in a headless Chromium (Playwright) and encode with a bundled ffmpeg. Without the headless browser the editor falls back to exporting in your browser (WebCodecs).
+- Studio exports render in a headless Chromium (Playwright) and encode with a bundled ffmpeg. The headless browser draws WebGL on the CPU, so 3D slides take about a second per 1080×1920 frame (a 15-second Reel with 3D scenes renders in roughly 8 minutes). Without the headless browser the editor falls back to exporting in your browser (WebCodecs).
 - Claude usage: a full production is roughly 7–10 Claude calls (about $1–3 with an API key at Opus pricing; with a Claude Code login it counts toward your plan's usage).
 - Footage recorded from a real account can show personal data and real prices. Claude flags both; check the **Before posting** notes.
 - Arabic copy in the library and samples should be reviewed by a native Omani copywriter before public campaigns.

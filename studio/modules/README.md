@@ -59,6 +59,8 @@ Rules that keep scenes renderable anywhere:
 | Type | `text3d(text, { size, depth, bevel, align })` extruded brand type (Inter, IBM Plex Sans Arabic) · `glyphs3d(text, opts)` per-glyph meshes for staggered reveals |
 | Surfaces | `barStamp({ weight, serial, lang, aspect })` → `{ normalMap, roughnessMap }` minted face · `coinStamp()` · `reedingMap(count)` · `reliefMaps(draw, opts)` any embossed design from a 2D drawing · `canvasTexture(w, h, draw)` live 2D texture (screens, labels) · `radialTexture()` · `drawText(c, text, x, y, opts)` · `drawSymbol(c, x, y, h)` |
 | Particles | `softPoints(count, { size, color, opacity })` soft discs with per-point `alpha` and `scale` attributes · `samplePoints(draw, count, { height })` positions covering a 2D drawing (text, logo) |
+| People | `figure(spec)` → `{ group, update(t), box(), hands, prop }`: a posable 3D person (spec: `gender, outfit (dishdasha, abaya, casual), headwear (kumma, massar, hijab, sheila, none), age, skin, pose, mood, prop, facing, seed, face ('none' or 'minimal')`); stands on y = 0 facing +z, call `update(t)` every frame · `figurePoses()` pose names and labels · `prop3d(name)` phone, goldbar, giftbox, receipts, bag, coffee, coin |
+| Sets | `diorama(name, { theme, mood })` → `{ group, lights, background, fog }` for room, night-room, souq, office, outdoor-muscat (add the lights to your scene) · `cyclorama({ color })` seamless studio sweep that receives shadows |
 | Assets | `api.asset(url)` returns a loaded texture or GLTF (declare it in `assets()` so it preloads) · `api.env(variant)` an environment map |
 
 ## Testing
