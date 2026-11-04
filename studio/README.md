@@ -1,6 +1,6 @@
 # Goldcom Studio
 
-An **AI production studio** for Goldcom's Instagram. You describe what you want in plain words, in Arabic or English, and Claude produces it end to end: a finished Reel (MP4 with sound), a carousel, a Story or a post. It uses **real footage of the Goldcom app**, 3D scenes (minted gold, coins, the app on a phone, Omani people in lit sets), generated images and the Goldcom brand system, and an AI art director reviews every piece before you see it. Everything it makes stays fully editable in the studio's editor.
+An **AI production studio** for Goldcom's Instagram. You describe what you want in plain words, in Arabic or English, and Claude produces it end to end: a finished Reel (MP4 with sound), a carousel, a Story or a post. Claude directs the production; ChatGPT develops concepts and writes Omani Arabic and English. It uses illustration, photography, visual diagrams, editorial layouts, verified app footage and optional 3D, with a rendered-frame review before approval. Everything it makes stays fully editable in the studio's editor.
 
 > "Make a step-by-step guide on how to buy gold in the app" → a 25-second Reel: a hook, one scene per step with the real app recording playing inside a phone, the camera pushing in on every tap, a close-up on the locked price, a recap and the outro, rendered to MP4 with sound effects.
 >
@@ -11,12 +11,12 @@ An **AI production studio** for Goldcom's Instagram. You describe what you want 
 When you press **Create**, the request goes through the same steps a creative agency would take. You can watch each one live on the production page:
 
 1. **Brief:** format, language, audience, key message, the app flows that must be shown, and the assumptions Claude made.
-2. **Ideas:** three different creative directions (for example a calm practical demo, a human story, a surprising contrast), each with its exact opening line and scene beats.
+2. **Ideas:** ChatGPT develops three different creative directions against the saved creative history (for example a calm practical demo, a human story, a surprising contrast), each with its exact opening line and scene beats.
 3. **Direction:** a creative director scores the three on hook, clarity, brand fit, feasibility and originality, picks one and improves it. Tick **Let me pick the concept** to choose yourself.
-4. **Storyboard:** every scene with its final on-screen words, timing, theme, transition and the footage it needs.
+4. **Storyboard:** Claude plans each scene, visual construction, timing, theme, transition and required footage. ChatGPT then writes and polishes both the Omani Arabic and English versions. Both versions are retained on the production; the selected language is built.
 5. **Footage:** each app step is matched to a real recording from the **Footage** library (start and end trimmed to the exact tap). Missing flows are filmed on a connected Android phone (see below), or flagged with a precise "record this" note.
 6. **Build:** motion-designed scenes (below) assemble the piece. Spotlight close-ups find the exact on-screen element with vision instead of guessing.
-7. **Review:** an art director looks at rendered frames and checks legibility, overlaps, safe zones, footage relevance, pacing, copy and claims, then applies precise fixes (up to two rounds).
+7. **Review:** Claude looks at rendered frames and checks legibility, overlaps, safe zones, footage relevance, pacing, copy and claims, then applies precise fixes (up to two rounds). Copy changes return to ChatGPT before rebuilding and reviewing. Text-only slides cannot pass the export gate, even with an approving model verdict.
 8. **Video:** Reels and Stories are rendered to MP4 automatically. Carousels download as full-size PNGs.
 
 Afterwards you can type changes ("make the hook punchier", "15 seconds", "use a woman in step 2") and Claude revises the same production, or pick one of the other concepts. Productions use a variable number of calls for concepts, footage, edits and a final review. The historical audit measured several minutes before export; rendering time depends on the scenes and machine. The Settings budget limits usage estimates; no fixed cost or turnaround is promised.
@@ -29,6 +29,14 @@ Open **Settings** (gear icon) and choose one:
 - **Anthropic API key:** paste a key from the Anthropic Console (billed to that account).
 
 The default model is Claude Opus 5.5 at "Thorough". **Test connection** checks it.
+
+### Connecting ChatGPT
+
+Settings includes **ChatGPT for ideas and copy** in both guided and advanced modes. The default uses the Codex CLI signed in to your ChatGPT account. Install Codex and run `codex login` once, then use **Test ChatGPT**. Claude remains connected separately and directs all operations.
+
+The writer runs ephemerally in a temporary directory with user tool configuration disabled, a read-only sandbox, shell tools disabled and schema-constrained output. It receives the brief and relevant references, not repository access. Authentication and generation failures stop the operation; there is no silent fallback to Claude copywriting.
+
+An explicitly selected **OpenAI text API** connection uses the configured model ID, OpenAI key and current input/output token rates. API writing is included in the production usage estimate. ChatGPT subscription calls are recorded separately because they do not have a known per-call USD cost; the USD estimate is not a subscription quota limit. Image generator settings remain separate from this text workflow.
 
 ### Real app footage
 
@@ -66,13 +74,23 @@ The classic templates (price board, notifications, stickers, chat, countdown, fa
 
 **Sound:** every export gets synthesized sound design (soft whooshes on transitions, taps, notification and success chimes, logo sting) and optionally one of three music beds (calm, modern, warm Eid), mixed to −14 LUFS for Instagram. You can also leave the music off and add Instagram audio when posting.
 
-## Visual first: 3D, generated images and a studio that improves itself
+## Creative library and originality
 
-**3D scenes.** Every library design is one 3D scene per slide with at most one short line: a minted bar turning in the light, coins stacking, a price struck in gold, a gift box opening, the app in three taps, a vault tile, the logo assembling, a crescent, people in a set. Scenes are small modules in `modules/scenes/` that load at runtime: a new file appears in the editor's **3D** picker without a rebuild and renders the same in the editor, previews, PNGs and frame-exact MP4s. The lighting, materials and motion follow `knowledge/design-dna.md` (studied from Tendril, ManvsMachine, BUCK, DIA, Giant Ant, Ordinary Folk, Stash and Motionographer).
+The library has **64 designs**: 58 new designs across 14 visual directions and six selected optional 3D examples. Filter by format and visual style. The directions include editorial photography, painted Omani stories, paper sculpture, editorial collage, visual explainers, illustrated conversations, tickets, mosaics, orbital systems, technical drawings, calendar stories, woven ribbons, visual contrasts and constructed typography. Headlines and diagram labels remain editable, including RTL Arabic.
+
+The two image-led examples use generated editorial assets stored under `public/artwork`; they depict fictional scenes, not customers or product evidence. The remaining new illustrations render deterministically through native Canvas. 3D modules remain available in the editor and renderer.
+
+**Known-work checks.** The director supplies saved designs, library hooks and reserved creative signatures to ChatGPT. Three candidate concepts must differ in visual family. Deterministic checks reject matching or close hooks and repeated combinations of metaphor, framing, motion and narrative; rejected candidates are regenerated up to three times. A file lock prevents concurrent jobs reserving identical concepts. History persists under the data directory. The final production is also checked for a repeated opening or narrative.
+
+These checks cover known local work and provide heuristic similarity detection. They cannot prove worldwide novelty or compare with projects that have never been supplied to the studio. The system must not claim that it can.
+
+**Every slide is visual.** Text with a logo, border, gradient or decorative shape does not qualify. A substantive illustration, diagram, image, verified footage or intentional 3D scene is required, including the closing slide. This gate applies to editor and MCP exports too; old text-only designs may need artwork added before exporting. Layouts, copy, real footage and claims still pass the existing readiness checks.
+
+**Omani Arabic.** Social copy uses natural conversational Omani Arabic, rather than formal MSA or a literal translation of English. Legal wording and real interface labels remain exact. Claude reviews the actual rendered copy; ChatGPT owns final wording, including revisions.
 
 **Generated images and 3D models.** The wand button (and `generate_image` for Claude) picks the best available generator for the request (photo, illustration, product, texture, typography, icon) from what is set up: OpenAI and Gemini by API key, ChatGPT through the Codex CLI on a subscription, Claude (Messages API or Claude Code login) for vector art, or a 3D scene render. It learns which provider wins from your ratings, can fall back in Automatic mode, rediscovers retired model names for OpenAI and Gemini, and adds the brand's art direction to every prompt. Meshy and Tripo turn text into GLB models that the `model-showcase` scene lights and turns. The result can be placed straight into the open design. Keys are stored locally in **Generators** (key icon), masked in studio responses, and sent only to their selected service for authentication.
 
-**Ask Claude (the director).** Give Claude a brief from the editor or the header and it works on its own with the studio's tools: plans, builds a missing capability when a brief needs one (a new 3D scene proposal, reviewed before it is tested and used), renders, checks itself against the brand and fixes what it finds. You can watch every step live. It uses your Claude Code login (your plan) unless you choose the API key.
+**Ask Claude (the director).** Give Claude a brief from the editor or the header and it works on its own with the studio's tools: plans, builds a missing capability when a brief needs one (a new visual capability, with scene-source proposals reviewed before execution), renders, checks itself against the brand and fixes what it finds. You can watch every step live. It uses your Claude Code login (your plan) unless you choose the API key.
 
 **Repairs are reviewed.** Renderer errors are recorded without starting an agent. Start a repair explicitly; source changes are saved as proposals and run only after approval in Settings.
 
@@ -247,6 +265,7 @@ Environment variables: `PORT` (default 5177), `HOST` (default 127.0.0.1), `GOLDC
 npm run lint
 npm run typecheck
 npm run test:unit
+npm run test:creative
 npm run test:http
 npm test
 npm run test:ui

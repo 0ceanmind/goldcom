@@ -70,7 +70,7 @@ export const CREATIVE_TEMPLATES = Object.fromEntries(Object.entries(ART_DIRECTIO
     const labels = (Array.isArray(c.labels) ? c.labels : String(c.labels || '').split('\n')).filter(Boolean).slice(0, 3);
     const layers = [L('artwork', { name: 'concept-art', treatment: id, motif: c.motif || art.motif, seed: Number(c.seed) || 1, ...box, anim: anim('scale', 0, .8) }), title];
     if(id==='comic') {
-      for(let i=0;i<2;i++)layers.push(L('character',{name:`illustrated-person-${i}`,spec:{gender:'woman',outfit:'abaya',headwear:'hijab',skin:i?'tan':'medium',pose:i?'thinking':'give-gift',mood:'calm',prop:i?'none':'giftbox',facing:i?'left':'right'},x:box.x+box.w*(i?.60:.08),y:box.y+box.h*.38,w:box.w*.3,h:box.h*.57,anim:anim('rise',.25+i*.2)}));
+      for(let i=0;i<2;i++)layers.push(L('character',{name:`illustrated-person-${i}`,style:'flat',spec:{gender:'woman',outfit:'abaya',headwear:'hijab',skin:i?'tan':'medium',pose:i?'thinking':'give-gift',mood:'calm',prop:i?'none':'giftbox',facing:i?'left':'right'},x:box.x+box.w*(i?.60:.08),y:box.y+box.h*.38,w:box.w*.3,h:box.h*.57,anim:anim('rise',.25+i*.2)}));
     }
     if (c.detail) {
       const d = textLayer(h, { name: 'detail', text: c.detail, role: 'small', x: h.m, y: title.y + title.h + 8 * s, w: textW, lang: ctx.lang, color: 'fg2', delay: .35 });

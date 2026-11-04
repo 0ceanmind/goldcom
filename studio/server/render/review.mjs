@@ -44,10 +44,9 @@ export async function contactSheet(frames, { cols = 4, out } = {}) {
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'gc-sheet-'));
   try {
     const ext = frames[0]?.buf?.subarray(0,4).equals(Buffer.from([137,80,78,71])) ? 'png' : 'jpg';
-    for (let i = 0; i < frames.length; i++) await fsp.writeFile(path.join(dir, `${String(i + 1).padStart(3, '0')}.jpg`), frames[i].buf);
+    for (let i = 0; i < frames.length; i++) await fsp.writeFile(path.join(dir, `${String(i + 1).padStart(3, '0')}.${ext}`), frames[i].buf);
     const rows = Math.ceil(frames.length / cols);
     const file = out || path.join(dir, 'sheet.jpg');
-    if(ext==='png')for(let i=0;i<frames.length;i++)await fsp.rename(path.join(dir,`${String(i+1).padStart(3,'0')}.jpg`),path.join(dir,`${String(i+1).padStart(3,'0')}.png`));
     await ffmpeg(['-framerate', '1', '-i', path.join(dir, `%03d.${ext}`), '-vf', `tile=${cols}x${rows}:padding=12:margin=12:color=0x0c0c0b`, '-frames:v', '1', '-q:v', '3', file]);
     return fsp.readFile(file);
   } finally {

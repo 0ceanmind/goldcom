@@ -43,9 +43,9 @@ try {
   await page.goto(base+'/#/designs');
   await page.getByRole('button',{name:/^Library |^المكتبة /}).click();
   await page.getByRole('button',{name:/Paper sculpture|قصاصات ورق/,exact:true}).click();
-  await page.waitForFunction(()=>document.querySelectorAll('.ggrid .gcard').length>0);
-  const cards=await page.locator('.ggrid .gcard').count();
   const expected=LIBRARY.filter(i=>i.medium==='paper-cut').length;
+  await page.waitForFunction(count=>document.querySelectorAll('.ggrid .gcard').length===count,expected);
+  const cards=await page.locator('.ggrid .gcard').count();
   if(cards!==expected)throw new Error(`Style filter: expected ${expected}, got ${cards}`);
   await page.screenshot({path:path.join(out,'library-filter.png'),fullPage:true});
   if(errors.length)throw new Error(errors.join('\n'));
