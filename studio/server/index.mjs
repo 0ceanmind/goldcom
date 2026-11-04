@@ -1,11 +1,14 @@
 // Goldcom Studio server: REST API, live updates (SSE), assets, footage, AI productions, exports, updates,
 // 3D scene modules, image/3D generation, the director (autonomous Claude), feedback, memory and self-repair.
 import http from 'node:http';
+import { requestGuard, localToken } from './security.mjs';
+import { getSettings } from './settings.mjs';
+import { allProductFacts, saveProductFacts } from './facts.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   STUDIO_ROOT, DATA_DIR, DOCS_DIR, ensureDirs, listDocuments, getDocument, saveDocument, deleteDocument,
-  createFromSpec, saveAsset, listAssets, assetPath,
+  createFromSpec, saveAsset, listAssets, assetPath, listVersions, restoreVersion,
 } from './store.mjs';
 import { templateCatalog } from '../shared/templates.js';
 import { uid } from '../shared/schema.js';
@@ -31,6 +34,7 @@ const PUBLIC_URL = process.env.STUDIO_PUBLIC_URL || `http://localhost:${PORT}`;
 const BASE = `http://127.0.0.1:${PORT}`;
 
 ensureDirs();
+localToken();
 recoverJobs().catch(() => {});
 resumeProcessing().catch(() => {});
 
@@ -62,7 +66,19 @@ setInterval(() => { for (const res of clients) res.write(': ping\n\n'); }, 25000
 // ---------- routes ----------
 async function handle(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const refusal = requestGuard(req, PORT);
+  if (refusal) return send(res, 403, { error: refusal });
   const p = url.pathname;
+  if (p === '/api/session' && req.method === 'GET') {
+    if (req.headers['sec-fetch-site'] !== 'same-origin') return send(res, 403, { error: 'Open the studio in your browser; native clients must read the local token file.' });
+    return send(res, 200, { token: localToken() });
+  }
+  if (p === '/api/product-facts' && req.method === 'GET') return send(res, 200, allProductFacts());
+  if (p === '/api/product-facts' && req.method === 'PUT') return send(res, 200, saveProductFacts((await readJson(req)).facts));
+  let versionMatch = p.match(/^\/api\/documents\/([\w-]+)\/versions$/);
+  if (versionMatch && req.method === 'GET') return send(res, 200, await listVersions(versionMatch[1]));
+  versionMatch = p.match(/^\/api\/documents\/([\w-]+)\/versions\/(\d+)\/restore$/);
+  if (versionMatch && req.method === 'POST') return send(res, 200, await restoreVersion(versionMatch[1], Number(versionMatch[2]), (await readJson(req)).revision));
   const m = (re) => p.match(re);
   let mm;
 
@@ -109,7 +125,7 @@ async function handle(req, res) {
     return send(res, 201, await saveAsset(png, { name: `${host}-${body.device || 'phone'}.png` }));
   }
   if ((mm = m(/^\/api\/render\/([\w-]+)$/))) {
-    const png = await renderDocument({ base: BASE, id: mm[1], slide: Number(url.searchParams.get('slide') || 0), t: url.searchParams.get('t'), scale: Number(url.searchParams.get('scale') || 1) });
+    const png = await renderDocument({ base: BASE, id: mm[1], slide: Number(url.searchParams.get('slide') || 0), t: url.searchParams.get('t'), scale: Math.min(2, Math.max(0.05, Number(url.searchParams.get('scale')) || 1)) });
     return send(res, 200, png, { 'Content-Type': 'image/png' });
   }
 
@@ -131,6 +147,8 @@ async function handle(req, res) {
   if (await autonomyRoutes(req, res, url, { base: BASE })) return;
 
   if ((mm = m(/^\/assets\/([^/]+)$/))) {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; sandbox");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     if (serveFile(req, res, assetPath(decodeURIComponent(mm[1])), { cache: 'public, max-age=31536000, immutable' })) return;
     return send(res, 404, { error: 'Asset not found' });
   }

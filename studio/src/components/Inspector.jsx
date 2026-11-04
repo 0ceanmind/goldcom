@@ -7,6 +7,7 @@ import { POSES, MOODS, PROPS, SETS } from '../../shared/scenes.js';
 import { PROP_NAMES as PROP_LIST } from '../render/characters/index.js';
 import { Icon, Field, Num, TextIn, Select, ColorPick } from './ui.jsx';
 import { ScenePicker, SceneParams } from './Scenes.jsx';
+import { useStudio } from './StudioContext.jsx';
 
 const THEME_SWATCH = {
   onyx: 'radial-gradient(120% 80% at 50% 0%, #2D2E2B, #151513 60%)',
@@ -17,17 +18,19 @@ const THEME_SWATCH = {
 };
 
 export default function Inspector({ doc, slideIdx, layer, api, focusText, issues = [] }) {
+  const { advanced, t } = useStudio();
   const [tab, setTab] = useState('slide');
-  useEffect(() => { if (layer) setTab('layer'); }, [layer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (layer) setTab('layer'); }, [layer?.id]);
   const slide = doc.slides[slideIdx];
   if (!slide) return <aside className="panel right"><div className="empty">No slide selected</div></aside>;
+  if (!advanced) return <GuidedInspector key={slide.id} doc={doc} slide={slide} layer={layer} api={api} issues={issues} />;
   return (
     <aside className="panel right">
       <div className="tabs">
-        <button className={tab === 'slide' ? 'on' : ''} onClick={() => setTab('slide')}>Slide</button>
-        <button className={tab === 'layer' ? 'on' : ''} onClick={() => setTab('layer')}>Layer</button>
-        <button className={tab === 'layers' ? 'on' : ''} onClick={() => setTab('layers')}>Layers <span className="count">{slide.layers.length}</span></button>
-        <button className={tab === 'caption' ? 'on' : ''} onClick={() => setTab('caption')}>Caption</button>
+        <button className={tab === 'slide' ? 'on' : ''} onClick={() => setTab('slide')}>{t('slide')}</button>
+        <button className={tab === 'layer' ? 'on' : ''} onClick={() => setTab('layer')}>{t('layer')}</button>
+        <button className={tab === 'layers' ? 'on' : ''} onClick={() => setTab('layers')}>{t('layers')} <span className="count">{slide.layers.length}</span></button>
+        <button className={tab === 'caption' ? 'on' : ''} onClick={() => setTab('caption')}>{t('caption')}</button>
       </div>
       <div className="scroll">
         {tab === 'slide' && <SlidePanel doc={doc} slide={slide} api={api} />}
@@ -37,6 +40,19 @@ export default function Inspector({ doc, slideIdx, layer, api, focusText, issues
       </div>
     </aside>
   );
+}
+
+function GuidedInspector({ doc, slide, layer, api, issues }) {
+  const { t, uiLang } = useStudio();
+  const [tab, setTab] = useState('content');
+  const template = TEMPLATES[slide.template];
+  const content = slide.content || {};
+  const lang = content.lang || doc.lang;
+  const label = value => uiLang === 'ar' ? ({ Title:'العنوان', Subtitle:'العنوان الفرعي', Body:'النص', Text:'النص', Caption:'التعليق', Button:'الزر', Image:'الصورة', Scene:'المشهد', Headline:'العنوان الرئيسي', Disclaimer:'التوضيح', 'Call to action':'الدعوة للإجراء', '3D scene':'المشهد ثلاثي الأبعاد' })[value] || value : value;
+  return <aside className="panel right guided-inspector"><div className="tabs"><button className={tab === 'content' ? 'on' : ''} onClick={() => setTab('content')}>{t('editContent')}</button><button className={tab === 'caption' ? 'on' : ''} onClick={() => setTab('caption')}>{t('caption')}</button></div><div className="scroll">{tab === 'caption' ? <CaptionPanel doc={doc} api={api} issues={issues} /> : <div className="section"><h4>{uiLang === 'ar' ? 'المظهر' : 'Choose a look'}</h4><div className="themes">{Object.entries(THEMES).map(([key, theme]) => <button key={key} title={theme.label} aria-label={theme.label} aria-pressed={slide.theme === key} className={`theme-chip${slide.theme === key ? ' on' : ''}`} style={{ background:THEME_SWATCH[key] }} onClick={() => api.updateSlide({ theme:key }, { relayout:true })} />)}</div>
+      {layer && ['text', 'image', 'phone', 'browser'].includes(layer.type) && <div className="guided-selection"><h4>{t('layer')}</h4>{layer.type === 'text' ? <TextIn multiline value={layer.text || ''} rtl={layer.dir === 'rtl' || isArabic(layer.text || '')} onChange={(text, options) => api.updateLayer(layer.id, { text }, options)} /> : <AssetInput value={layer.src} onChange={src => api.updateLayer(layer.id, { src })} api={api} />}</div>}
+      {template ? template.fields.filter(f => !['scene-params', 'code'].includes(f.type)).map(f => <ContentField key={f.key} f={{ ...f,label:label(f.label) }} value={content[f.key]} content={content} lang={lang} rtl={lang === 'ar'} onChange={(value, options) => api.setContent({ ...content, [f.key]:value }, options)} api={api} />) : <p className="hint">{uiLang === 'ar' ? 'اختر نصًا أو صورة من التصميم للتعديل. استخدم الوضع المتقدم لإضافة عناصر أخرى.' : 'Select text or an image on the canvas to edit it. Use Advanced mode to add more elements.'}</p>}
+      <p className="hint">{t('advancedEditorHint')}</p></div>}</div></aside>;
 }
 
 function SlidePanel({ doc, slide, api }) {
@@ -469,6 +485,7 @@ function CountdownFields({ l, up }) {
 }
 
 function CaptionPanel({ doc, api, issues }) {
+  const { t, uiLang } = useStudio();
   const cap = doc.caption || { text: '', hashtags: [] };
   const text = cap.text || '';
   const tags = cap.hashtags || [];
@@ -477,15 +494,15 @@ function CaptionPanel({ doc, api, issues }) {
   const full = [text, tags.join(' ')].filter(Boolean).join('\n\n');
   return (
     <div className="section">
-      <h4>Instagram caption {full && <button className="btn sm" onClick={() => navigator.clipboard?.writeText(full)}>Copy</button>}</h4>
+      <h4>{t('caption')} {full && <button className="btn sm" onClick={() => navigator.clipboard?.writeText(full)}>{t('copy')}</button>}</h4>
       <TextIn multiline rows={8} value={text} rtl={isArabic(text)} placeholder={doc.lang === 'ar' ? 'اكتب وصف المنشور…' : 'Write the caption…'} onChange={(v, o) => api.setCaption({ text: v }, o)} />
-      <div className="cap-meta"><span className={total > 2200 ? 'bad' : ''}>{total} / 2,200</span><span>Hook in the first line: it is all people see before "more".</span></div>
-      <Field label="Hashtags (space separated)">
+      <div className="cap-meta"><span className={total > 2200 ? 'bad' : ''}>{total} / 2,200</span><span>{uiLang === 'ar' ? 'ابدأ بسطر يجذب الانتباه.' : 'Make the first line count.'}</span></div>
+      <Field label={uiLang === 'ar' ? 'الوسوم (افصل بينها بمسافة)' : 'Hashtags (separate with spaces)'}>
         <TextIn value={tags.join(' ')} onChange={(v, o) => api.setCaption({ hashtags: v.split(/\s+/).filter(Boolean).map((h) => (h.startsWith('#') ? h : `#${h}`)) }, o)} />
       </Field>
-      <div className="cap-meta"><span className={tags.length > 30 ? 'bad' : tags.length > 6 ? 'warn' : ''}>{tags.length} hashtag{tags.length === 1 ? '' : 's'}</span><span>3–5 relevant ones work best.</span></div>
-      {capIssues.map((i, k) => <div key={k} className={`issue ${i.level}`} style={{ cursor: 'default' }}><i /><div>{i.message}</div></div>)}
-      <p className="hint" style={{ marginTop: 12 }}>The caption is saved with the design, shown in the Instagram preview, included in ZIP exports and checked against the brand claims rules.</p>
+      <div className="cap-meta"><span className={tags.length > 30 ? 'bad' : tags.length > 6 ? 'warn' : ''}>{tags.length} {uiLang === 'ar' ? 'وسوم' : 'hashtags'}</span></div>
+      {capIssues.map((i, k) => <div key={k} className={`issue ${i.level}`} style={{ cursor: 'var(--gc-cursor)' }}><i /><div>{i.message}</div></div>)}
+      <p className="hint" style={{ marginTop: 12 }}>{uiLang === 'ar' ? 'يُحفظ نص المنشور مع التصميم ويُضمّن في ملفات التصدير.' : 'Your caption is saved with the design and included in ZIP downloads.'}</p>
     </div>
   );
 }

@@ -5,10 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Goldcom Studio</title>
   <link rel="icon" href="/favicon.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-arrow.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-action.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-text.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-unavailable.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-move.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-resize-nwse.svg">
+  <link rel="preload" as="image" href="/cursors/goldcom-resize-nesw.svg">
   <meta name="theme-color" content="#151513">
+  <style>
+    .goldcom-first-paint{min-height:100dvh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;background:#151513;color:#FFF8EA;font:14px/1.6 'Segoe UI',sans-serif}.goldcom-first-paint img{width:40px;height:40px}.goldcom-first-paint p{margin:0;color:#9A968C;font-size:12px}.goldcom-boot-facets{display:flex;align-items:center;gap:5px;height:36px}.goldcom-boot-facets i{width:8px;height:19px;background:#DBA761;border-radius:2px;animation:goldcom-boot 1.2s ease-in-out infinite}.goldcom-boot-facets i:nth-child(2){height:30px;animation-delay:.15s}.goldcom-boot-facets i:nth-child(3){animation-delay:.3s}@keyframes goldcom-boot{0%,100%{opacity:.35;transform:translateY(3px)}50%{opacity:1;transform:translateY(-3px)}}@media(prefers-reduced-motion:reduce){.goldcom-boot-facets i{animation:none}}
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div class="goldcom-first-paint" role="status"><img src="/favicon.svg" alt="Goldcom"><div class="goldcom-boot-facets" aria-hidden="true"><i></i><i></i><i></i></div><b>Goldcom Studio</b><p>Preparing your creative workspace</p></div></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, memo } from 'react';
+import { Children, isValidElement, useEffect, useId, useLayoutEffect, useRef, useState, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { ICONS } from '../../shared/icons.js';
 import { COLORS, COLOR_LABELS } from '../../shared/brand.js';
 import { renderSlide } from '../render/renderer.js';
+import { schedulePreview } from '../preview-queue.js';
 
 const UI_ICONS = {
   plus: ['M12 5v14', 'M5 12h14'],
@@ -50,10 +52,10 @@ const UI_ICONS = {
   gear: ['M12 15a3 3 0 1 0 0-6a3 3 0 1 0 0 6Z', 'M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z'],
 };
 
-export function Icon({ name, size = 20, stroke = 1.75, fill }) {
+export function Icon({ name, size = 20, stroke = 1.75, fill, className }) {
   const paths = UI_ICONS[name] || ICONS[name] || ICONS.sparkle;
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill={fill || 'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" width={size} height={size} fill={fill || 'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {paths.map((d, i) => <path key={i} d={d} />)}
     </svg>
   );
@@ -96,11 +98,111 @@ export function TextIn({ value, onChange, multiline, rows = 3, rtl, code, placeh
 
 export function Select({ value, onChange, options }) {
   const opts = Array.isArray(options) ? options.map((o) => (typeof o === 'string' ? [o, o] : o)) : Object.entries(options);
-  return (
-    <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-      {opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-    </select>
-  );
+  return <SelectControl className="input" value={value ?? ''} onChange={event => onChange(event.target.value)} options={opts.map(([value,label]) => ({ value, label }))} />;
+}
+
+function optionText(node) {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(optionText).join('');
+  return isValidElement(node) ? optionText(node.props.children) : '';
+}
+
+function optionItems(children) {
+  return Children.toArray(children).flatMap(child => {
+    if (!isValidElement(child)) return [];
+    if (child.type === 'option') return [{ value:child.props.value ?? optionText(child.props.children), label:optionText(child.props.children), disabled:child.props.disabled }];
+    return optionItems(child.props.children);
+  });
+}
+
+/** Goldcom-owned select. No native select element, browser picker, or hidden native menu. */
+export function SelectControl({ value, onChange, options, children, className = '', disabled = false, id, style, title, name, 'aria-label': ariaLabel, 'aria-labelledby': labelledBy }) {
+  const items = options || optionItems(children);
+  const selected = items.findIndex(item => String(item.value) === String(value ?? ''));
+  const uid = useId();
+  const trigger = useRef(null);
+  const popup = useRef(null);
+  const search = useRef({ text:'',at:0 });
+  const [open,setOpen] = useState(false);
+  const [active,setActive] = useState(0);
+  const [position,setPosition] = useState(null);
+  const [fieldLabel,setFieldLabel] = useState('');
+  const label = ariaLabel || fieldLabel || optionText(items[selected]?.label) || 'Choose an option';
+  const listId = `goldcom-options-${uid}`;
+  const close = (focus = false) => { setOpen(false); if (focus) trigger.current?.focus({ preventScroll:true }); };
+  const show = () => { if (disabled || !items.some(item => !item.disabled)) return; setActive(selected >= 0 && !items[selected].disabled ? selected : items.findIndex(item => !item.disabled)); setOpen(true); };
+  const choose = index => {
+    const item = items[index];
+    if (!item || item.disabled) return;
+    const target = { value:String(item.value), name };
+    onChange?.({ target, currentTarget:target });
+    close(true);
+  };
+  useLayoutEffect(() => {
+    const labelElement = trigger.current?.closest('label') || trigger.current?.closest('.field')?.querySelector('label');
+    if (!labelElement || ariaLabel) return;
+    const text = [...labelElement.childNodes].filter(node => node.nodeType === 3).map(node => node.textContent).join(' ').trim() || labelElement.querySelector('.sr-only')?.textContent || (labelElement.contains(trigger.current) ? '' : labelElement.textContent);
+    if (text) setFieldLabel(text.trim());
+  }, [ariaLabel, children]);
+  const placeMenu = () => {
+    if (!trigger.current) return;
+    const rect = (trigger.current.closest('.creation-options > label') || trigger.current).getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width,220),420,window.innerWidth - 24);
+    const below = window.innerHeight - rect.bottom - 16;
+    const above = rect.top - 16;
+    const flip = below < Math.min(items.length * 44 + 46,300) && above > below;
+    const maxHeight = Math.max(80,Math.min(360,flip ? above : below));
+    const height = Math.min(maxHeight,items.length * 44 + 46);
+    const dir = trigger.current.closest('[dir]')?.getAttribute('dir') || 'ltr';
+    const left = Math.max(12,Math.min(dir === 'rtl' ? rect.right - width : rect.left,window.innerWidth - width - 12));
+    setPosition({ top:flip ? Math.max(8,rect.top - height - 8) : rect.bottom + 8, left, width, maxHeight, dir });
+  };
+  useLayoutEffect(() => { if (open) placeMenu(); }, [open, items.length]);
+  useLayoutEffect(() => { if (open && position) popup.current?.focus({ preventScroll:true }); }, [open,position]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = event => { if (!trigger.current?.contains(event.target) && !popup.current?.contains(event.target)) close(); };
+    let frame;
+    const scroll = event => {
+      if (popup.current?.contains(event.target)) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = trigger.current?.getBoundingClientRect();
+        if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) close(); else placeMenu();
+      });
+    };
+    const resized = () => close();
+    document.addEventListener('pointerdown',outside,true);
+    document.addEventListener('scroll',scroll,true);
+    window.addEventListener('resize',resized);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('pointerdown',outside,true); document.removeEventListener('scroll',scroll,true); window.removeEventListener('resize',resized); };
+  }, [open]);
+  useEffect(() => { if (open) popup.current?.querySelector(`[data-option-index="${active}"]`)?.scrollIntoView({ block:'nearest' }); }, [active,open]);
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+  const keyDown = event => {
+    if (event.key === 'Tab') { if (open) { event.stopPropagation(); close(true); } return; }
+    if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); close(true); return; }
+    if (['Enter',' '].includes(event.key)) { event.preventDefault(); event.stopPropagation(); open ? choose(active) : show(); return; }
+    if (['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+      event.preventDefault(); event.stopPropagation();
+      if (!open) { show(); return; }
+      const enabled = items.map((item,index) => !item.disabled ? index : -1).filter(index => index >= 0);
+      const current = enabled.indexOf(active);
+      const next = event.key === 'Home' ? enabled[0] : event.key === 'End' ? enabled.at(-1) : enabled[(current + (event.key === 'ArrowDown' ? 1 : -1) + enabled.length) % enabled.length];
+      setActive(next); return;
+    }
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && !event.isComposing) {
+      const now = performance.now();
+      search.current = { text:(now - search.current.at < 600 ? search.current.text : '') + event.key.toLocaleLowerCase(), at:now };
+      const found = items.findIndex(item => !item.disabled && optionText(item.label).toLocaleLowerCase().startsWith(search.current.text));
+      if (found >= 0) { event.preventDefault(); event.stopPropagation(); if (!open) show(); setActive(found); }
+    }
+  };
+  return <span className={`gc-select ${open ? 'is-open' : ''} ${disabled ? 'is-disabled' : ''}`}>
+    <button ref={trigger} type="button" id={id} className={`gc-select-trigger ${className}`} style={style} title={title} disabled={disabled} role="combobox" aria-label={labelledBy ? undefined : label} aria-labelledby={labelledBy} aria-expanded={open} aria-haspopup="listbox" aria-controls={open ? listId : undefined} onClick={() => open ? close(true) : show()} onKeyDown={keyDown}><span className="gc-select-value" dir="auto">{items[selected]?.label ?? items[0]?.label ?? '—'}</span><Icon name="down" size={13} className="gc-select-chevron" /></button>
+    {open && position && createPortal(<div ref={popup} className="gc-select-menu" dir={position.dir} role="listbox" id={listId} aria-label={label} aria-activedescendant={`${listId}-${active}`} tabIndex={-1} style={{ top:position.top,left:position.left,width:position.width,maxHeight:position.maxHeight }} onKeyDown={keyDown}><div className="gc-select-heading" aria-hidden="true">{label}</div><div className="gc-select-options">{items.map((item,index) => <div key={`${item.value}-${index}`} id={`${listId}-${index}`} data-option-index={index} data-value={String(item.value)} className={`gc-select-option ${index === active ? 'is-active' : ''}`} role="option" aria-selected={index === selected} aria-disabled={!!item.disabled} onPointerMove={() => { if (!item.disabled) setActive(index); }} onClick={() => choose(index)}><span dir="auto">{item.label}</span><span className="gc-option-check">{index === selected && <Icon name="check" size={15} />}</span></div>)}</div></div>,document.body)}
+  </span>;
 }
 
 const THEME_TOKENS = [['auto', 'Auto'], ['fg', 'Text'], ['fg2', 'Secondary'], ['accent', 'Accent'], ['surface', 'Surface']];
@@ -132,26 +234,48 @@ export const SlideThumb = memo(function SlideThumb({ doc, index, width = 180, im
     const scale = (width * (window.devicePixelRatio || 1)) / doc.width;
     cv.width = Math.round(doc.width * scale);
     cv.height = Math.round(doc.height * scale);
-    renderSlide(cv.getContext('2d'), doc, index, { t: Infinity, images, scale });
-  }, [key, width]); // eslint-disable-line react-hooks/exhaustive-deps
+    return schedulePreview(() => renderSlide(cv.getContext('2d'), doc, index, { t: Infinity, images, scale }));
+  }, [key, width]);
   return <canvas ref={ref} style={{ width: '100%', aspectRatio: `${doc.width}/${doc.height}` }} />;
 });
 
 export function Modal({ title, onClose, children, footer, size }) {
-  useEffect(() => {
-    const k = (e) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+  const modalRef = useRef(null);
+  useDialogFocus(modalRef, onClose);
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${size || ''}`} role="dialog" aria-label={title}>
+      <div ref={modalRef} className={`modal ${size || ''}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
         <header><h3>{title}</h3><button className="btn icon ghost" onClick={onClose} aria-label="Close"><Icon name="x" /></button></header>
         <div className="body">{children}</div>
         {footer && <footer>{footer}</footer>}
       </div>
     </div>
   );
+}
+
+/** Keep keyboard focus in an open dialog, then return it to the trigger. */
+export function useDialogFocus(ref, onClose, ready = true) {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    if (!ready) return;
+    const previous = document.activeElement;
+    const root = ref.current;
+    if (!root) return;
+    const selector = 'button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,[tabindex="0"]';
+    const targets = () => [...root.querySelectorAll(selector)].filter(element => element.getClientRects().length);
+    (targets()[0] || root).focus();
+    const handle = event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close.current(); }
+      if (event.key !== 'Tab') return;
+      const list = targets();
+      if (!list.length) { event.preventDefault(); root.focus(); return; }
+      if (event.shiftKey && (document.activeElement === list[0] || !root.contains(document.activeElement))) { event.preventDefault(); list.at(-1).focus(); }
+      else if (!event.shiftKey && (document.activeElement === list.at(-1) || !root.contains(document.activeElement))) { event.preventDefault(); list[0].focus(); }
+    };
+    document.addEventListener('keydown', handle);
+    return () => { document.removeEventListener('keydown', handle); if (previous?.isConnected) previous.focus(); };
+  }, [ready]);
 }
 
 export function Copy({ text }) {

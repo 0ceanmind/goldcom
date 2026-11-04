@@ -12,6 +12,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { which, commandFor } from './cli.mjs';
+import { findClaudeCli } from './ai/engine.mjs';
 import { DATA_DIR, saveAsset } from './store.mjs';
 import { recordGeneration, providerStats, readLessons, readKnowledge } from './memory.mjs';
 import { getSettings, updateSettings } from './settings.mjs';
@@ -34,10 +36,10 @@ export function writeGeneratorSettings(patch) {
   const cur = getSettings();
   const next = {};
   if (patch.keys) {
-    const keys = { ...(cur.keys || {}) };
+    const keys = {};
     for (const [k, v] of Object.entries(patch.keys)) {
       if (k === 'ANTHROPIC_API_KEY') { next.anthropicApiKey = v || ''; continue; } // one Anthropic key for the whole studio
-      if (v === '' || v === null) delete keys[k]; else keys[k] = v;
+      keys[k] = v;
     }
     next.keys = keys;
   }
@@ -64,17 +66,11 @@ export function publicGeneratorSettings() {
     const v = own || process.env[k] || '';
     return [k, v ? { set: true, source: own ? 'studio' : 'environment', hint: `…${String(v).slice(-4)}` } : { set: false }];
   }));
-  return { keys, models: { ...DEFAULT_MODELS, ...(s.models || {}) }, providers: s.providers || {}, autoRepair: s.autoRepair !== false, director: s.director || {} };
+  return { keys, models: { ...DEFAULT_MODELS, ...(s.models || {}) }, providers: s.providers || {}, autoRepair: false, director: s.director || {} };
 }
 
 // ---------- helpers ----------
-const which = (cmd) => {
-  for (const dir of String(process.env.PATH || '').split(path.delimiter)) {
-    const full = path.join(dir, process.platform === 'win32' ? `${cmd}.cmd` : cmd);
-    try { if (fs.statSync(full).isFile()) return full; } catch { /* keep looking */ }
-  }
-  return null;
-};
+const claudeBin = () => findClaudeCli()?.path || null;
 
 function httpError(provider, status, body) {
   const msg = body?.error?.message || body?.message || body?.error || (typeof body === 'string' ? body.slice(0, 300) : `HTTP ${status}`);
@@ -102,7 +98,10 @@ async function fetchJson(url, init, provider, timeoutMs = 180000) {
 
 function runCli(cmd, args, { cwd, env, timeoutMs = 240000, input } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd, env, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
+    // Started without a shell (prompts are arbitrary text); an npm .cmd shim is resolved to its real program.
+    const run = commandFor(cmd);
+    if (!run) { reject(new Error(`${cmd ? path.basename(cmd) : 'command'} not found or cannot be started safely`)); return; }
+    const child = spawn(run.cmd, [...run.prefix, ...args], { cwd, env, windowsHide: true, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
     let out = '', err = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { err += d; });
@@ -288,7 +287,7 @@ const providers = {
   claude: {
     label: 'Claude (vector art as SVG)',
     route: 'API key or subscription',
-    available: () => (key('ANTHROPIC_API_KEY') ? { ok: true, via: 'ANTHROPIC_API_KEY' } : which('claude') ? { ok: true, via: 'Claude Code CLI (Pro/Max login)' } : { ok: false, why: 'Add an Anthropic API key, or install Claude Code and sign in.' }),
+    available: () => (key('ANTHROPIC_API_KEY') ? { ok: true, via: 'ANTHROPIC_API_KEY' } : claudeBin() ? { ok: true, via: 'Claude Code CLI (Pro/Max login)' } : { ok: false, why: 'Add an Anthropic API key, or install Claude Code and sign in.' }),
     async generate(req, ctx) {
       const ask = `Create one finished SVG illustration for this brief. Reply with the SVG code only, starting with <svg and ending with </svg>. viewBox matching ${req.px[0]}x${req.px[1]}. Use the Goldcom palette only: onyx #151513, charcoal #1D1D1F, graphite #2D2E2B, gold #DBA761, spark #F2D46B, bronze #8A5A2B, cream #FFF8EA. Use gradients for metal, keep it minimal and precise, no text unless the brief asks for it, no external references or fonts.\n\nBrief:\n${req.prompt}`;
       let svg;
@@ -303,7 +302,7 @@ const providers = {
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'goldcom-svg-'));
         const env = { ...process.env };
         delete env.ANTHROPIC_API_KEY; // bill the subscription, not an API key
-        const { out } = await runCli(which('claude'), ['-p', ask, '--output-format', 'json', '--max-turns', '1', '--permission-mode', 'dontAsk', '--mcp-config', '{"mcpServers":{}}', '--strict-mcp-config'], { cwd: tmp, env, timeoutMs: 300000 });
+        const { out } = await runCli(claudeBin(), ['-p', ask, '--output-format', 'json', '--max-turns', '1', '--permission-mode', 'dontAsk', '--mcp-config', '{"mcpServers":{}}', '--strict-mcp-config'], { cwd: tmp, env, timeoutMs: 300000 });
         try { svg = JSON.parse(out).result; } catch { svg = out; }
       }
       const m = /<svg[\s\S]*<\/svg>/i.exec(String(svg || ''));
@@ -445,7 +444,7 @@ export async function generate(opts, ctx = {}) {
   const intent = classify(prompt, { intent: opts.intent, references: opts.references });
   const aspect = opts.aspect || '4:5';
   const px = SIZES[aspect]?.px || [1080, 1350];
-  let ranked = opts.provider && opts.provider !== 'auto' ? [{ id: opts.provider, score: 1, why: 'chosen' }, ...rankProviders(intent, { exclude: [opts.provider] })] : rankProviders(intent);
+  let ranked = opts.provider && opts.provider !== 'auto' ? [{ id: opts.provider, score: 1, why: 'chosen' }] : rankProviders(intent);
   // Nothing can make this kind of image right now: fall back to the closest kind something can make, and say so.
   let degraded = null;
   if (!ranked.length) {
@@ -458,6 +457,7 @@ export async function generate(opts, ctx = {}) {
     const status = generatorStatus().filter((s) => (CAPABILITY[s.id]?.[intent] || 0) > 0);
     throw Object.assign(new Error(`No provider can make "${INTENTS[intent]}" right now. ${status.map((s) => `${s.label}: ${s.why || 'ready'}`).join(' · ')}`), { status: 503, intent });
   }
+  if (ranked.some(c => !providers[c.id])) throw Object.assign(new Error('Unknown image provider'), { status: 400 });
   const directed = opts.raw ? prompt : artDirect(prompt, { intent, aspect, transparent: opts.transparent });
   const attempts = [];
   for (const cand of ranked.slice(0, opts.maxAttempts || 4)) {
@@ -477,6 +477,7 @@ export async function generate(opts, ctx = {}) {
       recordGeneration({ provider: cand.id, intent, ok: false, ms, error: e.message, prompt });
       attempts.push({ provider: cand.id, ok: false, error: e.message, ms });
       // Safety blocks are about the prompt, not the provider: stop instead of trying the same prompt elsewhere.
+      if (e.fatal || (opts.provider && opts.provider !== 'auto')) { e.attempts = attempts; throw e; }
       if (/moderation|safety|blocked|banned/i.test(e.message)) break;
     }
   }

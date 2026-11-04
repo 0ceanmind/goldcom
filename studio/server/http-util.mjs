@@ -12,9 +12,11 @@ export function readBody(req, limit = 60 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
+    let oversized = false;
     req.on('data', (c) => {
+      if (oversized) return;
       size += c.length;
-      if (size > limit) { reject(Object.assign(new Error('Body too large'), { status: 413 })); req.destroy(); return; }
+      if (size > limit) { oversized = true; chunks.length = 0; reject(Object.assign(new Error('Body too large'), { status: 413 })); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks)));
@@ -22,13 +24,14 @@ export function readBody(req, limit = 60 * 1024 * 1024) {
   });
 }
 
-export const readJson = async (req) => { const b = await readBody(req); return b.length ? JSON.parse(b.toString('utf8')) : {}; };
+export const readJson = async (req) => { const b = await readBody(req, 1024 * 1024); try { const value = b.length ? JSON.parse(b.toString('utf8')) : {}; if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(); return value; } catch { throw Object.assign(new Error('Invalid JSON object'), { status: 400 }); } };
 
 /** Stream a request body to a file (large uploads such as screen recordings). */
 export function bodyToFile(req, file, limit = 2 * 1024 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const out = fs.createWriteStream(file);
     let size = 0;
+    let oversized = false;
     req.on('data', (c) => { size += c.length; if (size > limit) { req.destroy(); out.destroy(); reject(Object.assign(new Error('File too large'), { status: 413 })); } });
     req.pipe(out);
     out.on('finish', () => resolve(size));

@@ -29,7 +29,17 @@ export async function systemRoutes(req, res, url, { broadcast }) {
   if (p === '/api/settings' && (req.method === 'PUT' || req.method === 'POST')) { updateSettings(await readJson(req)); send(res, 200, publicSettings()); return true; }
   if (p === '/api/engine' && req.method === 'GET') {
     const { engineStatus } = await import('../ai/engine.mjs');
-    send(res, 200, await engineStatus());
+    const { copyStatus } = await import('../ai/copy.mjs');
+    send(res, 200, { ...await engineStatus(), copywriter: copyStatus() });
+    return true;
+  }
+  if (p === '/api/copywriter/test' && req.method === 'POST') {
+    const { copyPreflight, completeCopy } = await import('../ai/copy.mjs');
+    try {
+      await copyPreflight();
+      const reply=await completeCopy({prompt:'Write a short warm greeting in natural Omani dialect (ar) and fluent English (en).',schema:{type:'object',additionalProperties:false,required:['ar','en'],properties:{ar:{type:'string'},en:{type:'string'}}},budgetUsd:getSettings().productionBudgetUsd});
+      send(res,200,{ok:true,reply});
+    } catch(e) { send(res,200,{ok:false,error:e.message}); }
     return true;
   }
   if (p === '/api/engine/test' && req.method === 'POST') {

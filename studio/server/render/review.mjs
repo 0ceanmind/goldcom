@@ -18,6 +18,7 @@ export function reviewTimes(doc, { perSlide = 2 } = {}) {
     const settled = Math.min(d - 0.1, td + Math.max(1.1, d * 0.45));
     out.push({ t: starts[i] + settled, slide: i, label: `Scene ${i + 1} · ${settled.toFixed(1)}s` });
     if (perSlide > 1) out.push({ t: starts[i] + Math.max(settled + 0.3, d - 0.25), slide: i, label: `Scene ${i + 1} · end` });
+    if (perSlide > 3) out.push({ t: starts[i] + Math.min(0.4, d * 0.2), slide: i, label: `Scene ${i + 1} · entry` });
     if (perSlide > 2 && i) out.push({ t: starts[i] + td * 0.5, slide: i, label: `Into scene ${i + 1}` });
   });
   return out.sort((a, b) => a.t - b.t);

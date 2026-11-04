@@ -50,9 +50,9 @@ Keep the small window open while you work. Closing it stops the studio.
 
 ## 3. Updates
 
-When a new version is available, the studio shows **Update available**. Click it: the studio
-downloads the new version, installs it and restarts by itself. Your browser page reloads when it
-is ready. Nothing else to do.
+In a Git checkout, configure a trusted SSH allowed-signers file in Settings. The updater verifies the target commit before changing program files, restores tracked local edits before building, and retains a backup stash. If a build fails, Git rollback restores the previous code.
+
+An archive installation cannot update in place safely. Install a Git checkout and keep the existing data directory (set `GOLDCOM_STUDIO_DATA` to its absolute path). Automatic unsigned/unchecked ZIP replacement is disabled.
 
 ## Your designs are safe
 
@@ -63,6 +63,5 @@ folder. To make a backup, copy that folder somewhere safe.
 ## If something goes wrong
 
 - **The studio does not open:** close the small window and double-click the shortcut again.
-- **An update failed:** the studio keeps working on the previous version. Try again later, or
-  run the install line again (it updates the existing install and keeps your designs).
+- **An update failed:** read the reported rollback result. Git mode attempts to restore the previous code. Back up your data before reinstalling.
 - **Still stuck:** run the install line again. It never deletes your designs.

@@ -447,7 +447,7 @@ Structure: **one image, one headline (≤ 8 words), one supporting line, one CTA
 3. **Calm about markets.** Prices go up and down. We never create urgency from price movements.
 4. **Respectful and warm.** Address the customer as "you" (أنت). We are "we" (نحن). Use a polite, friendly register, never slangy.
 5. **Short.** Sentences of 20 words or fewer, paragraphs of 3 lines or fewer, one idea per sentence.
-6. **Arabic is not a translation.** Write Arabic natively in Modern Standard Arabic with a light Gulf warmth for social media. Always have Arabic copy reviewed by a native Omani or Gulf copywriter before publishing.
+6. **Arabic is not a translation.** For Studio social content, write Arabic natively in natural conversational Omani dialect (owner direction, 2026-11-05). ChatGPT authors Arabic and English under Claude orchestration. Preserve exact legal wording and real app labels. Always have Arabic copy reviewed by a native Omani or Gulf copywriter before publishing.
 7. **British English** for English copy (colour, jewellery, centre).
 
 ### 10.2 Tone by context

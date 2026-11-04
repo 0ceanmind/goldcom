@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, onStudioEvent } from '../api.js';
 import { Modal, Icon, Field, Select } from './ui.jsx';
 import { FORMATS, KINDS } from '../../shared/brand.js';
+import { LoadingSurface } from './ProductionJourney.jsx';
+import { useStudio } from './StudioContext.jsx';
 
 const REASONS = {
   'too-much-text': 'Too much text',
@@ -22,6 +24,7 @@ const ago = (iso) => { const s = (Date.now() - new Date(iso).getTime()) / 1000; 
 
 // ---------- director ----------
 export function DirectorPanel({ onClose, doc, slideIdx = 0, onOpen, toast, initialTask }) {
+  const { advanced, t } = useStudio();
   const [status, setStatus] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [active, setActive] = useState(initialTask || null);
@@ -58,7 +61,7 @@ export function DirectorPanel({ onClose, doc, slideIdx = 0, onOpen, toast, initi
     : ['Arabic carousel: why start with 1 gram', 'Eid gifting Reel, 12 seconds, warm and quiet', 'A price post for today with the 3D number', 'A Story with a poll: gold or cash for Eidiya'];
 
   return (
-    <Modal title="Ask Claude" onClose={onClose}>
+    <Modal title={t('ask')} onClose={onClose}>
       {status && !status.available && <div className="note"><b>The director needs Claude Code.</b> {status.why}</div>}
       <div className="director">
         <div className="brief">
@@ -95,11 +98,12 @@ export function DirectorPanel({ onClose, doc, slideIdx = 0, onOpen, toast, initi
           {task && (
             <div className="task-log" ref={logRef}>
               <div className="task-head">
-                <b>{task.status === 'running' ? 'Working…' : task.status === 'done' ? 'Done' : task.status === 'failed' ? 'Stopped with an error' : task.status}</b>
+                <b>{task.status === 'running' ? t('running') : task.status === 'done' ? t('done') : task.status === 'failed' ? t('error') : task.status}</b>
                 {task.status === 'running' && <button className="btn sm ghost" onClick={() => api.cancelTask(task.id).then(refresh)}>Stop</button>}
                 {task.designId && <button className="btn sm" onClick={() => { onOpen?.(task.designId); onClose(); }}>Open design</button>}
               </div>
-              {(task.log || []).map((e, i) => <div key={i} className={`log ${e.kind}`}>{e.kind === 'tool' ? <Icon name="wrench" size={13} /> : null}<span>{e.text}</span></div>)}
+              {task.status === 'running' && <LoadingSurface compact title={t('buildTitle')} subtitle={t('buildSub')} />}
+              {(advanced ? task.log || [] : (task.log || []).filter(entry => entry.kind === 'message' || entry.kind === 'done').slice(-3)).map((e, i) => <div key={i} className={`log ${e.kind}`}>{e.kind === 'tool' ? <Icon name="wrench" size={13} /> : null}<span>{e.text}</span></div>)}
               {task.result && <div className="log done"><span>{task.result}</span></div>}
             </div>
           )}
@@ -111,6 +115,7 @@ export function DirectorPanel({ onClose, doc, slideIdx = 0, onOpen, toast, initi
 
 // ---------- generation ----------
 export function GenerateDialog({ doc, slideIdx = 0, onClose, toast, onPlaced }) {
+  const { t } = useStudio();
   const [info, setInfo] = useState(null);
   const [prompt, setPrompt] = useState('');
   const [intent, setIntent] = useState('auto');
@@ -132,6 +137,7 @@ export function GenerateDialog({ doc, slideIdx = 0, onClose, toast, onPlaced }) 
   };
   return (
     <Modal title="Generate an image" onClose={onClose} size="sm">
+      {busy && <LoadingSurface compact title={t('buildTitle')} subtitle={t('buildSub')} />}
       <textarea className="input" rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the image: subject, setting, light, mood. Brand art direction is added for you." />
       <div className="row" style={{ marginTop: 8 }}>
         <Field label="Kind"><Select value={intent} onChange={setIntent} options={{ auto: 'Detect automatically', ...(info?.intents || {}) }} /></Field>
@@ -234,7 +240,7 @@ export function SettingsDialog({ onClose, toast }) {
           ))}
         </section>
         <section>
-          <h4>Models <span className="hint">they update themselves if a provider retires one</span></h4>
+          <h4>Models <span className="hint">OpenAI and Gemini support discovery; other providers use the configured model</span></h4>
           <div className="row">
             {Object.entries(s.models).map(([k, v]) => <Field key={k} label={k}><input className="input" defaultValue={v} onBlur={(e) => e.target.value !== v && save({ models: { [k]: e.target.value } })} /></Field>)}
           </div>
@@ -242,7 +248,7 @@ export function SettingsDialog({ onClose, toast }) {
         <section>
           <h4>Director and self-repair</h4>
           <p className="hint">{agent?.available ? `Claude Code found (${agent.cli}). Billing: ${agent.billing}.` : agent?.why}</p>
-          <label className="check"><input type="checkbox" checked={s.autoRepair} onChange={(e) => save({ autoRepair: e.target.checked })} />Repair automatically: when a scene fails to render, Claude fixes the module and verifies it</label>
+          <p className="hint">Renderer errors are recorded for review. Start repairs explicitly; changed scene source awaits approval in Settings.</p>
           <label className="check"><input type="checkbox" checked={!!s.director?.useApiKey} onChange={(e) => save({ director: { ...s.director, useApiKey: e.target.checked } })} />Bill the director to the Anthropic API key instead of the Claude plan</label>
           <div className="row">
             <Field label="Director model"><Select value={s.director?.model || ''} onChange={(v) => save({ director: { ...s.director, model: v || undefined } })} options={{ '': 'Claude Code default', opus: 'Opus', sonnet: 'Sonnet', fable: 'Fable' }} /></Field>
@@ -285,7 +291,7 @@ export function BrainPanel({ onClose, onOpenTask }) {
           <h4 style={{ marginTop: 18 }}>Generators, as measured</h4>
           {stats.length ? stats.map((s) => <div key={s.k} className="hint">{s.k.replace('|', ' · ')}: {s.ok} ok, {s.fail} failed{s.votes ? `, your votes ${s.score > 0 ? '+' : ''}${s.score}` : ''}{s.ms ? `, ~${Math.round(s.ms / 1000)} s` : ''}</div>) : <p className="hint">Nothing generated yet.</p>}
           <h4 style={{ marginTop: 18 }}>Self-repair</h4>
-          {(m.errors || []).length ? m.errors.slice(0, 8).map((e) => <div key={e.sig} className={`issue ${e.status === 'fixed' ? 'info' : 'warn'}`} style={{ cursor: 'default' }}><i /><div>{e.source}{e.module ? ` · ${e.module}` : ''}: {e.message}<br /><small>{e.status} · seen {e.count}× · {ago(e.lastAt || e.firstAt)}</small></div></div>) : <p className="hint">No errors reported.</p>}
+          {(m.errors || []).length ? m.errors.slice(0, 8).map((e) => <div key={e.sig} className={`issue ${e.status === 'fixed' ? 'info' : 'warn'}`} style={{ cursor: 'var(--gc-cursor)' }}><i /><div>{e.source}{e.module ? ` · ${e.module}` : ''}: {e.message}<br /><small>{e.status} · seen {e.count}× · {ago(e.lastAt || e.firstAt)}</small></div></div>) : <p className="hint">No errors reported.</p>}
           <h4 style={{ marginTop: 18 }}>Recent director runs</h4>
           {(m.tasks || []).map((t) => <button key={t.id} className="task-row" onClick={() => onOpenTask?.(t.id)}><span className={`st ${t.status}`} /><span className="ttl">{t.brief}<small>{t.mode} · {ago(t.createdAt)}</small></span></button>)}
         </section>

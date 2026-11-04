@@ -1,5 +1,12 @@
 // Thin client for the studio server.
+let session;
+export const apiHeaders = () => session ? { Authorization: `Bearer ${session}` } : {};
+async function sessionHeaders() {
+  if (!session) { const r = await fetch('/api/session'); if (!r.ok) throw new Error('Reload the studio to connect securely.'); session = (await r.json()).token; }
+  return apiHeaders();
+}
 async function req(method, url, body, headers = {}) {
+  headers = { ...await sessionHeaders(), ...headers };
   const raw = body instanceof Blob || body instanceof ArrayBuffer || body instanceof File;
   const res = await fetch(url, {
     method,
@@ -11,6 +18,7 @@ async function req(method, url, body, headers = {}) {
   return data;
 }
 export const api = {
+  testCopywriter: () => req('POST', '/api/copywriter/test', {}),
   health: () => req('GET', '/api/health'),
   list: () => req('GET', '/api/documents'),
   get: (id) => req('GET', `/api/documents/${id}`),
@@ -29,6 +37,15 @@ export const api = {
   deleteJob: (id) => req('DELETE', `/api/jobs/${id}`),
   choose: (id, concept) => req('POST', `/api/productions/${id}/choose`, { concept }),
   revise: (id, note) => req('POST', `/api/productions/${id}/revise`, { note }),
+  rebuild: (id) => req('POST', `/api/productions/${id}/rebuild`, {}),
+  saveBrief: (id, brief) => req('PATCH', `/api/productions/${id}/brief`, { brief }),
+  versions: (id) => req('GET', `/api/documents/${id}/versions`),
+  restoreVersion: (id, version, revision) => req('POST', `/api/documents/${id}/versions/${version}/restore`, { revision }),
+  facts: () => req('GET', '/api/product-facts'),
+  saveFacts: (facts) => req('PUT', '/api/product-facts', { facts }),
+  pendingModules: () => req('GET', '/api/modules/pending'),
+  approveModule: (id, digest) => req('POST', `/api/modules/${id}/approve`, { digest }),
+  campaign: (body) => req('POST', '/api/campaigns', body),
   resume: (id) => req('POST', `/api/productions/${id}/resume`, {}),
 
   // Video export (server, studio quality)

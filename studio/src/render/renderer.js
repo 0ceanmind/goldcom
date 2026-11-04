@@ -4,6 +4,7 @@ import { LOGO_INK, SYMBOL_ROOF, SYMBOL_G, SYMBOL_GEM, LOGO_BOX, LOGO_PARTS } fro
 import { ICONS } from '../../shared/icons.js';
 import { slideAt } from '../../shared/schema.js';
 import { sceneRuntime } from './scene3d/runtime.js';
+import { drawArtwork } from './artwork.js';
 import { EASE, evalKeys, evalCamera, applyCamera, mapTime } from './motion.js';
 import { drawDevice, screenRect } from './device.js';
 import { isVideoSrc } from './media.js';
@@ -462,7 +463,7 @@ function drawText(c, layer, ctx, p, raw) {
     c.font = lay.font;
   }
   let budget = Infinity;
-  if (kind === 'type' && animating) budget = Math.floor(String(layer.text).length * raw);
+  if (kind === 'type' && animating && !lay.rtl) budget = Math.floor(String(layer.text).length * raw);
   const nWords = lines.reduce((acc, l) => acc + l.tokens.length, 0);
   let wordBase = 0;
   lines.forEach((line, li) => {
@@ -818,78 +819,16 @@ function drawPlaceholder(c, layer, ctx, label) {
 // Vector placeholder app screen (dark Goldcom UI) used when a phone has no screenshot.
 // It shows no prices (brand §11: mock-ups must not look like live quotes) and carries an "Illustrative screen" tag.
 function drawAppScreen(c, x, y, w, h, kind, lang) {
-  const k = w / 300;
-  const rtl = lang === 'ar';
-  const X = (px, pw = 0) => (rtl ? x + w - (px + pw) * k : x + px * k);
-  const T = (txt, px, py, size, col, weight = 600, align = 'start') => {
-    c.font = `${weight} ${size * k}px ${rtl ? FONTS.arabic : FONTS.latin}`; c.fillStyle = col; c.direction = rtl ? 'rtl' : 'ltr';
-    c.textAlign = align === 'end' ? (rtl ? 'left' : 'right') : align === 'center' ? 'center' : rtl ? 'right' : 'left';
-    c.fillText(txt, rtl ? x + w - px * k : x + px * k, y + py * k);
-  };
-  c.fillStyle = COLORS.onyx; c.fillRect(x, y, w, h);
-  c.font = `600 ${11 * k}px ${FONTS.latin}`; c.fillStyle = COLORS.white; c.textAlign = 'left'; c.direction = 'ltr';
-  c.fillText('9:41', x + 24 * k, y + 22 * k);
-  // "Illustrative screen" tag under the status bar
-  const tag = rtl ? 'شاشة توضيحية' : 'Illustrative screen';
-  c.font = `600 ${8.5 * k}px ${rtl ? FONTS.arabic : FONTS.latin}`;
-  const tw = c.measureText(tag).width + 14 * k;
-  c.fillStyle = 'rgba(154,150,140,0.18)'; rr(c, X(300 - 16 - tw / k, tw / k), y + 32 * k, tw, 15 * k, 7.5 * k); c.fill();
-  c.fillStyle = COLORS.stone; c.textAlign = 'center'; c.direction = rtl ? 'rtl' : 'ltr';
-  c.fillText(tag, X(300 - 16 - tw / k, tw / k) + tw / 2, y + 42.5 * k);
-  if (kind === 'browse') {
-    T(rtl ? 'تصفّح' : 'Browse', 16, 72, 20, COLORS.white, 700);
-    T(rtl ? 'سبائك عيار 24' : '24K bars', 16, 90, 11, COLORS.stone, 500);
-    const items = ['1 g', '2.5 g', '5 g', '10 g'];
-    items.forEach((g, i) => {
-      const cx = 12 + (i % 2) * 142, cy = 104 + Math.floor(i / 2) * 196;
-      c.fillStyle = COLORS.charcoal; rr(c, X(cx, 134), y + cy * k, 134 * k, 184 * k, 14 * k); c.fill();
-      const gx = X(cx + 8, 118) + 59 * k;
-      const gimg = c.createRadialGradient(gx, y + (cy + 50) * k, 0, gx, y + (cy + 60) * k, 80 * k);
-      gimg.addColorStop(0, '#4a4033'); gimg.addColorStop(1, '#262521');
-      c.fillStyle = gimg; rr(c, X(cx + 8, 118), y + (cy + 8) * k, 118 * k, 110 * k, 10 * k); c.fill();
-      drawGoldBar(c, { x: X(cx + 46, 42), y: y + (cy + 26) * k, w: 42 * k, h: 70 * k, label: g, sub: '999.9' }, {}, 0);
-      T(rtl ? `سبيكة ${g.replace(/\s*g$/, '')} جرام` : `Gold bar · ${g}`, cx + 10, cy + 140, 11, COLORS.white, 600);
-      T(rtl ? 'عيار 24 · معتمدة' : '24K · certified', cx + 10, cy + 160, 9.5, COLORS.stone, 500);
-    });
-  } else {
-    T(rtl ? 'مساء الخير' : 'Good evening', 16, 70, 11, COLORS.stone, 500);
-    T(rtl ? 'محمود' : 'Mahmood', 16, 88, 15, COLORS.white, 700);
-    c.fillStyle = COLORS.charcoal; rr(c, x + 12 * k, y + 102 * k, 276 * k, 214 * k, 16 * k); c.fill();
-    T(rtl ? 'ذهبي' : 'My gold', 26, 126, 11, COLORS.stone, 500);
-    c.font = `700 ${28 * k}px ${rtl ? FONTS.arabic : FONTS.latin}`; c.fillStyle = COLORS.white; c.direction = rtl ? 'rtl' : 'ltr'; c.textAlign = rtl ? 'right' : 'left';
-    c.fillText(rtl ? '12.5 جرام' : '12.5 g', rtl ? x + w - 26 * k : x + 26 * k, y + 158 * k);
-    T(rtl ? 'عيار 24 · 3 سبائك' : '24K · 3 bars', 26, 176, 10.5, COLORS.stone, 500);
-    // Holdings, not a chart: a mock screen should not suggest that gold only goes up (brand §11.2).
-    const rows = rtl ? [['سبيكة 5 جرام', '× 2'], ['سبيكة 2.5 جرام', '× 1']] : [['5 g bar', '× 2'], ['2.5 g bar', '× 1']];
-    rows.forEach(([name, qty], i) => {
-      const ry = 196 + i * 52;
-      c.fillStyle = COLORS.graphite; rr(c, X(22, 256), y + ry * k, 256 * k, 42 * k, 10 * k); c.fill();
-      drawGoldBar(c, { x: X(32, 16), y: y + (ry + 8) * k, w: 16 * k, h: 26 * k, label: '', sub: '' }, {}, 0);
-      T(name, 58, ry + 26, 11.5, COLORS.white, 600);
-      T(qty, 266, ry + 26, 11.5, COLORS.stone, 500, 'end');
-    });
-    const acts = rtl ? ['شراء', 'بيع', 'إهداء', 'استلام'] : ['Buy', 'Sell', 'Gift', 'Collect'];
-    const icn = ['buy', 'sell', 'gift', 'pin'];
-    acts.forEach((a, i) => {
-      const ax = 22 + i * 68;
-      c.fillStyle = COLORS.graphite; rr(c, X(ax, 48), y + 332 * k, 48 * k, 48 * k, 12 * k); c.fill();
-      drawIconPath(c, icn[i], X(ax, 48) + 13 * k, y + 345 * k, 22 * k, COLORS.gold);
-      T(a, ax + 24, 398, 10.5, COLORS.stone, 500, 'center');
-    });
-    c.fillStyle = COLORS.graphite; rr(c, x + 12 * k, y + 414 * k, 276 * k, 64 * k, 16 * k); c.fill();
-    drawIconPath(c, 'gift', X(28, 26), y + 433 * k, 26 * k, COLORS.gold);
-    T(rtl ? 'أهدِ الذهب لمن تحب' : 'Send gold as a gift', 68, 442, 12, COLORS.white, 700);
-    T(rtl ? 'اختر الوزن وأضف رسالتك' : 'Choose a weight, add a message', 68, 460, 10, COLORS.stone, 500);
-  }
-  // tab bar + FAB
-  const tb = y + h - 64 * k;
-  c.fillStyle = COLORS.charcoal; c.fillRect(x, tb, w, 64 * k);
-  const tabs = ['home', 'layers', null, 'cart', 'user'];
-  const active = kind === 'browse' ? 1 : 0;
-  tabs.forEach((ic, i) => { if (ic) drawIconPath(c, ic, X(i * 60 + 21, 18), tb + 14 * k, 18 * k, i === active ? COLORS.spark : COLORS.stone); });
-  c.fillStyle = 'rgba(242,212,107,0.14)'; c.beginPath(); c.arc(x + w / 2, tb + 4 * k, 34 * k, 0, Math.PI * 2); c.fill();
-  c.fillStyle = COLORS.spark; c.beginPath(); c.arc(x + w / 2, tb + 4 * k, 26 * k, 0, Math.PI * 2); c.fill();
-  c.save(); c.translate(x + w / 2, tb + 4 * k); c.rotate(Math.PI / 4); c.fillStyle = COLORS.ink; c.fillRect(-6 * k, -6 * k, 12 * k, 12 * k); c.restore();
+  c.save();
+  c.fillStyle = COLORS.charcoal; c.fillRect(x,y,w,h);
+  c.strokeStyle = COLORS.graphite; c.lineWidth = Math.max(2,w*0.004);
+  for (let i=-h; i<w+h; i+=w*0.15) { c.beginPath(); c.moveTo(x+i,y); c.lineTo(x+i+h,y+h); c.stroke(); }
+  c.fillStyle = COLORS.white; c.textAlign='center'; c.direction=lang==='ar'?'rtl':'ltr';
+  c.font = `600 ${w*0.065}px ${lang==='ar'?FONTS.arabic:FONTS.latin}`;
+  c.fillText(lang==='ar'?'أضف تسجيل التطبيق':'APP FOOTAGE REQUIRED',x+w/2,y+h/2,w*0.88);
+  c.font = `500 ${w*0.04}px ${FONTS.latin}`;
+  c.fillText('DRAFT • NOT FOR PUBLICATION',x+w/2,y+h*0.57,w*0.88);
+  c.restore();
 }
 
 const topColors = new WeakMap();
@@ -1602,6 +1541,7 @@ function animState(layer, ctx) {
 function drawLayerBody(c, layer, ctx, st, images) {
   const gleamP = layer.anim?.in === 'gleam' && Number.isFinite(ctx.t) ? clamp((ctx.t - (layer.anim.delay || 0) - (layer.anim.dur || 0.6) * 0.3) / 1.2) : 0;
   switch (layer.type) {
+    case 'artwork': drawArtwork(c, layer, ctx); break;
     case 'text': drawText(c, layer, ctx, st.p, st.raw); break;
     case 'list': drawList(c, layer, ctx, st.p, st.raw); break;
     case 'logo': drawLogo(c, layer, ctx, st.raw); break;

@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { DATA_DIR, STUDIO_ROOT } from './store.mjs';
 
 export const MEMORY_DIR = path.join(DATA_DIR, 'memory');
-export const KNOWLEDGE_DIR = path.join(STUDIO_ROOT, 'knowledge');
+export const KNOWLEDGE_DIR = process.env.GOLDCOM_STUDIO_KNOWLEDGE || path.join(STUDIO_ROOT, 'knowledge');
 const ERRORS = path.join(MEMORY_DIR, 'errors.json');
 const FEEDBACK = path.join(MEMORY_DIR, 'feedback.jsonl');
 const GENERATIONS = path.join(MEMORY_DIR, 'generations.jsonl');
@@ -111,6 +111,10 @@ export function readLessons() {
 /** Append a lesson under a category heading in knowledge/lessons.md. */
 export function addLesson({ rule, why = '', category = 'General', source = 'feedback' }) {
   const text = String(rule || '').trim();
+  if (text.length > 600 || /[\r\n<>]/.test(text + why + category) || /ignore.*(rule|instruction)|system prompt|override|api.?key|secret|execute|tool call/i.test(text)) throw Object.assign(new Error('Lessons must be one short design preference, without instructions that override rules or access tools'), { status: 400 });
+  category = String(category).replace(/[^a-zA-Z0-9 -]/g, '').slice(0, 50) || 'General';
+  why = String(why).slice(0, 500);
+  source = String(source).replace(/[^a-zA-Z0-9 -]/g, '').slice(0, 40);
   if (!text) throw Object.assign(new Error('rule is required'), { status: 400 });
   fs.mkdirSync(KNOWLEDGE_DIR, { recursive: true });
   let md = readLessons() || '# Lessons learned\n\nRules the studio has learned from feedback and mistakes. Read before every task. Newest first within each section.\n';
@@ -167,7 +171,7 @@ export function listKnowledge() {
 
 export function readKnowledge(rel) {
   const full = path.resolve(KNOWLEDGE_DIR, String(rel));
-  if (!full.startsWith(KNOWLEDGE_DIR) || !fs.existsSync(full)) return null;
+  if (!full.startsWith(KNOWLEDGE_DIR + path.sep) || !fs.existsSync(full)) return null;
   return fs.readFileSync(full, 'utf8');
 }
 
@@ -176,7 +180,7 @@ export function writeKnowledge(rel, content) {
   const clean = String(rel).replace(/\.\.+/g, '').replace(/^\/+/, '');
   if (!clean.endsWith('.md')) throw Object.assign(new Error('Knowledge files are markdown (.md)'), { status: 400 });
   const full = path.resolve(KNOWLEDGE_DIR, clean);
-  if (!full.startsWith(KNOWLEDGE_DIR)) throw Object.assign(new Error('Path outside knowledge/'), { status: 400 });
+  if (!full.startsWith(KNOWLEDGE_DIR + path.sep)) throw Object.assign(new Error('Path outside knowledge/'), { status: 400 });
   if (path.basename(full) === 'lessons.md') throw Object.assign(new Error('Use add_lesson for lessons.md'), { status: 400 });
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, String(content));

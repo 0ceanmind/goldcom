@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { atomicWrite } from './files.mjs';
 import { DATA_DIR } from './store.mjs';
 
 export const JOBS_DIR = path.join(DATA_DIR, 'jobs');
@@ -11,7 +12,7 @@ const jobs = new Map();
 let broadcaster = () => {};
 export const setBroadcaster = (fn) => { broadcaster = fn; };
 
-const PERSIST = new Set(['production']);
+const PERSIST = new Set(['production', 'export', 'capture', 'update', 'campaign']);
 const persistTimers = new Map();
 function persist(job) {
   if (!PERSIST.has(job.type)) return;
@@ -19,7 +20,7 @@ function persist(job) {
   persistTimers.set(job.id, setTimeout(() => {
     fs.mkdirSync(JOBS_DIR, { recursive: true });
     const { controller, ...data } = job;
-    fsp.writeFile(path.join(JOBS_DIR, `${job.id}.json`), JSON.stringify(data, null, 2)).catch(() => {});
+    atomicWrite(path.join(JOBS_DIR, `${job.id}.json`), JSON.stringify(data, null, 2)).catch(e => console.error('[jobs] Could not persist job:', e.message));
   }, 250));
 }
 
@@ -86,7 +87,7 @@ export async function recoverJobs() {
     try {
       const file = path.join(JOBS_DIR, f);
       const j = JSON.parse(await fsp.readFile(file, 'utf8'));
-      if (j.status === 'running' || j.status === 'waiting') { j.status = 'interrupted'; j.message = 'The studio restarted while this was running. Press Resume to continue.'; await fsp.writeFile(file, JSON.stringify(j, null, 2)); }
+      if (j.status === 'running') { j.status = 'interrupted'; j.message = j.type === 'export' ? 'Export interrupted by restart. Start the export again.' : 'The studio restarted while this was running. Press Resume to continue.'; await fsp.writeFile(file, JSON.stringify(j, null, 2)); }
     } catch { /* skip */ }
   }
 }

@@ -2,6 +2,8 @@
 // Goldcom Studio MCP server: lets Claude Code (in any project) create and edit on-brand designs in the studio.
 // Register once:  claude mcp add goldcom-studio --scope user -- node /abs/path/to/studio/mcp/server.mjs
 import fs from 'node:fs';
+import { localToken } from '../server/security.mjs';
+import { assertExportable } from '../shared/readiness.js';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -17,6 +19,13 @@ import { THEMES, FORMATS, TRANSITIONS, DISCLAIMER, KINDS, SAFE_ZONES, BG_MOTION 
 import { LIBRARY, LIBRARY_CATEGORIES, libraryItem, buildLibraryDoc } from '../shared/library.js';
 import { createSlide, normalizeDocument } from '../shared/schema.js';
 import { lintDocument } from '../shared/lint.js';
+import { completeCopy } from '../server/ai/copy.mjs';
+import { BILINGUAL_COPY, copyInput, applyCopy } from '../server/ai/copy-contract.mjs';
+import { CONCEPTS } from '../server/ai/pipeline.mjs';
+import { creativeHistory, historyPrompt, reserveConcepts } from '../server/ai/originality.mjs';
+import { directorSystem } from '../server/ai/knowledge.mjs';
+import { getSettings } from '../server/settings.mjs';
+import { randomUUID } from 'node:crypto';
 
 const PORT = Number(process.env.GOLDCOM_STUDIO_PORT || process.env.PORT || 5177);
 const STUDIO_URL = (process.env.GOLDCOM_STUDIO_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
@@ -52,7 +61,7 @@ async function health(timeout = 800) {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), timeout);
-    const r = await fetch(`${STUDIO_URL}/api/health`, { signal: ctl.signal });
+    const r = await studioFetch(`${STUDIO_URL}/api/health`, { signal: ctl.signal });
     clearTimeout(t);
     return r.ok ? r.json() : null;
   } catch { return null; }
@@ -83,7 +92,7 @@ function openBrowser(url) {
 }
 
 const slideSchema = z.object({
-  template: z.enum(TEMPLATE_IDS).describe('Template id. Prefer "scene" (one 3D visual + one line). See studio_guide for fields.'),
+  template: z.enum(TEMPLATE_IDS).describe('Template id. Choose an art direction for this specific idea. 3D scene is optional. Every slide needs meaningful artwork. See studio_guide.'),
   theme: z.enum(Object.keys(THEMES)).optional().describe('onyx (dark, default) | charcoal | bullion (campaign gradient) | cream (light) | sand (light gold)'),
   content: z.record(z.string(), z.any()).default({}).describe('Template fields. scene template: { scene, params, title, caption, textZone, disclaimer }. Others: { kicker, title, subtitle, body, items[], screenshot, device, icon, stat, label, code, button, link, disclaimer }. Wrap a word in *asterisks* for the gold accent.'),
   duration: z.number().min(1).max(30).optional().describe('Seconds (video/animation). Default 4.'),
@@ -99,9 +108,15 @@ function buildSlides(specs) {
 // ---------- server ----------
 setSceneRegistry(await listModules().catch(() => []));
 const server = new McpServer({ name: 'goldcom-studio', version: '2.0.0' });
+if (process.env.GOLDCOM_AGENT_RESTRICTED === '1') {
+  const allowed = new Set(['creative_directions','write_bilingual_copy','studio_guide','list_designs','get_design','create_design','edit_slide','update_design','add_slide','delete_slide','set_caption','brand_check','render_preview','list_scenes','get_scene_source','test_scene','create_scene_module','generate_image','get_feedback','add_lesson','get_errors','resolve_error','save_knowledge','read_knowledge']);
+  const register = server.registerTool.bind(server);
+  server.registerTool = (name, ...args) => allowed.has(name) ? register(name, ...args) : undefined;
+}
+const studioFetch = (url, init = {}) => fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${localToken()}` } });
 const studioJson = async (p, init) => {
   if (!(await ensureStudio())) throw new Error(`Studio is not running at ${STUDIO_URL}`);
-  const r = await fetch(`${STUDIO_URL}${p}`, init);
+  const r = await studioFetch(`${STUDIO_URL}${p}`, init);
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
   return body;
@@ -111,6 +126,37 @@ const dnaCore = () => {
   const pick = (h) => { const i = md.indexOf(h); if (i < 0) return ''; const j = md.indexOf('\n## ', i + h.length); return md.slice(i, j < 0 ? undefined : j); };
   return [pick('## 0.'), pick('## 2.'), pick('## 4.')].filter(Boolean).join('\n');
 };
+
+let copyCost = 0;
+const writer = o => completeCopy({ ...o, system: directorSystem(), budgetUsd: Math.max(0,getSettings().productionBudgetUsd-copyCost), onUsage: u=>{copyCost+=u.costUsd||0;} });
+server.registerTool('creative_directions', {
+  title:'Develop original ideas with ChatGPT',
+  description:'Required before a new generation. Claude supplies the brief; ChatGPT develops three different ideas and the studio rejects similarities to known work. No silent fallback to Claude copywriting.',
+  inputSchema:{brief:z.string().min(1).max(12000),lang:z.enum(['ar','en']).default('ar'),design_id:z.string().optional()},
+},async({brief,lang,design_id})=>{
+  try {
+    const reservation=`mcp-${randomUUID()}`,history=await creativeHistory({excludeDoc:design_id});
+    let issues=[];
+    for(let i=0;i<3;i++){
+      const result=await writer({schema:CONCEPTS,prompt:`Develop concepts A, B and C for this brief: ${brief}\nHooks in ${lang==='ar'?'Omani dialect':'English'}. Three different visual families, premises, metaphors, framing, motion and narratives; 3D optional. Every slide must show a meaningful visual. Avoid known work: ${historyPrompt(history)}\nPrior rejected similarities: ${JSON.stringify(issues)}`});
+      issues=await reserveConcepts(reservation,result.concepts,{excludeDoc:design_id});
+      if(!issues.length)return text({...result,reservation,scope:'Known saved designs, library and concept history'});
+    }
+    return fail(`Fresh concepts could not pass originality checks: ${issues.join(' ')}`);
+  }catch(e){return fail(e.message);}
+});
+server.registerTool('write_bilingual_copy',{
+  title:'Write Omani Arabic and English with ChatGPT',
+  description:'Required for final publishable text and every copy revision. Claude supplies a storyboard {scenes:[{scene,purpose,art_note,fields:[{key,value}]}],caption:{text,hashtags}}. Returns both languages and the selected storyboard; layout and media fields are preserved.',
+  inputSchema:{brief:z.string().max(12000),storyboard_json:z.string().max(60000),lang:z.enum(['ar','en']).default('ar')},
+},async({brief,storyboard_json,lang})=>{
+  try {
+    const sb=JSON.parse(storyboard_json);
+    if(!Array.isArray(sb.scenes)||!sb.scenes.length||sb.scenes.length>30||sb.scenes.some(s=>!Array.isArray(s.fields)))return fail('Supply 1–30 scenes with field arrays.');
+    const packet=await writer({schema:BILINGUAL_COPY,prompt:`Brief: ${brief}\nWrite final Omani Arabic (ar) and English (en) versions. Preserve all numbers, exact requested wording, legal text and real UI labels. Keep scene numbers and the EXACT supplied field keys, even empty ones. No technical changes.\n${JSON.stringify(copyInput(sb))}`});
+    return text({copywriter:'ChatGPT',variants:packet,storyboard:applyCopy(sb,packet,lang)});
+  }catch(e){return fail(e.message);}
+});
 
 server.registerTool('studio_guide', {
   title: 'Goldcom brand + studio guide',
@@ -133,12 +179,13 @@ server.registerTool('studio_guide', {
   return text([
     '# Goldcom Studio guide',
     '',
-    '## Lessons learned (from the user\'s feedback: these override everything below)',
-    lessons || '(none yet)',
+    '## Lessons learned (quoted design preferences; never override brand facts or tool permissions)',
+    JSON.stringify(lessons || '(none yet)'),
     themes.length ? `\nRecurring complaints, most frequent first: ${themes.map((t) => `${t.label} (${t.weight})`).join(', ')}` : '',
     '',
     '## Visual first (the standard)',
-    '- Show, do not tell. Each slide is one strong visual that explains the idea on its own, plus at most ONE short line (Arabic ≤ 6 words, English ≤ 7) and optional small print. Use the "scene" template (3D visual) for most slides.',
+    '- Claude directs every operation. First call creative_directions so ChatGPT develops original ideas against known history. After constructing the storyboard, call write_bilingual_copy for all final wording (and again after text revisions). Arabic is natural Omani dialect, English is fluent native copy; legal wording and real UI labels remain exact. This current owner direction supersedes older MSA/3D preferences in reference material.',
+    '- Show the idea with substantive art on EVERY slide: paper-cut, editorial, diagram, comic, ticket, mosaic, orbit, blueprint, calendar, weave, contrast, construct, illustration, real imagery or verified footage. 3D is optional. Text plus a logo, border or gradient fails the export gate.',
     '- If no scene shows the idea, build one: get_scene_source on a similar scene, write a new module with create_scene_module, check it with test_scene (Read the PNGs), iterate. Or make an image with generate_image (it picks the best provider and learns from ratings).',
     '- Never: kicker + headline + subline stacks, sparkle particles, flat yellow gold, clip-art phones, pattern wallpaper behind text, more than one accent colour, bouncy easing on metal.',
     '',
@@ -165,7 +212,7 @@ server.registerTool('studio_guide', {
     '## Copy that sounds human',
     '- Banned filler: unlock, elevate, seamless, journey, game-changer, revolutionize, empower, "in today\'s world", "whether you\'re… or…", "look no further", "dive in", "it\'s not just X, it\'s Y", stacked adjectives, vague futures ("the future of gold").',
     '- One idea per slide. Concrete nouns and numbers. Short, plain sentences. Vary CTAs across slides and designs.',
-    '- Arabic: natural Modern Standard Arabic as written in the Gulf, never word-for-word English. Watch gender agreement, use جرام / جولدكم / عيار consistently, and write prices as "31.204 ر.ع.".',
+    '- Arabic: natural conversational Omani dialect, authored by ChatGPT; never stiff MSA or word-for-word English. Watch gender agreement, use جرام / جولدكم / عيار consistently, and write prices as "31.204 ر.ع.".',
     '',
     '## Formats',
     ...Object.entries(FORMATS).map(([k, f]) => `- ${k}: ${f.label} (${f.w}x${f.h})`),
@@ -182,7 +229,7 @@ server.registerTool('studio_guide', {
     '- Never show invented results (poll %, user numbers, testimonials). Prices in designs are illustrative: say so, and add notes: "Update the price before posting".',
     '',
     '## Library',
-    '- list_library shows ready-made, audited designs. create_from_library copies one (then edit_slide to adapt it). Start there when the request matches a library item.',
+    '- list_library demonstrates capabilities in many visual languages. Use it for exploration or when the user explicitly asks for a template. New generations must develop a new premise and construction; do not copy a library item and change its text or colours.',
     '',
     '## Themes (per slide)',
     ...Object.entries(THEMES).map(([k, t]) => `- ${k}: ${t.label}`),
@@ -200,6 +247,7 @@ server.registerTool('studio_guide', {
     '',
     '## Goldcom brand rules',
     brand || '(brand/AGENT_SYSTEM_PROMPT.md not found next to the studio)',
+    'Current studio owner direction (2026-11-05): ChatGPT writes final Omani Arabic and English and develops fresh concepts; Claude orchestrates. 3D optional. Every slide requires substantive, idea-specific art.',
   ].join('\n'));
 });
 
@@ -371,7 +419,7 @@ server.registerTool('render_preview', {
   const idx = (slides?.length ? slides : doc.slides.map((_, i) => i)).filter((i) => i < doc.slides.length).slice(0, 10);
   const content = [{ type: 'text', text: `${doc.name}: ${idx.length} slide(s) at ${Math.round(scale * 100)}% (${doc.width}x${doc.height} full size)` }];
   for (const i of idx) {
-    const r = await fetch(`${STUDIO_URL}/api/render/${id}?slide=${i}&scale=${scale}`);
+    const r = await studioFetch(`${STUDIO_URL}/api/render/${id}?slide=${i}&scale=${scale}`);
     if (!r.ok) { content.push({ type: 'text', text: `Slide ${i + 1}: render failed (${(await r.json().catch(() => ({}))).error || r.status})` }); continue; }
     content.push({ type: 'text', text: `Slide ${i + 1} · ${doc.slides[i].template || 'custom'}` });
     content.push({ type: 'image', data: Buffer.from(await r.arrayBuffer()).toString('base64'), mimeType: 'image/png' });
@@ -387,11 +435,12 @@ server.registerTool('export_pngs', {
   if (!(await ensureStudio())) return fail(`Studio is not running at ${STUDIO_URL}`);
   const doc = await getDocument(id);
   const dir = path.resolve(process.cwd(), out_dir);
+  assertExportable(doc);
   fs.mkdirSync(dir, { recursive: true });
   const slug = doc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'goldcom';
   const files = [];
   for (let i = 0; i < doc.slides.length; i++) {
-    const r = await fetch(`${STUDIO_URL}/api/render/${id}?slide=${i}&scale=1`);
+    const r = await studioFetch(`${STUDIO_URL}/api/render/${id}?slide=${i}&scale=1`);
     if (!r.ok) return fail(`Render failed on slide ${i + 1}`);
     const f = path.join(dir, `${slug}-${String(i + 1).padStart(2, '0')}.png`);
     fs.writeFileSync(f, Buffer.from(await r.arrayBuffer()));
@@ -457,7 +506,7 @@ async function sceneFrames(id, params, times, { w = 540, h = 675, lang = 'en', t
   fs.mkdirSync(dir, { recursive: true });
   for (const t of times) {
     const q = new URLSearchParams({ t: String(t), w: String(w), h: String(h), lang, theme, params: JSON.stringify(params || {}), v: String(Date.now()) });
-    const r = await fetch(`${STUDIO_URL}/api/scene-preview/${id}?${q}`);
+    const r = await studioFetch(`${STUDIO_URL}/api/scene-preview/${id}?${q}`);
     if (!r.ok) { content.push({ type: 'text', text: `t=${t}s: render failed: ${(await r.json().catch(() => ({}))).error || r.status}` }); continue; }
     const buf = Buffer.from(await r.arrayBuffer());
     const f = path.join(dir, `${id}-${String(t).replace('.', '_')}.png`);
@@ -480,10 +529,11 @@ server.registerTool('test_scene', {
 
 server.registerTool('create_scene_module', {
   title: 'Create or replace a 3D scene module',
-  description: 'Write a new scene module (or fix an existing one, same id). The code is one ES module with a default export { id, name, description, idea:{en,ar}, tags, duration, still, textZone, focusY, params:[{key,label,type,options,default}], create(api) }. It must not import anything: use api.THREE and api.kit (see studio/modules/README.md). The studio validates it, renders test frames and returns them. Fix and resubmit until it loads and looks right.',
+  description: 'Write a new scene module (or fix an existing one, same id). The code is one ES module with a default export { id, name, description, idea:{en,ar}, tags, duration, still, textZone, focusY, params:[{key,label,type,options,default}], create(api) }. It must not import anything: use api.THREE and api.kit (see studio/modules/README.md). The studio statically validates source and saves a proposal for human approval in Settings. New source is never executed automatically. Fix and resubmit until it loads and looks right.',
   inputSchema: { id: z.string().regex(/^[a-z0-9][a-z0-9-]{1,48}$/), code: z.string().min(80), test_times: z.array(z.number()).max(6).optional(), test_params: z.record(z.string(), z.any()).optional() },
 }, async ({ id, code, test_times, test_params }) => {
   const meta = await writeModule(id, code);
+  if (meta.status === 'pending') return text({ saved: meta, note: meta.message });
   if (meta.status === 'error') {
     // Keep the last working version: a module that does not load is never left in place.
     if (meta.backup) await writeModule(id, meta.backup);
@@ -511,11 +561,12 @@ server.registerTool('generate_image', {
     attach_to: z.object({ design_id: z.string(), slide: z.number().int().min(0).default(0), as: z.enum(['layer', 'background']).default('background') }).optional(),
   },
 }, async ({ prompt, intent, aspect, provider, references, transparent, attach_to }) => {
+  if (process.env.GOLDCOM_AGENT_RESTRICTED === '1') { if (provider && provider !== 'auto' && provider !== 'scene') return fail('Paid image generation must be started explicitly from the editor.'); provider = 'scene'; }
   try {
     const r = await studioJson('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, intent, aspect, provider, references, transparent, attach: attach_to ? { docId: attach_to.design_id, slide: attach_to.slide, as: attach_to.as } : undefined }) });
     const content = [{ type: 'text', text: JSON.stringify({ url: r.asset.url, svg: r.asset.svg, provider: r.provider, model: r.model, intent: r.intent, attempts: r.attempts, degraded: r.degraded, attached: r.attached }, null, 2) }];
     if (/png|jpe?g|webp/.test(r.asset.mime || '')) {
-      const img = await fetch(`${STUDIO_URL}${r.asset.url}`);
+      const img = await studioFetch(`${STUDIO_URL}${r.asset.url}`);
       content.push({ type: 'image', data: Buffer.from(await img.arrayBuffer()).toString('base64'), mimeType: r.asset.mime });
     }
     return { content };
@@ -585,7 +636,7 @@ server.registerTool('open_studio', {
 async function studioApi(method, route, body, headers = {}) {
   if (!(await ensureStudio())) throw new Error(`The studio is not running. Start it with: cd ${STUDIO_ROOT} && npm run studio`);
   const raw = Buffer.isBuffer(body);
-  const res = await fetch(`${STUDIO_URL}${route}`, { method, headers: body && !raw ? { 'Content-Type': 'application/json', ...headers } : headers, body: body ? (raw ? body : JSON.stringify(body)) : undefined });
+  const res = await studioFetch(`${STUDIO_URL}${route}`, { method, headers: body && !raw ? { 'Content-Type': 'application/json', ...headers } : headers, body: body ? (raw ? body : JSON.stringify(body)) : undefined });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
   return data;

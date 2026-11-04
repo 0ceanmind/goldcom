@@ -42,7 +42,7 @@ const edited = json(await call('edit_slide', { id: created.id, index: 1, content
 check(edited.brand_check.some((m) => m.includes('guaranteed')), 'brand check flags red-tier claim');
 await call('edit_slide', { id: created.id, index: 1, content: { body: 'Every slide follows the Goldcom guidelines.' } });
 
-const shot = json(await call('capture_screenshot', { url: 'http://localhost:5177/', device: 'desktop', attach_to: { id: created.id, index: 0 } }));
+const shot = json(await call('capture_screenshot', { url: process.env.GOLDCOM_STUDIO_URL || 'http://localhost:5177/', device: 'desktop', attach_to: { id: created.id, index: 0 } }));
 check(shot.url?.startsWith('/assets/') && shot.attached, 'capture_screenshot attaches a live screenshot');
 
 const preview = await call('render_preview', { id: created.id, slides: [0, 2], scale: 0.3 });
@@ -89,9 +89,14 @@ check(frames.content.filter((c) => c.type === 'image').length === 2, 'test_scene
 const tmpId = 'smoke-test-cube';
 const code = `export default { id: '${tmpId}', name: 'Smoke cube', idea: { en: 'test' }, params: [], create({ THREE, kit, theme, aspect }) { const scene = new THREE.Scene(); kit.stage(scene, { theme, aspect }); const camera = new THREE.PerspectiveCamera(24, aspect, 0.1, 100); const m = new THREE.Mesh(kit.roundedBox(1, 1, 1, 0.06), kit.materials.gold()); m.position.y = 0.6; scene.add(m); return { scene, camera, update(t) { m.rotation.y = t * 0.5; kit.orbit(camera, { target: new THREE.Vector3(0, 0.6, 0), distance: 6, elevation: 0.2 }); } }; } };`;
 const made = await call('create_scene_module', { id: tmpId, code, test_times: [1] });
-check(made.content.some((c) => c.type === 'image'), 'create_scene_module validates, saves and renders a new module');
+const proposed = json(made).saved;
+check(proposed.status === 'pending', 'create_scene_module saves source for approval without executing it');
+const response = await fetch(`${process.env.GOLDCOM_STUDIO_URL}/api/modules/${tmpId}/approve`, { method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${fs.readFileSync(path.join(process.env.GOLDCOM_STUDIO_DATA,'.api-token'),'utf8').trim()}`},body:JSON.stringify({digest:proposed.digest}) });
+check(response.ok, 'reviewed scene source can be approved');
+const approved = await call('test_scene',{id:tmpId,times:[1]});
+check(approved.content.some(c=>c.type==='image'),'approved scene renders');
 check(await (async () => { const r = await client.callTool({ name: 'create_scene_module', arguments: { id: 'smoke-test-bad', code: "import x from 'y'; export default {}" + ' '.repeat(60) } }); return r.isError; })(), 'create_scene_module refuses modules that import');
-fs.rmSync(path.join(root, 'modules', 'scenes', `${tmpId}.js`), { force: true });
+fs.rmSync(path.join(process.env.GOLDCOM_STUDIO_MODULES || path.join(root,'modules','scenes'), `${tmpId}.js`), { force: true });
 const gen = json(await call('generate_image', { prompt: 'a 10 g gold bar hero shot', aspect: '4:5', provider: 'scene' }));
 check(gen.url?.startsWith('/assets/') && gen.provider === 'scene', 'generate_image routes a product shot to the built-in scenes');
 const fb = json(await call('get_feedback'));

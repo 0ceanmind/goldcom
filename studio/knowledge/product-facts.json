@@ -1,0 +1,6 @@
+[
+  { "id": "minimum-weight", "claim": "Start from one gram of certified gold bars and coins.", "source": "brand/AGENT_SYSTEM_PROMPT.md:63 GREEN register", "approved": true, "approvedBy": "Existing brand register" },
+  { "id": "languages", "claim": "Goldcom supports Arabic and English.", "source": "brand/AGENT_SYSTEM_PROMPT.md:63 GREEN register", "approved": true, "approvedBy": "Existing brand register" },
+  { "id": "gifts", "claim": "Send gold as a gift and track holdings and price history.", "source": "brand/AGENT_SYSTEM_PROMPT.md:63 GREEN register", "approved": true, "approvedBy": "Existing brand register" },
+  { "id": "advisory", "claim": "Sharia advisory by Eltizam", "source": "brand/AGENT_SYSTEM_PROMPT.md:63 GREEN register", "approved": true, "approvedBy": "Existing brand register" }
+]

@@ -13,6 +13,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'static',
-    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), render: resolve(__dirname, 'render.html') } },
+    rollupOptions: { input: { main: resolve(import.meta.dirname, 'index.html'), render: resolve(import.meta.dirname, 'render.html') } },
   },
 });

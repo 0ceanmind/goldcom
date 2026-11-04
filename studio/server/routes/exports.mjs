@@ -8,29 +8,40 @@ import { DATA_DIR, getDocument } from '../store.mjs';
 import { createJob, updateJob } from '../jobs.mjs';
 import { renderVideo, renderStills } from '../render/video.mjs';
 import { soundtrackFor } from '../render/soundtrack.mjs';
+import { assertExportable } from '../../shared/readiness.js';
 import { getSettings } from '../settings.mjs';
 
 export const EXPORTS_DIR = path.join(DATA_DIR, 'exports');
 const slug = (s) => String(s || 'goldcom').toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'goldcom';
-const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+const stamp = () => `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
 
 /** Render a document to MP4 (whole sequence, one slide, or each slide zipped). Returns the job. */
 export function startExport({ base, docId, mode = 'auto', index = 0, fps, scale = 1, audio = true }) {
+  if (!['auto','png','slides','slide','sequence'].includes(mode)) throw Object.assign(new Error('Unknown export mode'), { status: 400 });
+  if (!Number.isFinite(scale) || scale < 0.05 || scale > 2 || fps && ![24,25,30,60].includes(fps) || !Number.isInteger(index) || index < 0) throw Object.assign(new Error('Invalid export settings'), { status: 400 });
   const job = createJob('export', { title: 'Export video', docId, message: 'Preparing…' });
+  const temporary = new Set();
   (async () => {
     const doc = await getDocument(docId);
+    assertExportable(doc);
+    if (index >= doc.slides.length) throw Object.assign(new Error('Invalid slide index'), { status: 400 });
     job.title = `Export · ${doc.name}`;
     fs.mkdirSync(EXPORTS_DIR, { recursive: true });
     const m = mode === 'auto' ? (['reel', 'video'].includes(doc.kind) ? 'sequence' : doc.slides.length > 1 ? 'slides' : 'slide') : mode;
     const f = fps || getSettings().exportFps || doc.fps || 30;
     const signal = job.controller.signal;
+    job.controller.signal.addEventListener('abort', () => { for (const file of temporary) fsp.rm(file, { force: true }).catch(() => {}); }, { once: true });
     const one = async (opts, out, frac0, frac1) => {
+      if (signal.aborted) throw new Error('Export cancelled');
       const tmpVideo = `${out}.video.mp4`;
+      temporary.add(tmpVideo);
+      temporary.add(out);
       await renderVideo({ base, doc, out: tmpVideo, fps: f, scale, signal, ...opts, onProgress: (p) => updateJob(job, { progress: frac0 + (frac1 - frac0) * p * 0.92, message: `Rendering ${Math.round(p * 100)}%` }) });
       if (audio && doc.audio?.enabled !== false) {
         updateJob(job, { message: 'Mixing sound…' });
         const ok = await soundtrackFor(doc, { mode: opts.mode, index: opts.index, video: tmpVideo, out }).catch((e) => { updateJob(job, {}, `Sound skipped: ${e.message}`); return false; });
-        if (ok) { await fsp.rm(tmpVideo, { force: true }); return; }
+        if (signal.aborted) { await fsp.rm(out, { force: true }); throw new Error('Export cancelled'); }
+        if (ok) { await fsp.rm(tmpVideo, { force: true }); temporary.delete(tmpVideo); return; }
       }
       await fsp.rename(tmpVideo, out);
     };
@@ -40,7 +51,7 @@ export function startExport({ base, docId, mode = 'auto', index = 0, fps, scale 
       const files = {};
       for (let i = 0; i < doc.slides.length; i++) {
         updateJob(job, { progress: i / doc.slides.length, message: `Rendering slide ${i + 1} of ${doc.slides.length}` });
-        const [buf] = await renderStills({ base, doc, times: [Infinity], scale, fmt: 'png', mode: 'slide', index: i });
+        const [buf] = await renderStills({ base, doc, times: [Infinity], scale, signal, fmt: 'png', mode: 'slide', index: i });
         files[`${slug(doc.name)}-${String(i + 1).padStart(2, '0')}.png`] = new Uint8Array(buf);
       }
       const cap = [doc.caption?.text || '', (doc.caption?.hashtags || []).join(' ')].filter((x) => x.trim()).join('\n\n');
@@ -63,9 +74,13 @@ export function startExport({ base, docId, mode = 'auto', index = 0, fps, scale 
       file = path.join(EXPORTS_DIR, `${slug(doc.name)}${m === 'slide' ? `-slide-${index + 1}` : ''}-${stamp()}.mp4`);
       await one({ mode: m, index }, file, 0, 1);
     }
+    if (job.controller.signal.aborted) { await fsp.rm(file, { force: true }); throw new Error('Export cancelled'); }
     const st = await fsp.stat(file);
     updateJob(job, { status: 'done', progress: 1, message: 'Ready', result: { file: path.basename(file), url: `/exports/${encodeURIComponent(path.basename(file))}`, bytes: st.size } }, `Exported ${path.basename(file)}`);
-  })().catch((e) => { if (job.status === 'running') updateJob(job, { status: 'error', error: e.message, message: e.message }, e.stack); });
+  })().catch(async (e) => {
+    await Promise.all([...temporary].map(file=>fsp.rm(file,{force:true}).catch(()=>{})));
+    if (job.status === 'running') updateJob(job, { status: 'error', error: e.message, message: e.message }, e.stack);
+  });
   return job;
 }
 
@@ -74,7 +89,8 @@ export async function exportRoutes(req, res, url, { base }) {
   let m;
   if ((m = p.match(/^\/api\/documents\/([\w-]+)\/export$/)) && req.method === 'POST') {
     const body = await readJson(req);
-    const job = startExport({ base, docId: m[1], ...body });
+    assertExportable(await getDocument(m[1]));
+    const job = startExport({ ...body, base, docId: m[1] });
     send(res, 202, { jobId: job.id });
     return true;
   }

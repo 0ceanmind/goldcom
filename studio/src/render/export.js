@@ -1,4 +1,5 @@
 // Exports: PNG, carousel ZIP, MP4/WebM video (WebCodecs, frame-exact) and GIF.
+import { assertExportable } from '../../shared/readiness.js';
 import { zipSync } from 'fflate';
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from 'mp4-muxer';
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from 'webm-muxer';
@@ -32,10 +33,12 @@ export async function slidePng(doc, index, images, scale = 1) {
 }
 
 export async function exportPng(doc, index, images) {
+  assertExportable(doc);
   downloadBlob(await slidePng(doc, index, images), `${slug(doc.name)}-${String(index + 1).padStart(2, '0')}.png`);
 }
 
 export async function exportZip(doc, images, onProgress) {
+  assertExportable(doc);
   await images.preload(doc);
   const files = {};
   for (let i = 0; i < doc.slides.length; i++) {
@@ -57,6 +60,7 @@ export function captionText(doc) {
 
 /** Every slide as its own animated MP4 (Instagram Stories, or animated carousel slides), zipped. */
 export async function exportSlideVideosZip(doc, images, onProgress) {
+  assertExportable(doc);
   const files = {};
   const n = doc.slides.length;
   for (let i = 0; i < n; i++) {
@@ -100,6 +104,7 @@ async function pickCodec(width, height, fps, bitrate) {
  * mode 'sequence' plays all slides with transitions; mode 'slide' animates one slide (index) for its duration.
  */
 export async function exportVideo(doc, images, { mode = 'sequence', index = 0, onProgress, signal, download = true } = {}) {
+  assertExportable(doc);
   await images.preload(doc);
   const fps = doc.fps || 30;
   const width = doc.width % 2 ? doc.width + 1 : doc.width;
@@ -175,6 +180,7 @@ async function recordRealtime(cv, draw, frames, fps, name, onProgress, download 
 }
 
 export async function exportGif(doc, images, { mode = 'sequence', index = 0, maxWidth = 540, fps = 15, onProgress } = {}) {
+  assertExportable(doc);
   await images.preload(doc);
   const scale = Math.min(1, maxWidth / doc.width);
   const w = Math.round(doc.width * scale), h = Math.round(doc.height * scale);

@@ -1,6 +1,7 @@
 // Android phone routes: status, Android tools install, live mirror, remote input, Claude-driven capture,
 // manual recordings and screenshots straight into the footage library.
 import fsp from 'node:fs/promises';
+import { budgetedComplete } from '../ai/engine.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { send, readJson, bodyToFile } from '../http-util.mjs';
@@ -95,6 +96,7 @@ export async function deviceRoutes(req, res, url) {
     const job = createJob('capture', { title: `Capture · ${String(b.goal || '').slice(0, 60)}`, message: 'Starting…', steps: [] });
     send(res, 202, { jobId: job.id });
     captureFlow({
+      complete: budgetedComplete(),
       serial, goal: b.goal, pkg: b.pkg || getSettings().appPackage || null, lang: b.lang || getSettings().language, signal: job.controller.signal,
       onMessage: (m) => updateJob(job, { message: m }, m),
       onStep: ({ index, step }) => { job.steps.push({ index, screen: step.screen_name, action: step.action, caption: step.caption, reason: step.reason }); updateJob(job, { message: `Step ${index + 1}: ${step.screen_name} → ${step.action}` }, `${step.screen_name}: ${step.action} (${step.reason})`); },

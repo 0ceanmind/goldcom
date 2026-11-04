@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { atomicWrite, withFileLock } from './files.mjs';
 import { fileURLToPath } from 'node:url';
 import { normalizeDocument, createDocument } from '../shared/schema.js';
 import { applyAllTemplates } from '../shared/templates.js';
@@ -39,9 +40,7 @@ const safeId = (id) => {
 };
 
 async function writeAtomic(file, data) {
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fsp.writeFile(tmp, data);
-  await fsp.rename(tmp, file);
+  await atomicWrite(file, data);
 }
 
 export async function listDocuments() {
@@ -61,24 +60,35 @@ export async function getDocument(id) {
   ensureDirs();
   const file = path.join(DOCS_DIR, `${safeId(id)}.json`);
   if (!fs.existsSync(file)) throw Object.assign(new Error(`Document ${id} not found`), { status: 404 });
-  return normalizeDocument(JSON.parse(await fsp.readFile(file, 'utf8')));
+  const doc = normalizeDocument(JSON.parse(await fsp.readFile(file, 'utf8')));
+  doc.revision ||= 0;
+  return doc;
 }
 
-export async function saveDocument(doc, { touch = true } = {}) {
+export async function saveDocument(doc, { touch = true, expectedRevision = doc.revision } = {}) {
   ensureDirs();
+  if (!doc || typeof doc !== 'object' || !Array.isArray(doc.slides) || doc.slides.length > 100 || doc.slides.some(s => !s || (s.layers !== undefined && !Array.isArray(s.layers)))) throw Object.assign(new Error('Invalid document: expected at most 100 slides with layer arrays'), { status: 400 });
   const d = normalizeDocument(doc);
   safeId(d.id);
-  if (touch) d.updatedAt = new Date().toISOString();
-  await writeAtomic(path.join(DOCS_DIR, `${d.id}.json`), JSON.stringify(d, null, 2));
-  return d;
+  const file = path.join(DOCS_DIR, `${d.id}.json`);
+  return withFileLock(file, async () => {
+    let prior = null;
+    try { prior = JSON.parse(await fsp.readFile(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    if (prior && expectedRevision !== (prior.revision || 0)) throw Object.assign(new Error('This design changed elsewhere. Reload it before saving; your unsaved edits have been kept in the editor.'), { status: 409 });
+    if (prior) await writeAtomic(path.join(DATA_DIR, 'versions', d.id, `${prior.revision || 0}.json`), JSON.stringify(prior, null, 2));
+    d.revision = (prior?.revision || 0) + 1;
+    if (touch) d.updatedAt = new Date().toISOString();
+    await writeAtomic(file, JSON.stringify(d, null, 2));
+    return d;
+  });
 }
 
 /** Create a document from template-based slide specs: [{ template, content, theme, duration }] */
-export async function createFromSpec({ name, format, kind, lang, slides = [], source }) {
+export async function createFromSpec({ name, format, kind, lang, slides = [], source, persist = true }) {
   const doc = createDocument({ name, format, kind, lang, source });
   doc.slides = slides.map((s) => ({ template: s.template || 'statement', content: s.content || {}, theme: s.theme || 'onyx', pattern: s.pattern ?? 'top', duration: s.duration || 4, transition: s.transition || 'fade', layers: s.layers || [], custom: !!s.layers?.length && !s.template }));
   const built = applyAllTemplates(normalizeDocument(doc));
-  return saveDocument(built);
+  return persist ? saveDocument(built) : built;
 }
 
 export async function deleteDocument(id) {
@@ -119,4 +129,18 @@ export async function listAssets() {
 export function assetPath(file) {
   const f = path.basename(String(file));
   return path.join(ASSETS_DIR, f);
+}
+
+export async function listVersions(id) {
+  const dir = path.join(DATA_DIR, 'versions', safeId(id));
+  const files = await fsp.readdir(dir).catch(() => []);
+  return (await Promise.all(files.filter(f => /^\d+\.json$/.test(f)).map(async f => {
+    const d = JSON.parse(await fsp.readFile(path.join(dir,f), 'utf8'));
+    return { revision: d.revision || 0, updatedAt: d.updatedAt, name: d.name };
+  }))).sort((a,b) => b.revision-a.revision);
+}
+export async function restoreVersion(id, revision, expectedRevision) {
+  if (!Number.isInteger(revision) || revision < 0) throw Object.assign(new Error('Invalid version'), { status: 400 });
+  const saved = JSON.parse(await fsp.readFile(path.join(DATA_DIR, 'versions', safeId(id), `${revision}.json`), 'utf8'));
+  return saveDocument({ ...saved, id, approval: null, source: { ...saved.source, lastWriter: 'studio' } }, { expectedRevision });
 }

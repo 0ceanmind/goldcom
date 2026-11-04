@@ -19,7 +19,7 @@ When you press **Create**, the request goes through the same steps a creative ag
 7. **Review:** an art director looks at rendered frames and checks legibility, overlaps, safe zones, footage relevance, pacing, copy and claims, then applies precise fixes (up to two rounds).
 8. **Video:** Reels and Stories are rendered to MP4 automatically. Carousels download as full-size PNGs.
 
-Afterwards you can type changes ("make the hook punchier", "15 seconds", "use a woman in step 2") and Claude revises the same production, or pick one of the other concepts. A production typically takes 5–10 minutes and about 7–10 Claude calls.
+Afterwards you can type changes ("make the hook punchier", "15 seconds", "use a woman in step 2") and Claude revises the same production, or pick one of the other concepts. Productions use a variable number of calls for concepts, footage, edits and a final review. The historical audit measured several minutes before export; rendering time depends on the scenes and machine. The Settings budget limits usage estimates; no fixed cost or turnaround is promised.
 
 ### Connecting Claude
 
@@ -70,13 +70,13 @@ The classic templates (price board, notifications, stickers, chat, countdown, fa
 
 **3D scenes.** Every library design is one 3D scene per slide with at most one short line: a minted bar turning in the light, coins stacking, a price struck in gold, a gift box opening, the app in three taps, a vault tile, the logo assembling, a crescent, people in a set. Scenes are small modules in `modules/scenes/` that load at runtime: a new file appears in the editor's **3D** picker without a rebuild and renders the same in the editor, previews, PNGs and frame-exact MP4s. The lighting, materials and motion follow `knowledge/design-dna.md` (studied from Tendril, ManvsMachine, BUCK, DIA, Giant Ant, Ordinary Folk, Stash and Motionographer).
 
-**Generated images and 3D models.** The wand button (and `generate_image` for Claude) picks the best available generator for the request (photo, illustration, product, texture, typography, icon) from what is set up: OpenAI and Gemini by API key, ChatGPT through the Codex CLI on a subscription, Claude (Messages API or Claude Code login) for vector art, or a 3D scene render. It learns which provider wins from your ratings, falls back automatically when one fails, rediscovers model names when a model is retired, and adds the brand's art direction to every prompt. Meshy and Tripo turn text into GLB models that the `model-showcase` scene lights and turns. The result can be placed straight into the open design. Keys live in **Generators** (key icon) and never leave this computer.
+**Generated images and 3D models.** The wand button (and `generate_image` for Claude) picks the best available generator for the request (photo, illustration, product, texture, typography, icon) from what is set up: OpenAI and Gemini by API key, ChatGPT through the Codex CLI on a subscription, Claude (Messages API or Claude Code login) for vector art, or a 3D scene render. It learns which provider wins from your ratings, can fall back in Automatic mode, rediscovers retired model names for OpenAI and Gemini, and adds the brand's art direction to every prompt. Meshy and Tripo turn text into GLB models that the `model-showcase` scene lights and turns. The result can be placed straight into the open design. Keys are stored locally in **Generators** (key icon), masked in studio responses, and sent only to their selected service for authentication.
 
-**Ask Claude (the director).** Give Claude a brief from the editor or the header and it works on its own with the studio's tools: plans, builds a missing capability when a brief needs one (a new 3D scene module, written, tested and used), renders, checks itself against the brand and fixes what it finds. You can watch every step live. It uses your Claude Code login (your plan) unless you choose the API key.
+**Ask Claude (the director).** Give Claude a brief from the editor or the header and it works on its own with the studio's tools: plans, builds a missing capability when a brief needs one (a new 3D scene proposal, reviewed before it is tested and used), renders, checks itself against the brand and fixes what it finds. You can watch every step live. It uses your Claude Code login (your plan) unless you choose the API key.
 
-**It fixes itself.** When a scene fails to load or render, the slide still renders without it, the error is reported, and (with **self-repair** on) Claude opens a repair task with the error and the module source, fixes it, tests it, resolves the error and writes down the lesson.
+**Repairs are reviewed.** Renderer errors are recorded without starting an agent. Start a repair explicitly; source changes are saved as proposals and run only after approval in Settings.
 
-**It learns from you.** **Rate** a design: a thumbs-down asks why (too much text, looks generic, wrong colours…), turns the answer into a rule in `knowledge/lessons.md`, and optionally starts a revision. Every task reads the lessons first. The brain icon shows what the studio has learned, open errors and which generators win.
+**It learns from you.** **Rate** a design: a thumbs-down asks why (too much text, looks generic, wrong colours…), turns the answer into a rule in `knowledge/lessons.md`, and optionally starts a revision. The production director and the MCP guide receive lessons as quoted design preferences, subordinate to brand rules and approved facts. The brain icon shows what the studio has learned, open errors and which generators win.
 
 ## Install once, update with one click
 
@@ -155,10 +155,24 @@ Prompts `project_carousel` and `project_video` are also exposed as slash command
 
 ## Using the studio
 
+### Guided and Advanced workspaces
+
+The studio opens in **Guided** mode: describe an idea, choose a format and content language, then follow its production. **More options** includes choosing the creative direction yourself and creating a campaign. Choosing a creative direction fills the brief; it does not start a paid production automatically. **More ideas** reveals additional examples.
+
+Switch to **Advanced** at any time to reveal provider tools, the activity log, layers, motion settings, and the full editing timeline. Both modes edit the same document and preserve the selected scene. The mode and interface language are remembered in this browser. Interface language and the language of generated content are separate choices.
+
+The production journey follows actual job stages: brief, ideas and direction, storyboard, footage, build, review, and export. Open completed material directly from the stage rail. Productions that need a concept choice, recordings, or a retry show contextual controls. When a production completes or needs attention while you are elsewhere, an in-app notification links back to it. The production journey does not invent an ETA or percentage; export progress uses the renderer’s reported value.
+
+Core guided screens support English and Arabic with mirrored layouts. Some existing technical dialogs and provider messages remain in English. Menus, checkboxes, confirmation and rename dialogs, tooltips, and cursor graphics use Goldcom’s own design. Dropdowns are React-rendered menus, including in the advanced tools; they do not invoke browser select popups. Motion honours the operating system’s reduced-motion setting. See [workspace design notes](docs/WORKSPACE_UI.md) for the control design and verification scope.
+
+Run `npm run test:workspace` for the isolated guided/advanced browser acceptance checks. AI-production responses in this suite are fixtures; editing and saving use the real local HTTP API.
+
+Navigation and brief loads show an animated Goldcom task capsule and light ribbon immediately. Continuous highlights connect mode, format, and page selections. Cursor graphics are preloaded and hover effects keep their click targets fixed. Gallery thumbnail rendering is spread across frames. Run `npm run test:motion` for startup, delayed-loading, cursor-boundary, navigation-race, and responsive-motion checks.
+
 - **Create** (home): the prompt, example requests, readiness (Claude, phone, footage) and your productions.
 - **Designs:** *Your designs* and the *Library*. Filter by Posts, Carousels, Reels, Stories, Animated posts and Videos, search, switch the library between Arabic and English. Hover to play. The eye button opens the Instagram preview, the ⋯ menu duplicates, renames, exports or deletes. Press **Use** on a library card to get your own editable copy.
 - **New design:** start from a starter pack in Arabic or English and pick the type: post, carousel, Reel, Story, animated post or video. Reels and Stories are always 9:16.
-- **Slides:** add from 27 templates. Duplicate, reorder, delete.
+- **Slides:** add from the template catalog shown in the editor. Duplicate, reorder, delete.
 - **Slide panel:** template content, theme (Onyx, Charcoal, Bullion, Cream, Sand), pattern, background, duration, transition and background motion. Wrap a word in `*asterisks*` for the gold accent.
 - **Layer panel:** position, size, opacity, entrance animation, exit, and a loop (float, pulse, breathe, shimmer, spin, scroll…) that keeps a layer moving so the post feels alive.
 - **Caption tab:** the Instagram caption and hashtags, with character and hashtag counters.
@@ -206,9 +220,40 @@ Environment variables: `PORT` (default 5177), `HOST` (default 127.0.0.1), `GOLDC
 
 ## Notes
 
-- The studio binds to `127.0.0.1` and is meant for local use. URL capture fetches any address you give it, so don't expose the server publicly.
+- The studio is local-only. Browser requests are checked for cross-site origins and unexpected hosts. API writes require the per-install token in `<data>/.api-token`; the browser obtains it from its same-origin session endpoint, and MCP reads the local file. Screenshots block private/metadata destinations and validate DNS at connection time. Allow only specific development origins in Settings when needed.
 - Studio exports render in a headless Chromium (Playwright) and encode with a bundled ffmpeg. The headless browser draws WebGL on the CPU, so 3D slides take about a second per 1080×1920 frame (a 15-second Reel with 3D scenes renders in roughly 8 minutes). Without the headless browser the editor falls back to exporting in your browser (WebCodecs).
-- Claude usage: a full production is roughly 7–10 Claude calls (about $1–3 with an API key at Opus pricing; with a Claude Code login it counts toward your plan's usage).
+- Claude usage: the historical audit recorded approximately $1.30–$13.46 in CLI usage estimates per draft. These are not subscription invoices or verified API charges. Configure a production budget in Settings. Claude Code receives the remaining per-call limit. The API path requires current input/output/cache rates in Settings and reserves for the call's maximum output before starting. Provider-side billing limits remain the authority for actual invoices.
 - Footage recorded from a real account can show personal data and real prices. Claude flags both; check the **Before posting** notes.
 - Arabic copy in the library and samples should be reviewed by a native Omani copywriter before public campaigns.
 - Prices in the library are illustrative and labelled "Indicative" with a date. Library designs that show prices, countdowns or native stickers carry a **Before posting** note telling you what to update.
+
+
+## Production controls
+
+- **Ready** requires a final art-director review of the exact built version, score at least 8, no blocker issues, no brand errors, and no empty phone or image placeholders. Other drafts show **Needs attention** with reasons. The editor, MCP PNG export and server exports enforce the gate.
+- Revisions preserve manually changed slides and fork editor-owned designs. Every document save keeps the previous version. **History** restores an earlier version as a new revision. Concurrent stale saves return a conflict; **Save my copy** preserves unsaved local work.
+- The **Brief** tab is editable. **Rebuild with footage** uses newly supplied clips. Explicit quoted requirements are checked and repaired once; failures remain visible blockers. Feedback for a new revision replaces the previous revision instruction.
+- **Create a coordinated campaign** supplies one shared brief, cast and line to each selected deliverable. The configured budget is shared among them. The studio is exclusively for Goldcom; a different client is stopped before a design is built.
+- **Product facts** in Settings records the source, approver and optional expiry of approved claims. Initial facts are copied from the existing brand register, not independently verified against the live app. Current footage, product labels, claim evidence and native Arabic sign-off still require a person.
+- Clips labelled sensitive, or capture steps with personal-data regions, are excluded from production. Automated capture refuses payment/confirmation controls and unlabelled coordinate taps; replay rechecks the live target. Real-device acceptance testing is required before relying on capture in an account.
+- Scene metadata is parsed statically; the server never imports submitted scene code. New or repaired source waits under **Settings → Scene proposals** for source review and approval. Approved source is trusted browser JavaScript, not a sandbox. Renderer telemetry does not start agents. Explicit director tasks have restricted MCP tools, a spending limit and no built-in shell/file tools; paid image generation is requested through the editor.
+- Selecting an image provider is binding. Automatic mode can fall back; fatal authentication, billing and safety failures stop the request. Background images retain provider provenance for rating feedback. OpenAI and Gemini implement model discovery; other provider models are configured manually.
+- Export jobs survive restart as interrupted jobs. Restart the export explicitly. Cancellation cannot mark a production Ready; frame evaluation has a 45-second timeout.
+- Updates require a Git checkout and a trusted SSH allowed-signers file configured in Settings. Signatures are verified before changes are applied. Local tracked edits are restored before the build, with a backup stash retained. Git rollback restores the earlier code if the build fails. Archive installations cannot update in place; move to a Git checkout while preserving the data directory. No plain-ZIP rollback is promised.
+
+## Checks
+
+```sh
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test:http
+npm test
+npm run test:ui
+npm run build
+npm audit
+```
+
+The integration commands create disposable servers, data, modules and knowledge folders. They do not use the owner's running instance. The type-checking baseline covers the hard-constraint and capture-safety modules; the rest of the application remains JavaScript and is linted. Live model calls and device/account tests are separate from these suites.
+
+Native API clients send `Authorization: Bearer <contents of data/.api-token>` for writes. For isolated development use `GOLDCOM_STUDIO_DATA`; integration harnesses additionally set `GOLDCOM_STUDIO_MODULES` and `GOLDCOM_STUDIO_KNOWLEDGE`.

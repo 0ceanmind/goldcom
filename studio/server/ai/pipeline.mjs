@@ -3,6 +3,11 @@
 //   → build → render + art-director review (up to N rounds) → final export
 // Every stage's output is kept on the job so the UI can show the thinking and a production can resume.
 import { complete } from './engine.mjs';
+import { completeCopy } from './copy.mjs';
+import { BILINGUAL_COPY, copyInput, applyCopy } from './copy-contract.mjs';
+import { creativeHistory, historyPrompt, reserveConcepts, finalOriginalityIssues } from './originality.mjs';
+import { productionReadiness, reviewFingerprint } from '../../shared/readiness.js';
+import { constraintsFor, constraintIssues } from '../constraints.mjs';
 import { directorSystem, footageIndex, DIRECTOR_SCENES } from './knowledge.mjs';
 import { labelFootage } from './label.mjs';
 import fsp from 'node:fs/promises';
@@ -30,10 +35,11 @@ const str = { type: 'string' };
 const kv = { type: 'array', items: { type: 'object', additionalProperties: false, required: ['key', 'value'], properties: { key: str, value: str } } };
 
 // ---------- schemas ----------
-const BRIEF = {
+export const BRIEF = {
   type: 'object', additionalProperties: false,
-  required: ['title', 'format', 'lang', 'objective', 'audience', 'key_message', 'tone', 'duration_s', 'slide_count', 'must_include', 'app_flows_needed', 'needs_people', 'mentions_prices', 'assumptions'],
+  required: ['brand', 'title', 'format', 'lang', 'objective', 'audience', 'key_message', 'tone', 'duration_s', 'slide_count', 'must_include', 'app_flows_needed', 'needs_people', 'mentions_prices', 'assumptions'],
   properties: {
+    brand: { type: 'string', description: 'The actual client brand requested; Goldcom unless a different client is explicitly requested' },
     title: { type: 'string', description: 'Short working title' },
     format: { type: 'string', enum: Object.keys(FORMAT_OF) },
     lang: { type: 'string', enum: ['ar', 'en'] },
@@ -48,19 +54,20 @@ const BRIEF = {
   },
 };
 
-const CONCEPTS = {
+export const CONCEPTS = {
   type: 'object', additionalProperties: false, required: ['concepts'],
   properties: {
     concepts: {
       type: 'array',
       items: {
         type: 'object', additionalProperties: false,
-        required: ['id', 'name', 'angle', 'hook', 'beats', 'visual_style', 'why_it_works', 'risk'],
+        required: ['id', 'name', 'angle', 'hook', 'beats', 'visual_style', 'why_it_works', 'risk', 'family', 'metaphor', 'framing', 'motion', 'narrative'],
         properties: {
           id: { type: 'string', enum: ['A', 'B', 'C'] }, name: str, angle: str,
           hook: { type: 'string', description: 'The exact opening line, in the content language' },
           beats: { type: 'array', items: str, description: 'Scene-by-scene beats' },
           visual_style: str, why_it_works: str, risk: str,
+          family: str, metaphor: str, framing: str, motion: str, narrative: str,
         },
       },
     },
@@ -109,7 +116,7 @@ const STORYBOARD = {
 const REVIEW = {
   type: 'object', additionalProperties: false, required: ['score', 'verdict', 'summary', 'issues', 'edits', 'caption_fix', 'hashtags_fix'],
   properties: {
-    score: { type: 'integer', description: '1–10, where 8+ is ready to post' },
+    score: { type: 'integer', minimum: 1, maximum: 10, description: '1–10, where 8+ is ready to post' },
     verdict: { type: 'string', enum: ['ship', 'revise'] },
     summary: str,
     issues: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['scene', 'severity', 'problem'], properties: { scene: { type: 'integer' }, severity: { type: 'string', enum: ['blocker', 'major', 'minor'] }, problem: str } } },
@@ -143,7 +150,8 @@ function fieldsToContent(fields = []) {
   const c = {};
   for (const { key, value } of fields) {
     if (!key) continue;
-    c[key] = key === 'items' || key === 'messages' || key === 'products' || key === 'rows' || key === 'before' || key === 'after' || key === 'ticker' || key === 'lines' ? String(value).split('\n').map((x) => x.trim()).filter(Boolean) : value;
+    if (key === 'params') { try { c[key] = JSON.parse(value); } catch { throw new Error('3D parameters must be valid JSON'); } }
+    else c[key] = ['items','messages','products','rows','before','after','ticker','lines','labels'].includes(key) ? String(value).split('\n').map((x) => x.trim()).filter(Boolean) : value;
   }
   return c;
 }
@@ -167,7 +175,7 @@ async function footageContent(scene) {
   if (!f?.use || !f.footage_id) return {};
   let meta;
   try { meta = await getFootage(f.footage_id); } catch { return {}; }
-  if (meta.status !== 'ready') return {};
+  if (meta.status !== 'ready' || meta.labels?.sensitive || meta.steps?.some(s => s.sensitive?.length)) return {};
   if (meta.kind === 'image') return { footage: `/footage/${meta.id}/image${meta.ext || '.png'}`, screenshot: `/footage/${meta.id}/image${meta.ext || '.png'}` };
   const from = Math.max(0, Math.min(meta.duration - 0.3, Number(f.from) || 0));
   const to = Math.max(from + 0.4, Math.min(meta.duration, Number(f.to) || from + 3));
@@ -175,7 +183,7 @@ async function footageContent(scene) {
   return { footage: `/footage/${meta.id}/video.mp4`, from: +from.toFixed(2), to: +to.toFixed(2), taps };
 }
 
-export async function buildDoc(sb, brief, { docId = null, source } = {}) {
+export async function buildDoc(sb, brief, { docId = null, source, preservedSlides = [] } = {}) {
   const { format, kind } = FORMAT_OF[brief.format] || FORMAT_OF.reel;
   const slides = [];
   for (const s of sb.scenes) {
@@ -183,22 +191,36 @@ export async function buildDoc(sb, brief, { docId = null, source } = {}) {
     if (s.scene === 'outro' && brief.mentions_prices && !content.disclaimer) content.disclaimer = 'yes';
     slides.push({ template: s.scene, theme: s.theme, duration: s.duration, transition: s.transition, content });
   }
-  const doc = await createFromSpec({ name: sb.title || brief.title || 'Goldcom production', format, kind, lang: brief.lang, slides, source });
+  const doc = await createFromSpec({ name: sb.title || brief.title || 'Goldcom production', format, kind, lang: brief.lang, slides, source, persist: false });
   doc.caption = { text: sb.caption?.text || '', hashtags: sb.caption?.hashtags || [] };
   doc.audio = { music: sb.music && sb.music !== 'none' ? sb.music : getSettings().music || 'none', sfx: true };
   doc.notes = (sb.notes || []).join('\n');
   if (docId) doc.id = docId;
+  if (docId) {
+    const prior = await getDocument(docId);
+    // Preserve every prior version. An editor-owned document is forked, never overwritten.
+    if (prior.source?.lastWriter !== 'studio-ai') { doc.id = `${docId}_fork_${Date.now().toString(36)}`; doc.source = { ...source, forkedFrom: docId }; }
+    else { doc.revision = prior.revision; }
+  }
+  doc.slides = doc.slides.map((s,i) => preservedSlides[i] || ({ ...s, layers: s.layers.filter(l => l.type !== 'sparkles') }));
   return saveDocument(doc);
 }
 
-function applyReview(sb, review) {
+export function applyReview(sb, review) {
   const scenes = sb.scenes.map((s) => ({ ...s, fields: [...s.fields] }));
   const removed = new Set();
   for (const e of review.edits || []) {
     const s = scenes[e.scene - 1];
     if (!s) continue;
     if (e.remove) { removed.add(e.scene - 1); continue; }
+    if (e.replace_scene && TEMPLATES[e.replace_scene] && DIRECTOR_SCENES.includes(e.replace_scene)) {
+      s.scene = e.replace_scene;
+      const allowed = new Set(TEMPLATES[s.scene].fields.map(f => f.key));
+      s.fields = s.fields.filter(f => allowed.has(f.key));
+    }
+    const allowed = new Set(TEMPLATES[s.scene].fields.map(f => f.key));
     for (const { key, value } of e.set || []) {
+      if (!allowed.has(key)) continue;
       const i = s.fields.findIndex((f) => f.key === key);
       if (i >= 0) s.fields[i] = { key, value }; else s.fields.push({ key, value });
     }
@@ -208,7 +230,9 @@ function applyReview(sb, review) {
     if (e.replace_scene && TEMPLATES[e.replace_scene] && DIRECTOR_SCENES.includes(e.replace_scene)) s.scene = e.replace_scene;
   }
   const caption = { ...sb.caption, ...(review.caption_fix ? { text: review.caption_fix } : {}), ...(review.hashtags_fix?.length ? { hashtags: review.hashtags_fix } : {}) };
-  return { ...sb, scenes: scenes.filter((_, i) => !removed.has(i)), caption };
+  const kept = scenes.filter((_, i) => !removed.has(i));
+  if (!kept.length) throw new Error('Review cannot remove every scene');
+  return { ...sb, scenes: kept, caption };
 }
 
 /** Frame of a footage item at time t as a JPEG buffer (or the screenshot itself). */
@@ -250,23 +274,38 @@ async function locateRegions(sb, call) {
  * Run (or resume) a production job. job fields used: prompt, options, and stage outputs.
  * options: { format: 'auto'|'reel'|..., lang: 'auto'|'ar'|'en', duration, chooseConcept, reviewRounds, autoExport, capture }
  */
-export async function runProduction(job, { base, startExport, deviceCapture }) {
+export async function runProduction(job, { base, startExport, deviceCapture, complete: runComplete = complete, completeCopy: runCopy = completeCopy, reviewFrames: renderReviews = reviewFrames }) {
   const signal = job.controller.signal;
+  job.video = null;
+  job.result = null;
   const opts = { reviewRounds: 2, autoExport: true, capture: true, ...(job.options || {}) };
   job.usage = job.usage || { costUsd: 0, input: 0, output: 0, calls: 0 };
-  const onUsage = (u) => { job.usage.calls++; job.usage.costUsd += u.costUsd || 0; job.usage.input += u.input || 0; job.usage.output += u.output || 0; };
+  const onUsage = (u) => { job.usage.calls++; job.usage.costUsd += u.costUsd || 0; job.usage.input += u.input || 0; job.usage.output += u.output || 0; if(u.unpriced)job.usage.unpricedCopyCalls=(job.usage.unpricedCopyCalls||0)+1; };
   const SYSTEM = directorSystem();
-  const call = (o) => complete({ system: SYSTEM, signal, onUsage, effort: getSettings().effort || 'high', ...o });
+  const budget = Math.min(opts.budgetUsd || getSettings().productionBudgetUsd, getSettings().productionBudgetUsd);
+  const call = (o) => {
+    if (job.editorContext) o = { ...o, prompt: `${o.prompt}\nPreserve the user's existing slide edits (these slides are retained in the build): ${J(job.editorContext)}` };
+    if (signal.aborted) throw new Error('Cancelled');
+    if (job.usage.costUsd >= budget) throw Object.assign(new Error('Production budget exhausted. Increase the budget in Settings before resuming.'), { status: 402 });
+    return runComplete({ system: SYSTEM, signal, onUsage, budgetUsd: budget - job.usage.costUsd, effort: getSettings().effort || 'high', ...o });
+  };
+  const copyCall = (o) => {
+    if(signal.aborted)throw new Error('Cancelled');
+    if(job.usage.costUsd>=budget)throw Object.assign(new Error('Production budget exhausted. Increase the budget in Settings before resuming.'),{status:402});
+    return runCopy({system:SYSTEM,signal,onUsage,budgetUsd:budget-job.usage.costUsd,...o});
+  };
+  const constraints = constraintsFor(job.prompt);
+  const block = (...reasons) => updateJob(job, { status: 'needs-attention', stage: job.stage || 'review', message: 'Needs attention', blockers: reasons, progress: 1, video: null, result: { docId: job.docId || null, video: null } });
   const step = (stage, progress, message) => updateJob(job, { stage, progress, message }, message);
-  const lang = opts.lang && opts.lang !== 'auto' ? opts.lang : getSettings().language || 'ar';
+  const lang = opts.lang && opts.lang !== 'auto' ? opts.lang : /[\u0600-\u06ff]/.test(job.prompt) ? 'ar' : /[A-Za-z]/.test(job.prompt) ? 'en' : getSettings().language || 'ar';
 
   // 0. Index any footage that has not been described yet (so the director can choose clips).
-  let library = await listFootage();
+  let library = (await listFootage()).filter(f => !f.labels?.sensitive && !(f.steps || []).some(s => s.sensitive?.length));
   const unlabeled = library.filter((f) => f.status === 'ready' && !f.labels).slice(0, 6);
   if (unlabeled.length) {
     step('footage-index', 0.02, `Watching ${unlabeled.length} new recording${unlabeled.length > 1 ? 's' : ''}…`);
-    for (const f of unlabeled) { try { await labelFootage(f.id, { signal }); } catch (e) { updateJob(job, {}, `Could not index ${f.name}: ${e.message}`); } }
-    library = await listFootage();
+    for (const f of unlabeled) { try { await labelFootage(f.id, { signal, complete: call }); } catch (e) { updateJob(job, {}, `Could not index ${f.name}: ${e.message}`); } }
+    library = (await listFootage()).filter(f => !f.labels?.sensitive && !(f.steps || []).some(s => s.sensitive?.length));
   }
   const index = () => footageIndex(library);
   const device = await deviceCapture?.status().catch(() => null);
@@ -282,19 +321,27 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
     updateJob(job, { brief, title: brief.title }, `Brief: ${brief.format} · ${brief.key_message}`);
   }
   const brief = job.brief;
+  if (brief.brand && !/^(goldcom|جولدكم)$/i.test(brief.brand.trim())) { block('This studio supports Goldcom only. Create the other client’s content in its own brand workspace.'); return 'needs-attention'; }
 
   // 2. Concepts
   if (!job.concepts) {
-    step('concepts', 0.12, 'Exploring three creative directions…');
-    const prompt = `Brief:\n${J(brief)}\n\nFootage library:\n${index()}\n\nCreate three genuinely different creative concepts (A, B, C) for this brief. Vary the angle (e.g. practical demo, human story, surprising fact, contrast, POV), the hook and the visual treatment. Each must be producible with the scene catalog and the footage that exists or can be captured. Hooks in ${brief.lang === 'ar' ? 'Arabic' : 'English'}.`;
-    const res = await call({ prompt, schema: CONCEPTS });
-    updateJob(job, { concepts: res.concepts }, `Concepts: ${res.concepts.map((c) => `${c.id}) ${c.name}`).join(' · ')}`);
+    step('concepts', 0.12, 'Claude is briefing ChatGPT on three fresh creative directions…');
+    const history=await creativeHistory({excludeJob:job.id,excludeDoc:job.docId});
+    let rejected=[];
+    for(let attempt=0;attempt<3;attempt++){
+      const prompt = `Brief:\n${J(brief)}\nFootage:\n${index()}\nKnown creative history (reference data, do not copy):\n${historyPrompt(history)}\n${rejected.length?`Rejected similarities to correct: ${J(rejected)}`:''}\nCreate exactly three genuinely different concepts A, B and C using three DIFFERENT visual families. Each needs a new premise, metaphor, framing, motion idea and narrative, not a recolour or rewording of a prior design. 3D is optional; at least two concepts should explore non-3D craft unless the user explicitly requires all-3D. Use executable scene capabilities, meaningful visuals on EVERY slide, no plain-text slides. Hooks in ${brief.lang==='ar'?'natural Omani dialect':'natural English'}.`;
+      const res=await copyCall({prompt,schema:CONCEPTS});
+      rejected=await reserveConcepts(job.id,res.concepts,{excludeDoc:job.docId});
+      if(!rejected.length){updateJob(job,{concepts:res.concepts,originality:{status:'checked',scope:'Saved designs, library and reserved concepts',attempts:attempt+1}},`ChatGPT concepts: ${res.concepts.map(c=>`${c.id}) ${c.name}`).join(' · ')}`);break;}
+      updateJob(job,{},`Reworking familiar concepts (${attempt+1}/3): ${rejected.join(' ')}`);
+    }
+    if(!job.concepts){block('The concepts are still too close to known work. Rebuild to explore new directions.',...rejected);return 'needs-attention';}
   }
 
   // 3. Pick (creative director) — or wait for the person to choose.
   if (!job.pick) {
     step('pick', 0.2, 'Creative director is comparing the concepts…');
-    const prompt = `Brief:\n${J(brief)}\n\nConcepts:\n${J(job.concepts)}\n\nAct as an exacting creative director who has not seen these before. Score each concept 1–10 on hook strength, clarity, brand fit, feasibility with real app footage, and originality. Choose the strongest and list concrete improvements (sharper hook wording, a better beat order, a cut, a stronger visual).`;
+    const prompt = `Brief:\n${J(brief)}\n\nConcepts from ChatGPT:\n${J(job.concepts)}\nKnown work to avoid:\n${historyPrompt(await creativeHistory({excludeJob:job.id,excludeDoc:job.docId}))}\nAct as Claude, an exacting creative director. Score each concept 1–10 on hook strength, clarity, brand fit, feasibility, and originality AGAINST THE KNOWN WORK. Reject recycled composition, opening, metaphor or narrative even if recoloured. Choose the strongest and list concrete improvements to structure and visuals. ChatGPT owns final wording. All slides need substantive art; 3D is optional.`;
     const pick = await call({ prompt, schema: PICK });
     updateJob(job, { pick }, `Director picks ${pick.winner}: ${pick.reason}`);
     if (opts.chooseConcept && !job.chosen) {
@@ -317,6 +364,7 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
 
   // 5. Footage: capture what is missing (when a phone is connected), then map clips to scenes.
   if (!job.footageDone) {
+    job.storyboard.notes = (job.storyboard.notes || []).filter(n => !/^\d+ scene\(s\) use an illustrative mock screen/.test(n));
     const missing = job.storyboard.scenes.map((s, i) => ({ s, i })).filter(({ s }) => s.footage?.use && (!s.footage.footage_id || !library.find((f) => f.id === s.footage.footage_id && f.status === 'ready')));
     if (missing.length) {
       const goals = [...new Set(missing.map(({ s }) => s.footage.capture_goal).filter(Boolean))];
@@ -324,11 +372,11 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
         for (const [gi, goal] of goals.entries()) {
           step('capture', 0.36 + gi * 0.04, `Recording the real app on ${device.model || 'the phone'}: ${goal}`);
           try {
-            const meta = await deviceCapture.capture({ goal, lang: brief.lang, signal, onMessage: (m) => updateJob(job, { message: m }, m) });
-            await labelFootage(meta.id, { signal }).catch(() => {});
+            const meta = await deviceCapture.capture({ goal, lang: brief.lang, signal, complete: call, onMessage: (m) => updateJob(job, { message: m }, m) });
+            await labelFootage(meta.id, { signal, complete: call }).catch(() => {});
           } catch (e) { updateJob(job, {}, `Capture failed: ${e.message}`); }
         }
-        library = await listFootage();
+        library = (await listFootage()).filter(f => !f.labels?.sensitive && !(f.steps || []).some(s => s.sensitive?.length));
       }
       const ready = library.filter((f) => f.status === 'ready');
       if (ready.length) {
@@ -344,25 +392,43 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
         }
       }
       const still = job.storyboard.scenes.filter((s) => s.footage?.use && !s.footage.footage_id).length;
-      if (still) job.storyboard.notes = [...(job.storyboard.notes || []), `${still} scene(s) use an illustrative mock screen because no matching recording exists. Record the flow (Footage → Phone) and press Rebuild to swap in real footage.`];
+      if (still) job.storyboard.notes = [...(job.storyboard.notes || []), `${still} scene(s) use an illustrative mock screen because no matching recording exists. Add a verified recording in Footage, then press Rebuild with footage on this production.`];
     }
     updateJob(job, { footageDone: true, storyboard: job.storyboard });
   }
 
+  const hardErrors = constraintIssues(job.storyboard, constraints);
+  if (hardErrors.length) {
+    const fixed = await call({ schema: STORYBOARD, prompt: `Repair this storyboard to satisfy every hard constraint. Keep all other approved facts and structure. Constraints: ${J(constraints)}. Errors: ${J(hardErrors)}. Storyboard: ${J(job.storyboard)}` });
+    job.storyboard = cleanStoryboard(fixed, brief);
+    updateJob(job, { storyboard: job.storyboard });
+  }
   // 6. Build
-  const source = { type: 'production', jobId: job.id, prompt: job.prompt, lastWriter: 'studio-ai' };
+  const polishCopy = async () => {
+    const fingerprint=JSON.stringify(copyInput(job.storyboard));
+    if(job.copyFingerprint===fingerprint)return;
+    step('copy',.48,'ChatGPT is writing and checking Omani Arabic and English…');
+    const packet=await copyCall({schema:BILINGUAL_COPY,prompt:`Claude's storyboard for copywriting:\n${J(copyInput(job.storyboard))}\nBrief: ${J(brief)}\nClient request: ${job.prompt}\nFeedback: ${job.feedback||''}\nRequired exact wording: ${J(constraints)}\nWrite BOTH versions: ar in natural Omani dialect, en in polished English. Keep scene numbers and the exact set of supplied field keys for every scene, including empty fields. Finalise every word in those fields and the caption. Preserve all numbers, approved facts, legal text and literal real app button labels. No invented claims. Keep titles short (about 6 Arabic / 7 English words). Do not add technical fields, URLs or change the visual plan. Preserve required exact wording in the requested output language version.`});
+    job.storyboard=applyCopy(job.storyboard,packet,brief.lang);
+    job.copyVariants=packet;job.copyFingerprint=JSON.stringify(copyInput(job.storyboard));
+    updateJob(job,{storyboard:job.storyboard,copyVariants:packet,copyFingerprint:job.copyFingerprint,copywriter:'ChatGPT'});
+  };
+  await polishCopy();
+  const source = { type: 'production', jobId: job.id, prompt: job.prompt, lastWriter: 'studio-ai', copywriter: 'ChatGPT', director: 'Claude' };
   step('build', 0.5, 'Building the scenes…');
   await locateRegions(job.storyboard, call);
-  let doc = await buildDoc(job.storyboard, brief, { docId: job.docId, source });
-  updateJob(job, { docId: doc.id }, `Design ${doc.id} built`);
+  let doc = await buildDoc(job.storyboard, brief, { docId: job.docId, source, preservedSlides: job.preservedSlides });
+  updateJob(job, { docId: doc.id, builtSlides: doc.slides }, `Design ${doc.id} built`);
 
   // 7. Review rounds (art director looks at rendered frames)
   job.reviews = job.reviews || [];
-  for (let round = job.reviews.length; round < opts.reviewRounds; round++) {
+  let finalReviewed = job.reviews.length > 0 && job.reviewedFingerprint === reviewFingerprint(doc);
+  const finalRound = Math.max(opts.reviewRounds, job.reviews.length);
+  for (let round = job.reviews.length; !finalReviewed && round <= finalRound; round++) {
     step('review', 0.56 + round * 0.12, `Art director review, round ${round + 1}…`);
     let frames;
     try {
-      frames = await reviewFrames({ base, doc, times: reviewTimes(doc, { perSlide: isSequence(doc.kind) ? 2 : 1 }), scale: isSequence(doc.kind) ? 0.36 : 0.45 });
+      frames = await renderReviews({ base, doc, times: reviewTimes(doc, { perSlide: isSequence(doc.kind) ? 4 : 1 }), scale: isSequence(doc.kind) ? 0.6 : 0.7 });
     } catch (e) {
       if (signal.aborted) throw e;
       // The design is already built; a renderer hiccup should not throw the production away.
@@ -374,17 +440,26 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
     const prompt = `You are reviewing the rendered ${brief.format} "${job.storyboard.title}" (${brief.lang === 'ar' ? 'Arabic' : 'English'}). The images are frames in order, labelled by scene.\n\nStoryboard (scene numbers are 1-based):\n${J(job.storyboard.scenes.map((s, i) => ({ n: i + 1, scene: s.scene, duration: s.duration, theme: s.theme, fields: s.fields, footage: s.footage })))}\n\nCaption: ${job.storyboard.caption?.text}\n\nAutomatic brand check:\n${lint.join('\n') || 'no issues'}\n\nReview like a demanding art director and brand guardian: hook strength, legibility on a phone, hierarchy, overlaps/clipping, Instagram safe zones, footage relevance (does the screen match the instruction?), pacing, story clarity, brand voice, claims and disclaimers, Arabic quality, AI-sounding copy. Then give precise edits (field values in final form). Verdict "ship" only if it is genuinely ready to post (score ≥ 8).`;
     const review = await call({ prompt, images, schema: REVIEW });
     job.reviews.push({ round: round + 1, ...review });
-    updateJob(job, { reviews: job.reviews }, `Review ${round + 1}: ${review.score}/10 — ${review.summary}`);
-    if (review.verdict === 'ship' || (!review.edits?.length && !review.caption_fix && !review.hashtags_fix?.length)) break;
+    updateJob(job, { reviews: job.reviews, reviewedFingerprint: reviewFingerprint(doc) }, `Review ${round + 1}: ${review.score}/10 — ${review.summary}`);
+    if ((review.verdict === 'ship' && review.score >= 8 && !review.issues.some(i => i.severity === 'blocker')) || round === finalRound || (!review.edits?.length && !review.caption_fix && !review.hashtags_fix?.length)) { finalReviewed = true; break; }
     // Apply the fixes; the last round's fixes are applied too, they just are not reviewed again.
     job.storyboard = cleanStoryboard(applyReview(job.storyboard, review), brief);
+    await polishCopy();
     step('build', 0.6 + round * 0.12, `Applying ${review.edits.length} fix${review.edits.length > 1 ? 'es' : ''}…`);
     for (const e of review.edits) { const sc = job.storyboard.scenes[e.scene - 1]; if (sc && e.set?.some((x) => ['callout', 'from'].includes(x.key))) sc.located = false; }
     await locateRegions(job.storyboard, call);
-    doc = await buildDoc(job.storyboard, brief, { docId: doc.id, source });
-    updateJob(job, { storyboard: job.storyboard });
+    doc = await buildDoc(job.storyboard, brief, { docId: doc.id, source, preservedSlides: job.preservedSlides });
+    updateJob(job, { storyboard: job.storyboard, builtSlides: doc.slides });
   }
 
+  // The gate applies to the exact document revision that was just reviewed.
+  const lastReview = job.reviews.at(-1);
+  const constraintErrors = constraintIssues(job.storyboard, constraints);
+  const originalityErrors=job.originality ? finalOriginalityIssues(job.storyboard,await creativeHistory({excludeJob:job.id,excludeDoc:doc.id})) : [];
+  const quality = productionReadiness(doc, finalReviewed ? lastReview : null, [...constraintErrors,...originalityErrors]);
+  doc.approval = { ...quality, revision: doc.revision + 1, reviewedAt: new Date().toISOString() };
+  doc = await saveDocument(doc);
+  if (!quality.ready) { block(...quality.blockers); return 'needs-attention'; }
   // 8. Export
   let exportJobId = null;
   if (opts.autoExport && isSequence(doc.kind) && startExport) {
@@ -395,9 +470,12 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
       const t = setInterval(() => { if (ex.status !== 'running') { clearInterval(t); resolve(); } }, 500);
       signal.addEventListener('abort', () => { clearInterval(t); resolve(); }, { once: true });
     });
+    if (signal.aborted) { ex.controller?.abort(); throw new Error('Cancelled'); }
+    if (ex.status !== 'done') { block(`Video export failed: ${ex.error || ex.status}`); return 'needs-attention'; }
     if (ex.status === 'done') updateJob(job, { video: ex.result }, `Video ready: ${ex.result.file}`);
     else updateJob(job, {}, `Video export failed: ${ex.error || ex.status}`);
   }
+  if (signal.aborted) throw new Error('Cancelled');
   doc = await getDocument(doc.id);
   const last = job.reviews[job.reviews.length - 1];
   updateJob(job, { status: 'done', stage: 'done', progress: 1, message: 'Ready', result: { docId: doc.id, video: job.video || null, exportJobId, score: last?.score ?? null } }, 'Production complete');
@@ -406,9 +484,14 @@ export async function runProduction(job, { base, startExport, deviceCapture }) {
 
 /** Apply a follow-up instruction to a finished production ("make the hook punchier", "use Aisha instead"). */
 export function prepareRevision(job, note) {
-  job.feedback = [job.feedback, note].filter(Boolean).join('\n');
+  job.feedback = note;
+  job.video = null;
+  job.result = null;
+  job.blockers = [];
   job.revisionOf = job.storyboard || null;
   job.storyboard = null;
+  job.copyFingerprint = null;
+  job.copyVariants = null;
   job.footageDone = false;
   job.reviews = [];
   job.status = 'running';
@@ -416,5 +499,5 @@ export function prepareRevision(job, note) {
 }
 
 export const PIPELINE_STAGES = [
-  ['brief', 'Brief'], ['concepts', 'Concepts'], ['pick', 'Direction'], ['storyboard', 'Storyboard'], ['footage', 'Footage'], ['build', 'Build'], ['review', 'Review'], ['export', 'Video'], ['done', 'Ready'],
+  ['brief', 'Brief'], ['concepts', 'ChatGPT ideas'], ['pick', 'Claude direction'], ['storyboard', 'Storyboard'], ['footage', 'Footage'], ['copy', 'Bilingual copy'], ['build', 'Build'], ['review', 'Review'], ['export', 'Video'], ['done', 'Ready'],
 ];

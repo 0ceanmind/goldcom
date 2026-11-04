@@ -2,18 +2,21 @@
 // The server imports each module in Node to validate it and read its metadata; the browser loads the same file.
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { parseMetadata } from './module-metadata.mjs';
+import { DATA_DIR } from './store.mjs';
+import crypto from 'node:crypto';
 import { STUDIO_ROOT } from './store.mjs';
 
-export const MODULES_DIR = path.join(STUDIO_ROOT, 'modules', 'scenes');
+export const MODULES_DIR = process.env.GOLDCOM_STUDIO_MODULES || path.join(STUDIO_ROOT, 'modules', 'scenes');
+const PENDING_DIR = path.join(DATA_DIR, 'pending-modules');
 const cache = new Map(); // file -> { mtime, meta }
 
 const ID_RE = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
 function describe(mod, file, mtime) {
-  const d = mod?.default;
+  const d = mod;
   if (!d || typeof d !== 'object') throw new Error('No default export');
-  if (typeof d.create !== 'function') throw new Error('Default export has no create(api) function');
+  if (d.create !== 'function') throw new Error('Default export has no create(api) function');
   const id = d.id || path.basename(file, '.js');
   if (!ID_RE.test(id)) throw new Error(`Invalid id "${id}" (lowercase letters, digits and dashes)`);
   if (id !== path.basename(file, '.js')) throw new Error(`id "${id}" must match the file name "${path.basename(file)}"`);
@@ -42,7 +45,7 @@ async function load(file) {
   if (hit && hit.mtime === mtime) return hit.meta;
   let meta;
   try {
-    const mod = await import(`${pathToFileURL(full).href}?v=${mtime}`);
+    const mod = parseMetadata(fs.readFileSync(full, 'utf8'));
     meta = describe(mod, file, mtime);
   } catch (err) {
     meta = { id: path.basename(file, '.js'), file, version: Math.round(mtime), name: path.basename(file, '.js'), status: 'error', error: String(err?.message || err), params: [] };
@@ -72,17 +75,35 @@ export function moduleFile(file) {
 /** Write (create or replace) a scene module, then validate it. Returns its metadata; status "error" means it did not load. */
 export async function writeModule(id, code) {
   if (!ID_RE.test(String(id || ''))) throw Object.assign(new Error('id must be lowercase letters, digits and dashes (2-49 chars)'), { status: 400 });
-  if (typeof code !== 'string' || code.length < 40) throw Object.assign(new Error('code is required'), { status: 400 });
-  if (/\bimport\s*[\w{*]|\brequire\s*\(/.test(code)) throw Object.assign(new Error('Scene modules must not import anything: use api.THREE and api.kit'), { status: 400 });
-  fs.mkdirSync(MODULES_DIR, { recursive: true });
-  const file = path.join(MODULES_DIR, `${id}.js`);
-  const backup = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-  fs.writeFileSync(file, code);
-  const meta = await load(`${id}.js`);
-  return { ...meta, replaced: backup !== null, backup };
+  if (typeof code !== 'string' || code.length < 40 || code.length > 512000) throw Object.assign(new Error('Scene source must be between 40 and 512000 characters'), { status: 400 });
+  const parsed = describe(parseMetadata(code), `${id}.js`, Date.now());
+  fs.mkdirSync(PENDING_DIR, { recursive: true });
+  const digest = crypto.createHash('sha256').update(code).digest('hex');
+  fs.writeFileSync(path.join(PENDING_DIR, `${id}.json`), JSON.stringify({ code, digest, meta: parsed }), { mode: 0o600 });
+  return { ...parsed, status: 'pending', digest, message: 'Scene saved for source review. Approve it in Settings before it can execute in the editor.' };
+
 }
 
 export function readModuleSource(id) {
   const file = path.join(MODULES_DIR, `${path.basename(String(id))}.js`);
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+}
+
+export function pendingModules() {
+  if (!fs.existsSync(PENDING_DIR)) return [];
+  return fs.readdirSync(PENDING_DIR).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(path.join(PENDING_DIR,f),'utf8')));
+}
+export async function approveModule(id, digest) {
+  if (!ID_RE.test(id)) throw Object.assign(new Error('Invalid module id'), { status: 400 });
+  const file = path.join(PENDING_DIR, `${id}.json`);
+  const item = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (digest !== item.digest) throw Object.assign(new Error('Scene changed since source review. Review it again.'), { status: 409 });
+  parseMetadata(item.code);
+  fs.mkdirSync(MODULES_DIR, { recursive: true });
+  const target = path.join(MODULES_DIR, `${id}.js`);
+  if (fs.existsSync(target)) { fs.mkdirSync(path.join(DATA_DIR,'module-versions'), { recursive: true }); fs.copyFileSync(target,path.join(DATA_DIR,'module-versions',`${id}-${Date.now()}.js`)); }
+  fs.writeFileSync(target, item.code);
+  fs.unlinkSync(file);
+  cache.delete(`${id}.js`);
+  return load(`${id}.js`);
 }

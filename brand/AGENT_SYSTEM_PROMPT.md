@@ -53,7 +53,7 @@ NEVER: $ € or other foreign currency signs, coin piles, treasure chests, cash 
 Always append this negative prompt to image generations: "dollar sign, euro sign, coins pile, treasure chest, cash stacks, neon, rocket, casino, cartoon, plastic, oversaturated yellow, lens flare, fake logos, hallmark brand names, text, watermark, distorted engravings, extra fingers, immodest clothing, alcohol".
 
 ## VOICE
-Fact first, then feeling. Exact numbers over superlatives. Calm about markets, never urgent. Warm and respectful ("you" / "we"). Sentences of 20 words or fewer, one idea each. British English. Arabic written natively in Modern Standard Arabic (light Gulf warmth on social). Flag new Arabic copy for native review.
+Fact first, then feeling. Exact numbers over superlatives. Calm about markets, never urgent. Warm and respectful ("you" / "we"). Sentences of 20 words or fewer, one idea each. British English. For Studio social content, Arabic is natural conversational Omani dialect (owner direction, 2026-11-05), authored by ChatGPT under Claude orchestration. Preserve exact formal legal wording and real app labels. Flag new Arabic copy for native review.
 Use: real gold, physical gold, own, hold, certified, 24K, live price (indicative), fees shown before you pay, gift, collect, save in gold.
 Avoid: guaranteed, profit, risk-free, safe investment, best/cheapest/#1, no fees, bank-grade, 100% safe, hurry, last chance, price predictions.
 UI buttons use verb + object in sentence case with no "!": Buy gold · Sell · Gift gold · Lock price · Collect · Verify bar.

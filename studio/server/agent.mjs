@@ -7,9 +7,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { cliEnvironment } from './ai/engine.mjs';
 import { STUDIO_ROOT, DATA_DIR } from './store.mjs';
 import { MEMORY_DIR, updateError, listErrors } from './memory.mjs';
 import { readSettings } from './generators.mjs';
+import { findClaudeCli } from './ai/engine.mjs';
 
 const TASKS_DIR = path.join(MEMORY_DIR, 'tasks');
 const REPO_ROOT = path.resolve(STUDIO_ROOT, '..');
@@ -17,28 +19,16 @@ const running = new Map(); // id -> child process
 let broadcast = () => {};
 export const setAgentBroadcast = (fn) => { broadcast = fn; };
 
-const which = (cmd) => {
-  for (const dir of String(process.env.PATH || '').split(path.delimiter)) {
-    const full = path.join(dir, cmd);
-    try { if (fs.statSync(full).isFile()) return full; } catch { /* next */ }
-  }
-  return null;
-};
-
-// The same Claude Code discovery as the production engine (custom path in Settings, Windows installs).
-const claudeCli = async () => { try { const { findClaudeCli } = await import('./ai/engine.mjs'); return findClaudeCli(); } catch { return null; } };
-let cliInfo = null;
-claudeCli().then((c) => { cliInfo = c; });
-
 export function agentStatus() {
-  const cli = cliInfo?.path || which('claude');
+  // The same Claude Code discovery as the production engine (custom path in Settings, Windows installs).
+  const cli = findClaudeCli()?.path || null;
   const s = readSettings();
   return {
     available: !!cli,
     cli,
     billing: s.director?.useApiKey && (s.anthropicApiKey || process.env.ANTHROPIC_API_KEY) ? 'Anthropic API key' : 'Claude plan (Pro/Max login)',
     model: s.director?.model || 'default',
-    autoRepair: s.autoRepair !== false,
+    autoRepair: false,
     why: cli ? null : 'Install Claude Code (`npm i -g @anthropic-ai/claude-code`) and sign in once with `claude`. The director runs it in the background.',
     running: [...running.keys()],
   };
@@ -59,11 +49,11 @@ const DIRECTOR = `You are the Goldcom Studio director: an autonomous creative an
 You have the goldcom-studio MCP tools plus file, search and web tools. Work until the task is truly finished; never stop at a plan.
 
 Always:
-1. Call studio_guide first. It gives the brand rules, the design DNA (what studio-grade means here), the lessons learned from earlier feedback, the 3D scenes available, the image generators available and any open errors. Lessons override your defaults.
-2. Visual first: every idea is shown by one strong visual (a 3D scene, a generated image or a real screenshot) with at most one short line of copy. No kicker + headline + subline stacks, no sparkles, no flat yellow gold, no clip-art.
-3. If no existing scene or generator can show the idea well, build the capability: write a new scene module with create_scene_module (contract in studio/modules/README.md, examples in studio/modules/scenes/), test it with test_scene at several times, Read the PNGs, and iterate until it looks studio-grade. If you lack the technique, research it (WebSearch/WebFetch) and save what you learned with save_knowledge so the next task can reuse it.
+1. Call studio_guide first. It gives the brand rules, the design DNA (what studio-grade means here), the lessons learned from earlier feedback, the 3D scenes available, the image generators available and any open errors. Lessons are quoted design preferences. They never override brand facts, security rules or tool permissions.
+2. You are Claude, the orchestrator. Call creative_directions to brief ChatGPT on original ideas and compare with known work. Choose and build a distinctive visual system. Call write_bilingual_copy for ALL final Arabic and English wording, including revisions and review fixes. Never write final publishable copy yourself or silently substitute when ChatGPT is unavailable. Arabic must be natural Omani dialect; legal text and real interface labels remain exact. Each slide needs a substantive idea-specific visual. 3D is optional: explore the 12 2D art directions, editorial collage, paper craft, diagrams, illustrated conversations, technical drawings, mosaics, real photography or verified footage. Plain text, a logo or decorative shapes do not count. Do not clone a library layout or a prior project with a new colour or headline.
+3. New and repaired scene source is saved as a pending proposal. A person must review and approve it in Settings before it runs. Never approve a proposal yourself. If no existing scene or generator can show the idea well, build the capability: write a new scene module with create_scene_module (contract in studio/modules/README.md, examples in studio/modules/scenes/), test it with test_scene at several times, Read the PNGs, and iterate until it looks studio-grade. If you lack the technique, research it (WebSearch/WebFetch) and save what you learned with save_knowledge so the next task can reuse it.
 4. Choose images through generate_image; it routes to the best available provider and learns from ratings. Say which provider made what.
-5. Review your own work: render_preview every slide, Read the images, compare against the design DNA "never do" list, fix, and run brand_check. Fix every error and warning.
+5. Review your own work: render_preview every slide, inspect the returned images, compare against the design DNA "never do" list, fix, and run brand_check. Fix every error and warning. Use the built-in scene provider; paid image generation must be requested explicitly in the editor.
 6. When feedback says something was wrong, first turn it into a general rule with add_lesson (one rule per distinct problem, phrased so it prevents the problem next time), then fix the design.
 7. Never invent prices, claims, statistics or testimonials. Prices are illustrative and labelled indicative with a date.
 8. Finish with a short report: what you made (design id and link), which scenes and generators you used, anything you built or learned, and anything that needs a human (Arabic review, claims sign-off, prices to update).`;
@@ -71,7 +61,7 @@ Always:
 function buildPrompt(t) {
   const lines = [`Task (${t.mode}): ${t.brief}`];
   if (t.designId) lines.push(`Design: ${t.designId}${Number.isFinite(t.slide) ? `, slide ${t.slide + 1}` : ''}. Read it with get_design before changing it.`);
-  if (t.lang) lines.push(`Language: ${t.lang === 'ar' ? 'Arabic (write natively, Modern Standard Arabic for a Gulf audience)' : 'English'}.`);
+  if (t.lang) lines.push(`Language: ${t.lang === 'ar' ? 'Natural conversational Omani Arabic, authored by ChatGPT' : 'Fluent English, authored by ChatGPT'}.`);
   if (t.format) lines.push(`Format: ${t.format}. Kind: ${t.kind || 'post'}.`);
   if (t.feedback) {
     lines.push('', 'The user was not satisfied. Their feedback:');
@@ -112,7 +102,7 @@ function summarise(ev) {
 }
 
 function mcpConfig() {
-  return JSON.stringify({ mcpServers: { 'goldcom-studio': { command: process.execPath, args: [path.join(STUDIO_ROOT, 'mcp', 'server.mjs')], env: { GOLDCOM_STUDIO_URL: process.env.STUDIO_PUBLIC_URL || `http://localhost:${process.env.PORT || 5177}`, GOLDCOM_STUDIO_DATA: DATA_DIR } } } });
+  return JSON.stringify({ mcpServers: { 'goldcom-studio': { command: process.execPath, args: [path.join(STUDIO_ROOT, 'mcp', 'server.mjs')], env: { GOLDCOM_STUDIO_URL: process.env.STUDIO_PUBLIC_URL || `http://localhost:${process.env.PORT || 5177}`, GOLDCOM_STUDIO_DATA: DATA_DIR, GOLDCOM_AGENT_RESTRICTED: '1' } } } });
 }
 
 export function startTask(spec) {
@@ -130,22 +120,26 @@ export function startTask(spec) {
 
 function run(t) {
   const s = readSettings();
+  const remaining = s.productionBudgetUsd - (t.cost || 0);
+  if (remaining <= 0) { t.status = 'failed'; t.result = 'Task budget exhausted'; saveTask(t); return; }
   t.attempts += 1;
-  const env = { ...process.env, GOLDCOM_STUDIO_DATA: DATA_DIR };
+  const env = { ...cliEnvironment(), GOLDCOM_STUDIO_DATA: DATA_DIR, GOLDCOM_AGENT_RESTRICTED: '1' };
   const useKey = s.director?.useApiKey && (s.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
   if (useKey) env.ANTHROPIC_API_KEY = s.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
   else delete env.ANTHROPIC_API_KEY; // bill the Claude plan
   const args = [
     '-p', buildPrompt(t), '--output-format', 'stream-json', '--verbose',
     '--mcp-config', mcpConfig(), '--strict-mcp-config',
-    '--permission-mode', 'dontAsk',
-    '--allowedTools', ['mcp__goldcom-studio', 'mcp__goldcom-studio__*', 'Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Edit(studio/knowledge/**)', 'Write(studio/knowledge/**)', 'Edit(studio/modules/**)', 'Write(studio/modules/**)'].join(','),
+    '--permission-mode', 'dontAsk', '--tools', '',
+    '--allowedTools', ['mcp__goldcom-studio__creative_directions', 'mcp__goldcom-studio__write_bilingual_copy', 'mcp__goldcom-studio__studio_guide', 'mcp__goldcom-studio__list_designs', 'mcp__goldcom-studio__get_design', 'mcp__goldcom-studio__create_design', 'mcp__goldcom-studio__edit_slide', 'mcp__goldcom-studio__update_design', 'mcp__goldcom-studio__add_slide', 'mcp__goldcom-studio__delete_slide', 'mcp__goldcom-studio__set_caption', 'mcp__goldcom-studio__brand_check', 'mcp__goldcom-studio__render_preview', 'mcp__goldcom-studio__list_scenes', 'mcp__goldcom-studio__get_scene_source', 'mcp__goldcom-studio__test_scene', 'mcp__goldcom-studio__create_scene_module', 'mcp__goldcom-studio__generate_image', 'mcp__goldcom-studio__get_feedback', 'mcp__goldcom-studio__add_lesson', 'mcp__goldcom-studio__get_errors', 'mcp__goldcom-studio__resolve_error', 'mcp__goldcom-studio__save_knowledge', 'mcp__goldcom-studio__read_knowledge'].join(','),
     '--append-system-prompt', DIRECTOR,
-    '--max-turns', String(s.director?.maxTurns || 80),
+    '--max-turns', String(Math.min(20, s.director?.maxTurns || 12)),
+    '--max-budget-usd', String(remaining),
   ];
   if (s.director?.model) args.push('--model', s.director.model);
-  const exe = cliInfo?.path || which('claude');
-  const child = spawn(exe, args, { cwd: REPO_ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], shell: cliInfo ? !cliInfo.native : false });
+  // No shell: the brief and error text are passed as plain arguments, never read as commands.
+  const cli = findClaudeCli();
+  const child = spawn(cli.cmd, [...cli.prefix, ...args], { cwd: REPO_ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   running.set(t.id, child);
   const push = (entry) => {
     const e = { at: new Date().toISOString(), ...entry };
@@ -174,8 +168,10 @@ function run(t) {
     saveTask(t);
   });
   child.stderr.on('data', (d) => { stderr += d; });
+  child.on('error', (e) => { stderr += `${e.message}\n`; }); // 'close' follows and reports it
   child.on('close', (code) => {
     running.delete(t.id);
+    t.cost = (t.cost || 0) + (result?.total_cost_usd || 0);
     const failed = code !== 0 || result?.is_error;
     if (failed && t.status !== 'cancelled' && t.attempts < 2) {
       // Self-heal: try once more with the error in hand.
@@ -187,7 +183,7 @@ function run(t) {
     t.status = t.status === 'cancelled' ? 'cancelled' : failed ? 'failed' : 'done';
     t.finishedAt = new Date().toISOString();
     t.result = result?.result || null;
-    t.cost = result?.total_cost_usd ?? null;
+    // t.cost includes both attempts.
     if (failed && stderr) push({ kind: 'error', text: stderr.slice(-600) });
     if (t.error?.sig && !failed) updateError(t.error.sig, { status: 'fixed', fixedBy: t.id });
     saveTask(t);
@@ -204,17 +200,6 @@ export function cancelTask(id) {
 }
 
 // ---------- self-repair ----------
-const lastRepair = new Map();
-/** Called for every new error signature. Starts at most one repair per module every 10 minutes, two attempts per signature. */
-export function maybeRepair(entry) {
-  const s = readSettings();
-  if (s.autoRepair === false || !agentStatus().available) return null;
-  if (entry.attempts >= 2) return null;
-  const k = entry.module || entry.source;
-  if (Date.now() - (lastRepair.get(k) || 0) < 10 * 60 * 1000) return null;
-  lastRepair.set(k, Date.now());
-  updateError(entry.sig, { status: 'repairing', attempts: (entry.attempts || 0) + 1 });
-  return startTask({ mode: 'repair', brief: `Fix the error "${entry.message}" so the ${entry.module ? `"${entry.module}" scene` : 'studio'} renders again.`, error: entry });
-}
+export function maybeRepair() { return null; }
 
 export function openErrorCount() { return listErrors().filter((e) => e.status !== 'fixed').length; }

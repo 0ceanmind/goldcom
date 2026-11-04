@@ -12,6 +12,9 @@ export const DEFAULTS = {
   effort: 'high',
   claudePath: '', // custom path to the `claude` CLI
   language: 'ar', // default content language
+  copyEngine: 'codex', // ChatGPT owns ideas + wording; Claude remains the director
+  copyModel: '', // empty uses the signed-in Codex account default; required for API mode
+  copyRates: { input: 0, output: 0 }, // USD per million tokens, explicit for paid text API
   appPackage: '', // Android package of the Goldcom app (auto-detected when empty)
   captureDevice: '', // adb serial to film with ('' = automatic: emulator, then any connected phone)
   cloudPhones: [], // saved cloud phones: [{ name, provider, address: 'host:port' }]
@@ -24,7 +27,11 @@ export const DEFAULTS = {
   keys: {},
   models: {}, // overrides; providers rewrite them when a model is retired
   providers: {}, // { openai: false } turns a provider off
-  autoRepair: true, // renderer errors start a repair task
+  autoRepair: false,
+  productionBudgetUsd: 15,
+  apiRates: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  captureOrigins: [],
+  trustedUpdateSigner: '', // renderer errors start a repair task
   director: {}, // { model, maxTurns, useApiKey }
 };
 
@@ -43,6 +50,16 @@ export function updateSettings(patch = {}) {
   const next = { ...cur };
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in DEFAULTS)) continue;
+    if (k === 'autoRepair') { next.autoRepair = false; continue; }
+    if (k === 'claudePath' && v && !/^claude(\.exe|\.cmd|\.bat)?$/i.test(path.basename(String(v)))) throw Object.assign(new Error('Choose the Claude executable or npm shim'), { status: 400 });
+    if (['productionBudgetUsd'].includes(k) && (!Number.isFinite(v) || v < 0.1 || v > 1000)) throw Object.assign(new Error('Production budget must be between $0.10 and $1000'), { status: 400 });
+    if (k === 'captureOrigins' && (!Array.isArray(v) || v.some(x => { try { const u=new URL(x); return !['http:', 'https:'].includes(u.protocol) || u.origin !== x; } catch { return true; } }))) throw Object.assign(new Error('Capture origins must be exact HTTP(S) origins'), { status: 400 });
+    if (k === 'apiRates' && (!v || ['input','output','cacheRead','cacheWrite'].some(n => !Number.isFinite(v[n]) || v[n] < 0))) throw Object.assign(new Error('API rates must be nonnegative dollar amounts per million tokens'), { status: 400 });
+    if (k === 'engine' && !['auto','api','claude-code'].includes(v)) throw Object.assign(new Error('Invalid engine'), { status: 400 });
+    if (k === 'copyEngine' && !['codex','api'].includes(v)) throw Object.assign(new Error('Invalid ChatGPT copy engine'), { status: 400 });
+    if (k === 'copyModel' && (typeof v !== 'string' || v.length > 160 || /[\r\n]/.test(v))) throw Object.assign(new Error('Invalid ChatGPT text model'), { status: 400 });
+    if (k === 'copyRates' && (!v || ['input','output'].some(n=>!Number.isFinite(v[n]) || v[n]<0))) throw Object.assign(new Error('ChatGPT token rates must be nonnegative'), { status: 400 });
+    if (k === 'language' && !['ar','en'].includes(v)) throw Object.assign(new Error('Invalid language'), { status: 400 });
     // A masked secret coming back from the UI means "unchanged".
     if (SECRET.has(k) && typeof v === 'string' && v.includes('•')) continue;
     if (k === 'keys' && v && typeof v === 'object') {

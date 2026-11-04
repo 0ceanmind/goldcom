@@ -60,6 +60,7 @@ async function openPage(base, doc, fps, scale) {
 export async function renderFrames(opts, onFrame) {
   const { base, doc, scale = 1, mode = 'sequence', index = 0, signal, fmt = 'jpeg', quality = 0.95 } = opts;
   const fps = opts.fps || doc.fps || 30;
+  if (signal?.aborted) throw new Error('Export cancelled');
   const duration = mode === 'slide' ? Number(doc.slides[index]?.duration) || 4 : docDuration(doc);
   const times = opts.times || Array.from({ length: Math.max(1, Math.round(duration * fps)) }, (_, i) => i / fps);
   for (const id of footageIds(doc)) await ensureFrames(id, fps);
@@ -74,6 +75,9 @@ export async function renderFrames(opts, onFrame) {
   const waiters = new Set();
   const wait = () => new Promise((r) => waiters.add(r));
   const notify = () => { for (const r of waiters) r(); waiters.clear(); };
+  const abort = () => { failed = new Error('Export cancelled'); for (const p of pages) p.close().catch(() => {}); notify(); };
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   try {
     const worker = async ({ page }) => {
       while (!failed) {
@@ -82,7 +86,11 @@ export async function renderFrames(opts, onFrame) {
         while (next - written > nWorkers * 3 && !failed) await wait();
         const i = next++;
         if (i >= times.length) return;
-        const b64 = await page.evaluate(([t, sl, f, qq]) => window.__frame(t, sl, f, qq), [times[i], mode === 'slide' ? index : null, fmt, quality]);
+        let timer;
+        const timeout = new Promise((_, reject) => { timer = setTimeout(() => { page.close().catch(() => {}); reject(new Error('A frame took longer than 45 seconds. Export stopped.')); }, 45000); });
+        let b64;
+        try { b64 = await Promise.race([page.evaluate(([t, sl, f, qq]) => window.__frame(t, sl, f, qq), [times[i], mode === 'slide' ? index : null, fmt, quality]), timeout]); }
+        finally { clearTimeout(timer); }
         results.set(i, Buffer.from(b64, 'base64'));
         notify();
       }
@@ -102,6 +110,7 @@ export async function renderFrames(opts, onFrame) {
     await Promise.all([...pages.map((p) => worker(p).catch((e) => { failed = e; notify(); })), writer()]);
     if (failed) throw failed;
   } finally {
+    signal?.removeEventListener('abort', abort);
     await Promise.all(pages.map((p) => p.close().catch(() => {})));
   }
   return { frames: times.length, fps, duration };
@@ -132,20 +141,21 @@ export async function renderVideo({ base, doc, out, fps, scale = 1, mode = 'sequ
     res = await renderFrames({ base, doc, fps, scale, mode, index, signal, onProgress: (p) => onProgress?.(p * 0.97) }, (_, buf) => write(buf));
   } catch (e) {
     ff.stdin.destroy(); ff.kill('SIGKILL');
+    await ffDone.catch(() => {});
     await fsp.rm(tmp, { force: true });
     throw e;
   }
   ff.stdin.end();
-  await ffDone;
-  await fsp.rename(tmp, out);
+  try { await ffDone; if (signal?.aborted) throw new Error('Export cancelled'); await fsp.rename(tmp, out); }
+  finally { await fsp.rm(tmp, { force: true }).catch(() => {}); }
   onProgress?.(1);
   return { file: out, ...res };
 }
 
 /** Render specific moments to PNG/JPEG buffers (contact sheets for review, thumbnails). */
-export async function renderStills({ base, doc, times, scale = 0.5, fmt = 'jpeg', quality = 0.9, mode = 'sequence', index = 0 }) {
+export async function renderStills({ base, doc, times, scale = 0.5, fmt = 'jpeg', quality = 0.9, mode = 'sequence', index = 0, signal }) {
   const out = [];
-  await renderFrames({ base, doc, times, scale, fmt, quality, mode, index, workers: Math.min(2, times.length) }, (i, buf) => { out[i] = buf; });
+  await renderFrames({ base, doc, times, scale, fmt, quality, mode, index, signal, workers: Math.min(2, times.length) }, (i, buf) => { out[i] = buf; });
   return out;
 }
 

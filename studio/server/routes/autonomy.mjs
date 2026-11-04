@@ -7,7 +7,7 @@ import { DATA_DIR, STUDIO_ROOT, getDocument, saveDocument, assetPath, mimeOf } f
 import { setSceneRegistry } from '../../shared/templates.js';
 import { renderScene, rasterizeSvg } from '../browser.mjs';
 import { generate, generatorStatus, rankProviders, publicGeneratorSettings, writeGeneratorSettings, INTENTS, KEY_NAMES } from '../generators.mjs';
-import { listModules, moduleFile, MODULES_DIR } from '../modules.mjs';
+import { listModules, moduleFile, MODULES_DIR, pendingModules, approveModule } from '../modules.mjs';
 import { recordError, listErrors, updateError, recordFeedback, listFeedback, feedbackThemes, readLessons, addLesson, providerStats, listGenerations, listKnowledge, FEEDBACK_REASONS } from '../memory.mjs';
 import { agentStatus, startTask, getTask, listTasks, cancelTask, maybeRepair, setAgentBroadcast } from '../agent.mjs';
 
@@ -41,6 +41,7 @@ function onNewError(entry) {
 /** Which scenes and generators a design used: feedback on the design feeds back into their scores. */
 function usedBy(doc) {
   const scenes = new Set(), providers = [];
+  for (const s of doc.slides || []) { if (s.bg?.meta?.provider) providers.push(s.bg.meta); }
   for (const s of doc.slides || []) for (const l of s.layers || []) {
     if (l.type === 'scene3d' && l.scene) scenes.add(l.scene);
     if (l.meta?.provider) providers.push({ provider: l.meta.provider, intent: l.meta.intent });
@@ -53,7 +54,7 @@ async function attachGenerated({ docId, slide = 0, as = 'layer' }, src, gen) {
   const doc = await getDocument(docId);
   const s = doc.slides[Math.min(Number(slide) || 0, doc.slides.length - 1)];
   if (!s) throw Object.assign(new Error('Slide not found'), { status: 404 });
-  if (as === 'background') s.bg = { type: 'image', src };
+  if (as === 'background') s.bg = { type: 'image', src, meta: { provider: gen.provider, intent: gen.intent, model: gen.model } };
   else {
     const w = Math.round(doc.width * 0.8), h = Math.round(w * (doc.height / doc.width) * 0.6);
     s.layers.push({ id: `l_${Date.now().toString(36)}`, type: 'image', name: 'generated', src, fit: 'cover', radius: 24, x: Math.round((doc.width - w) / 2), y: Math.round((doc.height - h) / 2), w, h, rotation: 0, opacity: 1, anim: { in: 'fade-up', delay: 0.2, dur: 0.8 }, meta: { provider: gen.provider, model: gen.model, intent: gen.intent } });
@@ -69,6 +70,8 @@ export async function autonomyRoutes(req, res, url, { base }) {
   const m = (re) => p.match(re);
   let mm;
 
+  if (p === '/api/modules/pending' && req.method === 'GET') { send(res, 200, pendingModules()); return true; }
+  if ((mm = m(/^\/api\/modules\/([\w-]+)\/approve$/)) && req.method === 'POST') { const b = await readJson(req); send(res, 200, await approveModule(mm[1], b.digest)); return true; }
   // ---------- scene modules ----------
   if (p === '/api/modules') { send(res, 200, await listModules()); return true; }
   if ((mm = m(/^\/modules\/scenes\/([\w.-]+\.js)$/))) {
@@ -140,7 +143,7 @@ export async function autonomyRoutes(req, res, url, { base }) {
     const body = await readJson(req);
     const keys = {};
     for (const k of KEY_NAMES) if (body.keys && k in body.keys) keys[k] = body.keys[k];
-    writeGeneratorSettings({ ...(body.models ? { models: body.models } : {}), ...(body.providers ? { providers: body.providers } : {}), ...(Object.keys(keys).length ? { keys } : {}), ...('autoRepair' in body ? { autoRepair: !!body.autoRepair } : {}), ...(body.director ? { director: body.director } : {}) });
+    writeGeneratorSettings({ ...(body.models ? { models: body.models } : {}), ...(body.providers ? { providers: body.providers } : {}), ...(Object.keys(keys).length ? { keys } : {}), ...('autoRepair' in body ? { autoRepair: false } : {}), ...(body.director ? { director: body.director } : {}) });
     send(res, 200, publicGeneratorSettings());
     return true;
   }

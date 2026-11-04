@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from './api.js';
+import { VersionsDialog } from './components/ReviewControls.jsx';
+import { api, apiHeaders } from './api.js';
 import { loadFonts, ImageCache } from './render/renderer.js';
 import { sceneRuntime } from './render/scene3d/runtime.js';
 import { exportPng, exportZip, exportVideo, exportGif, exportJson, exportSlideVideosZip, captionText, downloadBlob } from './render/export.js';
@@ -14,12 +15,17 @@ import Gallery from './components/Gallery.jsx';
 import InstaPreview from './components/InstaPreview.jsx';
 import { NewDocDialog, TemplatePicker, AssetPicker, ClaudePanel, LintPanel } from './components/Dialogs.jsx';
 import { DirectorPanel, GenerateDialog, FeedbackDialog, SettingsDialog as GeneratorSettingsDialog, BrainPanel } from './components/Autonomy.jsx';
-import { Icon, SlideThumb, Select } from './components/ui.jsx';
+import { SelectControl, Icon, SlideThumb, Select } from './components/ui.jsx';
 import Home from './components/Home.jsx';
 import Production from './components/Production.jsx';
 import Footage from './components/Footage.jsx';
 import { SettingsDialog, UpdateButton } from './components/Settings.jsx';
 import { VideoPool } from './render/media.js';
+import StudioShell from './components/StudioShell.jsx';
+import { useGoldcomDialog } from './components/GoldcomDialogs.jsx';
+import { useStudioMotion } from './components/StudioMotion.jsx';
+import { ModeSwitch, useStudio } from './components/StudioContext.jsx';
+import { ExportSurface, LoadingSurface } from './components/ProductionJourney.jsx';
 
 const TOOL_GROUPS = [
   ['Text', 'text', [['text', 'Text'], ['list', 'List']]],
@@ -60,9 +66,17 @@ const readPref = (k, d) => { try { const v = localStorage.getItem(`gc.${k}`); re
 const writePref = (k, v) => { try { localStorage.setItem(`gc.${k}`, JSON.stringify(v)); } catch { /* storage unavailable */ } };
 
 export default function App() {
+  const { run:transition } = useStudioMotion();
+  const navigationVersion = useRef(0);
+  const { confirmAction } = useGoldcomDialog();
+  const { t, advanced, rtl, uiLang } = useStudio();
+  const interfaceLanguage = useRef(uiLang);
+  interfaceLanguage.current = uiLang;
+  const jobStatuses = useRef(new Map());
   const [health, setHealth] = useState(null);
   const [docs, setDocs] = useState([]);
   const [docsLoaded, setDocsLoaded] = useState(false);
+  const [docsError, setDocsError] = useState(null);
   const [doc, setDoc] = useState(null);
   const docRef = useRef(null);
   const [view, setView] = useState(() => parseRoute().view);
@@ -89,33 +103,37 @@ export default function App() {
   const clock = useMemo(createClock, []);
   const hist = useRef({ past: [], future: [], base: null });
   const lastSaved = useRef(null);
+  const savedRevision = useRef(0);
+  const conflict = useRef(false);
   const saveTimer = useRef(null);
   const dirty = useRef(false);
   const saving = useRef(false);
   const clipboard = useRef(null);
 
-  const toast = useCallback((msg, err) => {
+  const toast = useCallback((msg, err, action) => {
     const id = uid('t');
-    setToasts((t) => [...t.slice(-3), { id, msg, err }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), err ? 6000 : 3200);
+    setToasts((t) => [...t.slice(-3), { id, msg, err, action }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 9000 : err ? 6000 : 3200);
   }, []);
 
-  const refreshList = useCallback(() => api.list().then((l) => { setDocs(l); setDocsLoaded(true); }).catch(() => {}), []);
+  const refreshList = useCallback(() => api.list().then((l) => { setDocs(l); setDocsLoaded(true); setDocsError(null); }).catch(error => setDocsError(error.message)), []);
 
   // ---------- saving (debounced, retried, flushed on exit) ----------
   const flush = useCallback(async () => {
     const d = docRef.current;
-    if (!d || !dirty.current || saving.current) return;
+    if (!d || !dirty.current || saving.current || conflict.current) return;
     saving.current = true;
     dirty.current = false;
     setSaveState('saving');
     try {
-      const saved = await api.save({ ...d, source: d.source ? { ...d.source, lastWriter: 'studio' } : d.source });
+      const saved = await api.save({ ...d, revision: savedRevision.current, source: d.source ? { ...d.source, lastWriter: 'studio' } : d.source });
       lastSaved.current = saved.updatedAt;
-      if (docRef.current?.id === saved.id) docRef.current = { ...docRef.current, updatedAt: saved.updatedAt };
+      savedRevision.current = saved.revision;
+      if (docRef.current?.id === saved.id) docRef.current = { ...docRef.current, updatedAt: saved.updatedAt, revision: saved.revision };
       setDocs((list) => list.map((x) => (x.id === saved.id ? { ...x, name: saved.name, updatedAt: saved.updatedAt, slides: saved.slides.length, kind: saved.kind, format: saved.format, lang: saved.lang } : x)));
       setSaveState(dirty.current ? 'pending' : 'saved');
-    } catch {
+    } catch (e) {
+      if (e.status === 409) { conflict.current = true; toast(e.message, true); }
       dirty.current = true;
       setSaveState('error');
       clearTimeout(saveTimer.current);
@@ -136,7 +154,7 @@ export default function App() {
   useEffect(() => {
     const onExit = () => {
       const d = docRef.current;
-      if (d && dirty.current) fetch(`/api/documents/${d.id}`, { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).catch(() => {});
+      if (d && dirty.current && !conflict.current) fetch(`/api/documents/${d.id}`, { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json', ...apiHeaders() }, body: JSON.stringify(d) }).catch(() => {});
     };
     const warn = (e) => { if (dirty.current) { onExit(); e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('pagehide', onExit);
@@ -146,32 +164,45 @@ export default function App() {
 
   // ---------- load & routing ----------
   const openDoc = useCallback(async (id, { keepSlide } = {}) => {
+    const version = keepSlide ? navigationVersion.current : ++navigationVersion.current;
+    const load = async () => {
     try {
       const d = normalizeDocument(await api.get(id));
+      if (version !== navigationVersion.current || (keepSlide && (docRef.current?.id !== id || parseRoute().view !== 'editor' || routeId() !== id))) return;
       docRef.current = d;
       setDoc(d);
       setView('editor');
       setSlideIdx((i) => (keepSlide ? Math.max(0, Math.min(i, d.slides.length - 1)) : 0));
       if (!keepSlide) { setSelId(null); hist.current = { past: [], future: [], base: null }; clock.playing = false; clock.set(null); }
       lastSaved.current = d.updatedAt;
+      savedRevision.current = d.revision; conflict.current = false;
       setSaveState('saved');
       if (routeId() !== id) history.pushState(null, '', `#/doc/${id}`);
     } catch (e) {
+      if (version !== navigationVersion.current) return;
       toast(/not found|404/i.test(e.message) ? 'That design could not be found. It may have been deleted.' : `Could not open the design: ${e.message}`, true);
       if (!keepSlide) goGallery();
     }
-  }, [clock, toast]); // eslint-disable-line react-hooks/exhaustive-deps
+    };
+    return keepSlide ? load() : transition(interfaceLanguage.current === 'ar' ? 'نفتح مساحة تصميمك' : 'Opening your design workspace',load);
+  }, [clock, toast, transition]);
 
   const go = useCallback(async (v, id) => {
+    const version = ++navigationVersion.current;
+    const labels = interfaceLanguage.current === 'ar' ? { home:'نجهّز مساحة الإبداع',gallery:'نفتح مشاريعك',footage:'نفتح مكتبة الوسائط',production:'نفتح مشروعك' } : { home:'Opening your creative workspace',gallery:'Opening your projects',footage:'Opening your media library',production:'Opening your production' };
+    return transition(labels[v] || labels.home,async () => {
     await flush();
+    if (version !== navigationVersion.current) return;
+    if (conflict.current) { toast('Save your recovered copy before leaving this design.',true); return; }
     clock.playing = false; clock.set(null);
     setSelId(null);
     const hash = v === 'production' ? `#/p/${id}` : v === 'gallery' ? '#/designs' : v === 'footage' ? '#/footage' : '#/';
     if (location.hash !== hash) history.pushState(null, '', hash);
     if (v === 'production') setProdId(id);
     setView(v);
-    if (v === 'gallery') refreshList();
-  }, [flush, clock, refreshList]);
+    if (v === 'gallery') await refreshList();
+    });
+  }, [flush, clock, refreshList, transition]);
   const goGallery = useCallback(() => go('gallery'), [go]);
 
   useEffect(() => {
@@ -182,13 +213,11 @@ export default function App() {
     const onPop = () => {
       const r = parseRoute();
       if (r.view === 'editor') { if (r.id !== docRef.current?.id || view !== 'editor') openDoc(r.id); return; }
-      if (r.view === 'production') setProdId(r.id);
-      setView(r.view);
-      if (r.view === 'gallery') refreshList();
+      go(r.view,r.id);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------- live updates (Claude Code writes documents through MCP) ----------
   useEffect(() => {
@@ -206,6 +235,16 @@ export default function App() {
         if (ev.type === 'agent' && ev.done) toast(ev.status === 'done' ? 'Claude finished the task.' : `Claude stopped: ${ev.status}`, ev.status !== 'done');
         if (ev.type === 'hello') window.__serverPid = ev.pid;
         if (ev.type === 'job') window.dispatchEvent(new CustomEvent('gc:job', { detail: ev }));
+        if (ev.type === 'job' && ev.job?.type === 'production') {
+          const previous = jobStatuses.current.get(ev.job.id);
+          jobStatuses.current.set(ev.job.id, ev.job.status);
+          const route = parseRoute();
+          if (previous !== ev.job.status && !(route.view === 'production' && route.id === ev.job.id) && ['done','waiting','needs-attention','error'].includes(ev.job.status)) {
+            const arabic = interfaceLanguage.current === 'ar';
+            const label = ({ done:arabic ? 'عملك جاهز للمراجعة' : 'Your creation is ready to review', waiting:arabic ? 'أفكارك جاهزة للاختيار' : 'Your ideas are ready to choose', 'needs-attention':arabic ? 'مشروعك يحتاج انتباهك' : 'Your production needs attention', error:arabic ? 'تعذّر إكمال المشروع' : 'Your production couldn’t finish' })[ev.job.status];
+            toast(label, ev.job.status === 'error', () => go('production', ev.job.id));
+          }
+        }
         if (ev.type === 'footage') window.dispatchEvent(new CustomEvent('gc:footage', { detail: ev }));
         if (ev.type === 'update') window.dispatchEvent(new CustomEvent('gc:update', { detail: ev.update }));
         if (ev.type === 'restarting') window.dispatchEvent(new CustomEvent('gc:restarting'));
@@ -219,12 +258,16 @@ export default function App() {
         } else if (ev.type === 'document' && ev.origin === 'claude-code' && (!cur || ev.id !== cur.id)) {
           toast(`Claude Code saved "${ev.name}"`);
         }
-        if (ev.type === 'deleted' && cur && ev.id === cur.id) { dirty.current = false; setDoc(null); docRef.current = null; toast('This design was deleted.', true); goGallery(); }
+        if (ev.type === 'deleted' && cur && ev.id === cur.id) {
+          const route = parseRoute();
+          dirty.current = false; setDoc(null); docRef.current = null;
+          if (route.view === 'editor' && route.id === ev.id) { toast('This design was deleted.', true); goGallery(); }
+        }
       };
     };
     connect();
     return () => { clearTimeout(retry); es?.close(); };
-  }, [openDoc, refreshList, toast, goGallery]);
+  }, [openDoc, refreshList, toast, goGallery, go]);
 
   // ---------- mutations ----------
   const change = useCallback((fn, { live: isLive } = {}) => {
@@ -235,6 +278,7 @@ export default function App() {
     const h = hist.current;
     if (isLive) { if (!h.base) h.base = cur; } else { h.past.push(h.base || cur); h.base = null; if (h.past.length > 150) h.past.shift(); h.future = []; }
     docRef.current = next;
+    if (next.source?.type === 'production') next.approval = null;
     setDoc(next);
     scheduleSave();
   }, [scheduleSave]);
@@ -245,6 +289,7 @@ export default function App() {
     h.future.push(docRef.current);
     const prev = h.past.pop();
     h.base = null;
+    if (prev.source?.type === 'production') prev.approval = null;
     docRef.current = prev; setDoc(prev); setSlideIdx((i) => Math.max(0, Math.min(i, prev.slides.length - 1))); scheduleSave();
   }, [scheduleSave]);
   const redo = useCallback(() => {
@@ -252,6 +297,7 @@ export default function App() {
     if (!h.future.length) return;
     h.past.push(docRef.current);
     const next = h.future.pop();
+    if (next.source?.type === 'production') next.approval = null;
     docRef.current = next; setDoc(next); setSlideIdx((i) => Math.max(0, Math.min(i, next.slides.length - 1))); scheduleSave();
   }, [scheduleSave]);
 
@@ -362,7 +408,7 @@ export default function App() {
   });
 
   // ---------- documents ----------
-  const createDoc = async (d, { open = true } = {}) => {
+  const createDoc = async (d, { open = true } = {}) => transition(interfaceLanguage.current === 'ar' ? 'نجهّز تصميمك' : 'Preparing your design',async () => {
     try {
       const saved = await api.create(d);
       setModal(null); setPreview(null);
@@ -370,7 +416,7 @@ export default function App() {
       if (open) openDoc(saved.id);
       return saved;
     } catch (e) { toast(e.message, true); return null; }
-  };
+  });
   const applyLibrary = (item, lang) => createDoc(buildLibraryDoc(item, lang));
   const duplicateDoc = async (id) => {
     const d = await api.get(id);
@@ -385,7 +431,7 @@ export default function App() {
     refreshList();
   };
   const deleteDoc = async (id) => {
-    if (!confirm('Delete this design? This cannot be undone.')) return;
+    if (!await confirmAction({ title:uiLang === 'ar' ? 'حذف التصميم؟' : 'Delete this design?', message:uiLang === 'ar' ? 'سيتم حذف هذا التصميم نهائيًا.' : 'This permanently removes the design from your projects.', confirmLabel:uiLang === 'ar' ? 'حذف التصميم' : 'Delete design' })) return;
     await api.remove(id);
     if (docRef.current?.id === id) { dirty.current = false; setDoc(null); docRef.current = null; goGallery(); }
     refreshList();
@@ -500,9 +546,9 @@ export default function App() {
   const errs = issues.filter((i) => i.level === 'error').length;
   const warns = issues.filter((i) => i.level === 'warn').length;
   const mode = doc && isSequence(doc.kind) ? 'video' : 'carousel';
-  const saveLabel = { saved: 'Saved', pending: 'Saving…', saving: 'Saving…', error: 'Offline · retrying' }[saveState];
+  const saveLabel = { saved: t('saved'), pending: t('saving'), saving: t('saving'), error: t('offline') }[saveState];
 
-  if (!fontsReady) return <div className="welcome"><div><img src="/favicon.svg" alt="" /><p>Loading Goldcom Studio…</p></div></div>;
+  if (!fontsReady) return <div className="studio-boot"><img src="/favicon.svg" alt="Goldcom" /><LoadingSurface title="Goldcom Studio" subtitle={t('loading')} /></div>;
 
   const dialogs = (
     <>
@@ -511,6 +557,8 @@ export default function App() {
       {modal === 'assets' && <AssetPicker toast={toast} onClose={() => setModal(null)} onPick={(url) => { assetCb.current?.(url); setModal(null); }} />}
       {modal === 'claude' && <ClaudePanel health={health} docs={docs} onClose={() => setModal(null)} onOpen={openDoc} />}
       {modal === 'settings' && <SettingsDialog onClose={() => setModal(null)} toast={toast} />}
+      {conflict.current && doc && <div className="note err">This design changed elsewhere. Your unsaved edits are still here. <button className="btn" onClick={async()=>{try{const d={...docRef.current,id:uid('doc'),name:`${docRef.current.name} (recovered edits)`,revision:undefined,approval:null};const saved=await api.create(d);conflict.current=false;dirty.current=false;openDoc(saved.id);}catch(e){toast(e.message,true);}}}>Save my copy</button></div>}
+      {modal === 'versions' && doc && <VersionsDialog id={doc.id} toast={toast} onClose={()=>setModal(null)} onRestore={()=>{setModal(null);openDoc(doc.id);}}/>}
       {modal === 'lint' && doc && <LintPanel issues={issues} onClose={() => setModal(null)} onGo={(i) => { setSlideIdx(i.slide); setSelId(i.layer); }} />}
       {modal === 'director' && <DirectorPanel doc={view === 'editor' ? doc : null} slideIdx={slideIdx} toast={toast} initialTask={directorTask} onClose={() => { setModal(null); setDirectorTask(null); }} onOpen={openDoc} />}
       {modal === 'generate' && <GenerateDialog doc={view === 'editor' ? doc : null} slideIdx={slideIdx} toast={toast} onClose={() => setModal(null)} onPlaced={() => doc && openDoc(doc.id, { keepSlide: true })} />}
@@ -521,66 +569,58 @@ export default function App() {
         <InstaPreview doc={preview.doc} images={images} notes={preview.item?.notes} onClose={() => setPreview(null)}
           onEdit={Object.assign(() => { const p = preview; setPreview(null); if (p.item) applyLibrary(p.item, p.doc.lang); else if (p.doc.id && p.doc.id !== docRef.current?.id) openDoc(p.doc.id); }, { label: preview.item ? 'Use this design' : preview.doc.id === docRef.current?.id ? 'Back to editor' : 'Open in editor' })} />
       )}
-      {progress && <div className="progress"><div className="box"><b>{progress.label}…</b><div className="hint" style={{ marginTop: 4 }}>{progress.server ? progress.msg || 'Rendered frame by frame by the studio, with sound.' : 'Rendered frame by frame in your browser.'}</div><div className="bar"><div style={{ width: `${Math.round(progress.p * 100)}%` }} /></div></div></div>}
-      <div className="toasts">{toasts.map((t) => <div key={t.id} className={`toast${t.err ? ' err' : ''}`}>{t.msg}</div>)}</div>
+      {progress && <ExportSurface progress={progress} />}
+      <div className="toasts" aria-live="polite">{toasts.map(item => <div key={item.id} className={`toast${item.err ? ' err' : ''}`} role={item.err ? 'alert' : 'status'}><span>{item.msg}</span>{item.action && <button onClick={() => { item.action(); setToasts(items => items.filter(x => x.id !== item.id)); }}>{uiLang === 'ar' ? 'عرض المشروع' : 'View production'}<Icon name="back" className="forward-icon" size={13} /></button>}</div>)}</div>
     </>
   );
 
   if (view !== 'editor' || !doc) {
-    const nav = [['home', 'Create', 'claude'], ['gallery', 'Designs', 'grid'], ['footage', 'Footage', 'film']];
     return (
-      <div className="app">
-        <header className="topbar">
-          <button className="brandmark plain" onClick={() => go('home')}><img src="/favicon.svg" alt="Goldcom" /><b>Goldcom <span>Studio</span></b></button>
-          <nav className="mainnav">
-            {nav.map(([k, label, icon]) => <button key={k} className={view === k || (k === 'home' && view === 'production') ? 'on' : ''} onClick={() => go(k)}><Icon name={icon} size={16} />{label}</button>)}
-          </nav>
-          <span className="spacer" />
-          {view === 'editor' && !doc && <span className="hint">Loading design…</span>}
-          <button className="btn" onClick={() => setModal('director')} title="Give Claude a brief"><Icon name="claude" />Ask Claude</button>
-          <button className="btn icon ghost" onClick={() => setModal('generate')} title="Generate an image"><Icon name="wand" /></button>
-          <button className="btn icon ghost" onClick={() => setModal('brain')} title="What the studio has learned"><Icon name="brain" /></button>
-          <button className="btn icon ghost" onClick={() => setModal('generators')} title="Generators and self-repair: image/3D providers, keys"><Icon name="key" /></button>
-          <UpdateButton toast={toast} />
-          <button className="btn icon ghost" title="Settings" onClick={() => setModal('settings')}><Icon name="gear" /></button>
-        </header>
+      <StudioShell view={view} onGo={go} onSettings={() => setModal('settings')} onTool={setModal} connected={!!health && live} update={<UpdateButton toast={toast} />}>
         {view === 'home' && <Home onOpenProduction={(id) => go('production', id)} onOpenSettings={() => setModal('settings')} onGo={go} toast={toast} />}
-        {view === 'production' && prodId && <Production key={prodId} id={prodId} images={images} onOpenDoc={openDoc} onBack={() => go('home')} toast={toast} />}
+        {view === 'production' && prodId && <Production key={prodId} id={prodId} images={images} onOpenDoc={openDoc} onOpenProduction={(id)=>go('production',id)} onBack={() => go('home')} toast={toast} />}
         {view === 'footage' && <Footage toast={toast} />}
-        {(view === 'gallery' || (view === 'editor' && !doc)) && (docsLoaded || docs.length ? (
+        {(view === 'gallery' || (view === 'editor' && !doc)) && (docsError ? <div className="studio-empty production-load-error" role="alert"><Icon name="warn" /><p>{docsError}</p><button className="btn" onClick={refreshList}>{t('retry')}</button></div> : docsLoaded || docs.length ? (
           <Gallery docs={docs} images={images} live={live}
             onOpen={openDoc} onNew={() => setModal('new')} onUseLibrary={applyLibrary}
             onPreview={(d, item) => setPreview({ doc: d, item })} onDuplicate={duplicateDoc} onRename={renameDoc} onDelete={deleteDoc}
             onExport={galleryExport} onClaude={() => setModal('claude')} />
-        ) : <div className="welcome"><p className="hint">Connecting to the studio server…</p></div>)}
+        ) : <LoadingSurface />)}
         {dialogs}
-      </div>
+      </StudioShell>
     );
   }
 
   return (
-    <div className="app">
+    <div className={`app studio-editor ${advanced ? 'editor-advanced' : 'editor-guided'}`} dir={rtl ? 'rtl' : 'ltr'}>
       <header className="topbar">
-        <button className="btn icon ghost" onClick={goGallery} title="Back to gallery"><Icon name="grid" /></button>
+        <button className="btn icon ghost" onClick={goGallery} title={t('projects')}><Icon name="grid" /></button>
         <div className="brandmark"><img src="/favicon.svg" alt="Goldcom" /></div>
         <input className="docname" value={doc.name} maxLength={120} onChange={(e) => change((d) => ({ ...d, name: e.target.value }), { live: true })} onBlur={(e) => { if (!e.target.value.trim()) change((d) => ({ ...d, name: 'Untitled design' })); else change((d) => d); }} aria-label="Design name" />
         <span className={`save ${saveState}`} title="Changes save automatically">{saveLabel}</span>
+        <ModeSwitch />
+        {advanced && <>
         <div style={{ width: 150 }} className="hide-sm"><Select value={doc.format} onChange={(v) => setDocProp({ format: v })} options={Object.fromEntries(Object.entries(FORMATS).map(([k, f]) => [k, f.label]))} /></div>
         <div style={{ width: 140 }}><Select value={doc.kind} onChange={(v) => { clock.playing = false; clock.set(null); setDocProp({ kind: v, ...((v === 'reel' || v === 'story') && doc.format !== 'story' ? { format: 'story' } : {}) }); }} options={Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v.label]))} /></div>
         <div className="seg">
           <button className={doc.lang === 'ar' ? 'on' : ''} onClick={() => setDocProp({ lang: 'ar' })}>AR</button>
           <button className={doc.lang === 'en' ? 'on' : ''} onClick={() => setDocProp({ lang: 'en' })}>EN</button>
         </div>
+        </>}
         <button className="btn icon ghost" onClick={undo} disabled={!hist.current.past.length} title="Undo (Ctrl/Cmd+Z)"><Icon name="undo" /></button>
         <button className="btn icon ghost" onClick={redo} disabled={!hist.current.future.length} title="Redo (Ctrl/Cmd+Shift+Z)"><Icon name="redo" /></button>
         <span className="spacer" />
-        <button className="btn" onClick={() => setPreview({ doc })} title="Instagram preview"><Icon name="eye" />Preview</button>
-        <button className="btn" onClick={() => setModal('lint')} title="Brand check">Check {errs ? <span className="count err">{errs}</span> : warns ? <span className="count warn">{warns}</span> : <span className="count ok">✓</span>}</button>
+        <button className="btn" onClick={() => setPreview({ doc })} title="Instagram preview"><Icon name="eye" />{t('preview')}</button>
+        <button className="btn" onClick={() => setModal('lint')} title="Brand check">{t('check')} {errs ? <span className="count err">{errs}</span> : warns ? <span className="count warn">{warns}</span> : <span className="count ok">✓</span>}</button>
+        {advanced && <>
         <button className="btn" onClick={() => setModal('feedback')} title="Rate this design: a thumbs-down asks why and teaches the studio"><Icon name="thumbUp" size={16} />Rate</button>
         <button className="btn" onClick={() => setModal('director')} title="Ask Claude to change or extend this design"><Icon name="claude" />Ask Claude</button>
         <button className="btn icon" onClick={() => setModal('claude')} title="Claude Code connection"><span className={`dot${live ? ' live' : ''}`} /></button>
+        </>}
+        {!advanced && <button className="btn editor-assistant" aria-label={t('ask')} onClick={() => setModal('director')}><Icon name="claude" /><span>{t('ask')}</span></button>}
         <div className="rel">
-          <button className="btn primary" onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === 'export' ? null : 'export'); }}><Icon name="download" />Export</button>
+          {advanced && <button className="btn" onClick={()=>setModal('versions')}>{t('history')}</button>}
+          <button className="btn primary" onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === 'export' ? null : 'export'); }}><Icon name="download" />{t('export')}</button>
           {menuOpen === 'export' && (
             <div className="menu" onClick={(e) => e.stopPropagation()}>
               {exportsFor(doc, slideIdx).map(([a, b, fn]) => <button key={a + b} onClick={fn}>{a} <small>{b}</small></button>)}
@@ -591,7 +631,7 @@ export default function App() {
 
       <div className="main" onClick={() => setMenuOpen(null)}>
         <aside className="panel">
-          <div className="tabs"><button className="on">{doc.kind === 'story' ? 'Frames' : 'Slides'} <span className="count">{doc.slides.length}</span></button></div>
+          <div className="tabs"><button className="on">{t('storyboard')} <span className="count">{doc.slides.length}</span></button></div>
           <div className="scroll">
             <div className="slides">
               {doc.slides.map((s, i) => (
@@ -609,13 +649,14 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              <button className="add-slide" onClick={() => setModal('template')}>+ Add {doc.kind === 'story' ? 'frame' : 'slide'}</button>
+              <button className="add-slide" onClick={() => setModal('template')}>+ {t('addScene')}</button>
             </div>
           </div>
         </aside>
 
         <section className="center" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const f = [...e.dataTransfer.files][0]; if (f) placeFile(f); }}>
-          <div className="toolbar">
+          {!advanced && <div className="guided-editor-intro"><div><b>{t('guidedEditor')}</b><span>{t('guidedEditorHint')}</span></div><label className="guided-scene-picker"><span className="sr-only">{t('scene')}</span><SelectControl aria-label={t('scene')} value={slideIdx} onChange={e => { setSlideIdx(Number(e.target.value)); setSelId(null); clock.playing = false; clock.set(null); }}>{doc.slides.map((slide, index) => <option key={slide.id} value={index}>{t('scene')} {index + 1} / {doc.slides.length}</option>)}</SelectControl></label></div>}
+          {advanced && <div className="toolbar">
             <button className="tool" onClick={() => addLayer('text')} title="Add text"><Icon name="text" /><span>Text</span></button>
             <button className="tool" onClick={() => addLayer('image')} title="Add image"><Icon name="image" /><span>Image</span></button>
             <button className="tool" onClick={() => addLayer('scene3d')} title="Add a 3D scene"><Icon name="cube" /><span>3D</span></button>
@@ -631,7 +672,7 @@ export default function App() {
                 )}
               </div>
             ))}
-          </div>
+          </div>}
           <Stage doc={doc} slideIdx={slideIdx} selId={selId} onSelect={setSelId}
             onBegin={() => { if (!hist.current.base) hist.current.base = docRef.current; }}
             onLive={(id, patch) => ops.updateLayer(id, patch, { live: true })}
@@ -639,7 +680,7 @@ export default function App() {
             images={images} imagesVersion={imagesVersion} clock={clock} mode={mode} zones={zones}
             onToggleZones={() => { setZones((z) => { writePref('zones', !z); return !z; }); }}
             onEditText={(id) => { setFocusText(null); setTimeout(() => setFocusText(id), 0); }} />
-          <Timeline doc={doc} mode={mode} slideIdx={slideIdx} clock={clock} onSeekSlide={(i) => setSlideIdx(i)} />
+          {advanced && <Timeline doc={doc} mode={mode} slideIdx={slideIdx} clock={clock} onSeekSlide={(i) => setSlideIdx(i)} />}
         </section>
 
         <Inspector doc={doc} slideIdx={slideIdx} layer={selLayer} api={ops} focusText={focusText} issues={issues} />

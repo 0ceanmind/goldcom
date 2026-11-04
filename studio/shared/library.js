@@ -3,6 +3,8 @@
 // Copy rules: brand guidelines §10 (voice) and §11 (claims). Prices are illustrative and always labelled.
 import { createDocument, createSlide, normalizeDocument } from './schema.js';
 import { applyAllTemplates } from './templates.js';
+import { SHOWCASE_LIBRARY } from './showcase.js';
+export { LIBRARY_MEDIA } from './showcase.js';
 
 const P = (lang) => (en, ar) => (lang === 'ar' ? ar : en);
 const S = (template, theme, content, more = {}) => ({ template, theme, content, ...more });
@@ -53,7 +55,7 @@ export const LIBRARY_CATEGORIES = {
   video: 'Videos',
 };
 
-// Visual first: every design is one 3D scene per slide that shows the idea, with at most one short line.
+// Legacy 3D catalog retained for existing links. The visible library is curated below.
 // (knowledge/design-dna.md, knowledge/lessons.md)
 const V = (scene, params, content = {}, more = {}) => S('scene', more.theme || 'onyx', { scene, params, ...content }, { pattern: 'none', duration: more.duration || 6, transition: more.transition || 'fade', ...more });
 const NOTE_GIFTBOX = 'The gift box is a visual metaphor for gifting in the app. Do not promise physical gift packaging unless Goldcom offers it.';
@@ -63,7 +65,7 @@ const NOTE_SCREEN = 'The phone shows an illustrative buy screen with an example 
 const sticker = (kind, question, options = [], more = {}) => ({ type: 'sticker', kind, question, options, guide: true, x: 0.2, y: 0.69, w: 0.6, h: 0.14, rotation: -2, anim: { in: 'pop', delay: 0.6, dur: 0.6 }, ...more });
 const LOGO_END = (t, more = {}) => V('logo-mark', { mode: 'assemble' }, { title: t('Download Goldcom', 'حمّل جولدكم'), caption: t('App Store · Google Play · goldcom.om', 'App Store · Google Play · goldcom.om'), textZone: 'bottom' }, { duration: 4, ...more });
 
-export const LIBRARY = [
+const LEGACY_LIBRARY = [
   // ───────────── Posts ─────────────
   {
     id: 'post-real-gold', category: 'post', format: 'feed-portrait', kind: 'post', tags: ['brand', 'product'],
@@ -366,7 +368,10 @@ export const LIBRARY = [
   },
 ];
 
-export const libraryItem = (id) => LIBRARY.find((i) => i.id === id);
+// Keep existing IDs resolvable for saved links, while presenting a diverse, intentionally curated catalog.
+const OPTIONAL_3D = new Set(['post-real-gold', 'post-gift', 'post-purity', 'motion-bar', 'motion-logo', 'motion-crescent']);
+export const LIBRARY = [...SHOWCASE_LIBRARY, ...LEGACY_LIBRARY.filter(i => OPTIONAL_3D.has(i.id)).map(i => ({ ...i, medium: '3d', tags: [...i.tags, '3d'] }))];
+export const libraryItem = (id) => LIBRARY.find((i) => i.id === id) || LEGACY_LIBRARY.find(i => i.id === id);
 
 /** Build a ready-to-edit document from a library item. */
 export function buildLibraryDoc(item, lang = 'ar') {

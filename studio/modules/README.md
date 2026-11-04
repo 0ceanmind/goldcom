@@ -2,7 +2,7 @@
 
 Every file in `scenes/` is one 3D scene: a short, looping piece of motion that shows one idea (a minted bar turning in the light, coins stacking month by month, a vault tile opening). The studio renders scenes with three.js into any slide, at any size, at any moment of time, so the same module works in the editor, in Claude's previews, in PNG exports and frame-exact MP4s.
 
-Modules load at runtime. A new file appears in the editor's scene picker without a rebuild, and editors that have the studio open reload it the moment it changes. That is how the studio grows: when a brief needs a visual that does not exist, Claude writes a module (`create_scene_module`), tests it (`test_scene`), and uses it.
+Modules load at runtime. A new file appears in the editor's scene picker without a rebuild, and editors that have the studio open reload it the moment it changes. That is how the studio grows: when a brief needs a visual that does not exist, Claude proposes source with `create_scene_module`. A person reviews and approves the source in Settings before `test_scene` can execute it. Metadata fields use literals or constant arrays and are parsed statically, without importing the source into Node. Approved code is trusted browser JavaScript; this is not a JavaScript sandbox.
 
 ## Contract
 
@@ -70,4 +70,4 @@ test_scene({ id: 'my-scene', times: [0.5, 2, 4], params: { … } })   // MCP: re
 GET /api/scene-preview/<id>?t=2&w=1080&h=1350&params={…}            // HTTP: one PNG
 ```
 
-If a module throws while loading or rendering, the studio skips it (the slide still renders), reports the error, and, when auto-repair is on, starts a repair task with the error and the module source.
+If a module throws while loading or rendering, the studio skips it (the slide still renders), reports the error, and records it for review. Repairs are started explicitly; changed source must be approved in Settings before execution.

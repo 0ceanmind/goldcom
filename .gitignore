@@ -1,0 +1,18 @@
+# Generated dependencies, builds, and local Studio state.
+node_modules/
+dist/
+data/
+coverage/
+/verification/
+*.log
+
+# Local credentials and environment overrides.
+.env
+.env.*
+!.env.example
+!.env.sample
+.api-token
+
+# Editor and operating-system files.
+.DS_Store
+Thumbs.db

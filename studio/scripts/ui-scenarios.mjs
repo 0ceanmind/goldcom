@@ -4,12 +4,13 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { chooseOption, optionValues } from './ui-controls.mjs';
 
 const BASE = process.env.STUDIO_URL || 'http://localhost:5177';
 const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY, 'i') : null; // ONLY="gallery header" runs matching scenarios
 const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'goldcom-ui-'));
 const api = async (p, method = 'GET', body) => {
-  const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', Authorization: `Bearer ${fs.readFileSync(path.join(process.env.GOLDCOM_STUDIO_DATA,'.api-token'),'utf8').trim()}` }, body: body ? JSON.stringify(body) : undefined });
   if (!r.ok) throw new Error(`${method} ${p} → ${r.status}`);
   return r.json();
 };
@@ -19,6 +20,8 @@ const results = [];
 const created = new Set();
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+// This suite exercises the complete editor. Default guided workflows have their own acceptance suite.
+await ctx.addInitScript(() => localStorage.setItem('gc.workspaceMode', JSON.stringify('advanced')));
 const page = await ctx.newPage();
 let errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -37,7 +40,7 @@ async function scenario(name, fn) {
     if (process.env.MEMLOG) console.log('    mem', await page.evaluate(() => JSON.stringify({ heapMB: Math.round((performance.memory?.usedJSHeapSize || 0) / 1e6), scenes: window.__goldcomScenes?.instances?.size, composers: window.__goldcomScenes?.composers?.size })).catch(() => '?'));
   } catch (e) {
     results.push({ name, ok: false, err: e.message });
-    console.log(`  ✕ ${name}\n      ${e.message.split('\n')[0]}`);
+    console.log(`  ✕ ${name}\n      ${e.message}`);
     await page.screenshot({ path: path.join(OUT, `fail-${results.length}.png`) }).catch(() => {});
   }
 }
@@ -70,6 +73,7 @@ console.log(`\nGoldcom Studio · editor scenarios against ${BASE}\n`);
 await scenario('Create page shows the prompt composer, examples and readiness', async () => {
   await page.goto(`${BASE}/#/`);
   await page.waitForSelector('.composer textarea');
+  await page.locator('.more-ideas summary').click();
   expect(await page.locator('.chips .chip').count() >= 4, 'example prompts are listed');
   expect(await page.locator('.ready-item').count() === 3, 'Claude, phone and footage readiness shown');
   await page.locator('.chips .chip').first().click();
@@ -89,7 +93,7 @@ await scenario('Capture sources: emulator, cloud phone (form, prices), iPhone an
   await page.waitForSelector('.phone-panel :text("Android"), .phone-panel :text("emulator")');
   await page.click('.phone-panel .seg button:has-text("Cloud phone")');
   await page.click('.phone-panel :text("Add a cloud phone")');
-  for (const pv of ['geelark', 'duoplus', 'morelogin', 'multilogin', 'other']) await page.selectOption('.phone-panel select', pv);
+  for (const pv of ['geelark', 'duoplus', 'morelogin', 'multilogin', 'other']) await chooseOption(page,page.locator('.phone-panel [role="combobox"]').last(),pv);
   await page.click('.phone-panel :text("Cancel")');
   await page.click('.phone-panel :text("Compare cloud phone prices")');
   await page.waitForSelector('.phone-panel .price-table tbody tr');
@@ -102,7 +106,7 @@ await scenario('Capture sources: emulator, cloud phone (form, prices), iPhone an
 
 await scenario('Settings dialog opens and closes', async () => {
   await page.goto(`${BASE}/#/`);
-  await page.locator('.topbar button[title="Settings"]').click();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.waitForSelector('.modal.settings');
   await page.locator('.modal.settings .btn', { hasText: 'Close' }).click();
   await page.waitForSelector('.modal.settings', { state: 'detached' });
@@ -113,16 +117,19 @@ await scenario('Gallery loads with both tabs and no errors', async () => {
   await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gallery');
   await page.locator('.seg.big button', { hasText: 'Library' }).click();
+  await page.locator('.seg.big button.on', { hasText: 'Library' }).waitFor();
   await page.waitForSelector('.gcard');
   const n = await page.locator('.gcard').count();
   expect(n >= 24, `library shows ${n} cards`);
 });
 
 await scenario('Library filters: category chips, search with and without results', async () => {
-  await page.locator('.chip', { hasText: 'Reels' }).click();
+  await page.locator('.chip', { hasText: 'Reels' }).click({ noWaitAfter:true });
+  await page.locator('.gallery-categories .chip.on', { hasText:'Reels' }).waitFor();
   const reels = await page.locator('.gcard').count();
   expect(reels > 0 && reels < 20, `reels chip shows ${reels}`);
-  await page.locator('.chip').first().click();
+  await page.locator('.chip').first().click({ noWaitAfter:true });
+  await page.locator('.gallery-categories .chip.on', { hasText:/^All/ }).waitFor();
   await page.fill('.gsearch', 'zzzz-nothing');
   await page.waitForSelector('.empty');
   await page.fill('.gsearch', '');
@@ -179,7 +186,9 @@ await scenario('New design dialog offers every content type and every starter cr
   await page.waitForSelector('.gallery');
   await page.locator('.ghead .btn.primary', { hasText: 'New design' }).click();
   await page.waitForSelector('.starter');
-  const typeOptions = await page.locator('.modal select').nth(1).locator('option').allTextContents();
+  await page.locator('.modal [role="combobox"]').nth(1).click();
+  const typeOptions = await page.locator('.gc-select-menu [role="option"]').allTextContents();
+  await page.keyboard.press('Escape');
   expect(['Reel', 'Story', 'Animated post'].every((k) => typeOptions.some((o) => o.includes(k))), `type options: ${typeOptions.join(', ')}`);
   const starters = await page.locator('.starter button').count();
   await page.keyboard.press('Escape');
@@ -202,7 +211,7 @@ const base = await newDoc({ name: 'UI test · base', format: 'feed-portrait', ki
 
 await scenario('Add every layer type from the toolbar', async () => {
   await openEditor(base.id);
-  await page.locator('.toolbar .tool[title="Add text"]').click();
+  await page.locator('.toolbar .tool[data-goldcom-tooltip="Add text"]').click();
   const groups = await page.locator('.toolbar .rel > .tool').count();
   let added = 1;
   for (let g = 0; g < groups; g++) {
@@ -291,14 +300,14 @@ await scenario('Number fields reject junk (letters, NaN, huge values)', async ()
 });
 
 await scenario('Switch through every format, every kind and both languages', async () => {
-  const selects = page.locator('.topbar select');
-  const formats = await selects.nth(0).locator('option').evaluateAll((o) => o.map((x) => x.value));
-  for (const f of formats) { await selects.nth(0).selectOption(f); await wait(150); }
-  const kinds = await selects.nth(1).locator('option').evaluateAll((o) => o.map((x) => x.value));
-  for (const k of kinds) { await selects.nth(1).selectOption(k); await wait(150); }
+  const selects = page.locator('.topbar [role="combobox"]');
+  const formats = await optionValues(page,selects.nth(0));
+  for (const f of formats) { await chooseOption(page,selects.nth(0),f); await wait(150); }
+  const kinds = await optionValues(page,selects.nth(1));
+  for (const k of kinds) { await chooseOption(page,selects.nth(1),k); await wait(150); }
   await page.locator('.topbar .seg button', { hasText: 'EN' }).click();
   await page.locator('.topbar .seg button', { hasText: 'AR' }).click();
-  await selects.nth(1).selectOption('reel');
+  await chooseOption(page,selects.nth(1),'reel');
   await waitSaved();
   const d = await savedDoc(stress.id);
   expect(d.kind === 'reel' && d.height / d.width > 1.7, `reel forces 9:16 (${d.width}×${d.height})`);
@@ -314,12 +323,12 @@ await scenario('Slide operations: add 20 slides, duplicate, reorder, delete down
   const items = page.locator('.slide-item');
   expect(await items.count() === 20, `20 slides (${await items.count()})`);
   await items.nth(2).hover();
-  await items.nth(2).locator('button[title="Duplicate"]').click();
+  await items.nth(2).locator('button[data-goldcom-tooltip="Duplicate"]').click();
   await items.nth(3).hover();
-  await items.nth(3).locator('button[title="Move up"]').click();
-  while (await items.count() > 1) { await items.first().hover(); await items.first().locator('button[title="Delete"]').click(); }
+  await items.nth(3).locator('button[data-goldcom-tooltip="Move up"]').click();
+  while (await items.count() > 1) { await items.first().hover(); await items.first().locator('button[data-goldcom-tooltip="Delete"]').click(); }
   await items.first().hover();
-  await items.first().locator('button[title="Delete"]').click();
+  await items.first().locator('button[data-goldcom-tooltip="Delete"]').click();
   await page.waitForSelector('.toast.err');
   expect(await items.count() === 1, 'last slide kept');
 });
@@ -381,6 +390,7 @@ await scenario('Autosave survives the server being unreachable, then catches up'
 });
 
 await scenario('A change from Claude Code shows up live; unsaved local edits are not overwritten', async () => {
+  await openEditor(stress.id);
   const d = await savedDoc(stress.id);
   await api(`/api/documents/${stress.id}`, 'PUT', { ...d, name: 'Renamed by Claude', source: { ...(d.source || {}), lastWriter: 'claude-code' } });
   await page.waitForFunction(() => document.querySelector('.topbar .docname')?.value === 'Renamed by Claude', null, { timeout: 8000 });
@@ -392,7 +402,13 @@ await scenario('A change from Claude Code shows up live; unsaved local edits are
   await wait(600);
   expect(await page.locator('.topbar .docname').inputValue() === 'Local edit wins', 'local edit kept on screen');
   await page.unroute('**/api/documents/**');
-  await waitSaved();
+  await page.getByRole('button', { name: 'Save my copy', exact: true }).waitFor({ state: 'visible', timeout: 10000 });
+  expect((await savedDoc(stress.id)).name === 'Remote edit', 'remote version is not silently overwritten');
+  await page.getByRole('button', { name: 'Save my copy', exact: true }).click();
+  await page.waitForFunction(() => /recovered edits/.test(document.querySelector('.topbar .docname')?.value || ''), null, { timeout: 10000 });
+  const recoveredId = new URL(page.url()).hash.split('/').at(-1);
+  created.add(recoveredId);
+  expect((await savedDoc(recoveredId)).name.startsWith('Local edit wins'), 'local edits recovered as a new design');
 });
 
 await scenario('Deleting the open design elsewhere does not crash the editor', async () => {
@@ -458,10 +474,10 @@ await scenario('Preview, brand check and Claude panel open from the editor', asy
   await page.locator('.topbar .btn', { hasText: 'Preview' }).click();
   await page.waitForSelector('.ig-phone');
   await page.keyboard.press('Escape');
-  await page.locator('.topbar .btn', { hasText: 'Check' }).click();
+  await page.locator('.topbar .btn', { hasText: 'Brand check' }).click();
   await page.waitForSelector('.modal');
   await page.keyboard.press('Escape');
-  await page.locator('.topbar .btn[title="Claude Code connection"]').click();
+  await page.locator('.topbar .btn[data-goldcom-tooltip="Claude Code connection"]').click();
   await page.waitForSelector('.modal');
   await page.keyboard.press('Escape');
 });
@@ -487,11 +503,11 @@ await scenario('Ask Claude, Generate, Rate (with reasons) and the 3D scene picke
 await scenario('Gallery header: generators and what the studio has learned', async () => {
   await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gallery');
-  await page.locator('.topbar .btn[title^="Generators"]').click();
+  await page.locator('.advanced-tools button',{hasText:'AI connections'}).click();
   await page.waitForSelector('.gen-row');
   expect(await page.locator('.gen-row').count() >= 5, 'settings lists the generators');
   await page.keyboard.press('Escape');
-  await page.locator('.topbar .btn[title="What the studio has learned"]').click();
+  await page.locator('.advanced-tools button',{hasText:'Studio knowledge'}).click();
   await page.waitForSelector('.lesson');
   expect(await page.locator('.lesson').count() >= 5, 'memory shows the learned rules');
   await page.keyboard.press('Escape');
@@ -504,7 +520,7 @@ await scenario('Gallery card menu: duplicate, rename and delete', async () => {
   await page.fill('.gsearch', 'UI test · base');
   await page.waitForTimeout(300);
   const before = await api('/api/documents');
-  await page.locator('.gcard .btn[title="More"]').first().click();
+  await page.locator('.gcard .btn[data-goldcom-tooltip="More"]').first().click();
   await page.locator('.menu button', { hasText: 'Duplicate' }).click();
   let after = before;
   for (let i = 0; i < 40 && after.length === before.length; i++) { await wait(250); after = await api('/api/documents'); }
@@ -513,13 +529,53 @@ await scenario('Gallery card menu: duplicate, rename and delete', async () => {
   await page.goto(`${BASE}/#/designs`);
   await page.waitForSelector('.gcard');
   await page.fill('.gsearch', 'UI test · base');
-  await page.locator('.gcard .btn[title="More"]').first().click();
+  await page.locator('.gcard .btn[data-goldcom-tooltip="More"]').first().click();
   await page.locator('.menu button', { hasText: 'Delete' }).click();
+  await page.getByRole('dialog',{name:'Delete this design?',exact:true}).getByRole('button',{name:'Delete design',exact:true}).click();
   let final = after;
   for (let i = 0; i < 40 && final.length === after.length; i++) { await wait(250); final = await api('/api/documents'); }
   expect(final.length === after.length - 1, 'delete removed a design');
 });
 
+// ---------- Audit controls ----------
+await scenario('Campaign controls share a cast and campaign line', async()=>{
+  await page.goto(`${BASE}/#/`);await page.waitForSelector('.composer textarea');
+  await page.getByText('Create a coordinated campaign',{exact:false}).click();
+  expect(await page.getByText('People in the campaign',{exact:true}).count()===1,'shared cast field exists');
+  expect(await page.getByText('Shared campaign message',{exact:true}).count()===1,'campaign line field exists');
+  expect(await page.locator('.creation-details input[type=checkbox]:checked').count()>=4,'three deliverables selected');
+});
+await scenario('History restores a prior design version',async()=>{
+  const d=await newDoc({name:'History original',kind:'post',lang:'en',slides:[{template:'statement',content:{title:'A real gift'}}]});
+  await api(`/api/documents/${d.id}`,'PUT',{...d,name:'History changed'});
+  await openEditor(d.id);await page.getByRole('button',{name:'History',exact:true}).click();
+  await page.getByRole('button',{name:'Restore',exact:true}).first().click();
+  await page.waitForFunction(()=>document.querySelector('.topbar .docname')?.value==='History original',null,{timeout:10000});
+  expect((await savedDoc(d.id)).revision===3,'restore creates a new revision');
+});
+await scenario('Placeholder phone export is blocked in the editor',async()=>{
+  const d=await newDoc({name:'Missing footage',kind:'post',lang:'en',slides:[{layers:[{type:'phone',src:'',x:100,y:100,w:420,h:868}]}]});
+  await openEditor(d.id);await page.locator('.topbar .btn.primary',{hasText:'Export'}).click();
+  await page.locator('.menu button',{hasText:'PNG'}).first().click();
+  await page.getByText(/Export blocked:.*footage/).first().waitFor();
+});
+await scenario('Needs-attention production exposes blockers and an editable brief',async()=>{
+  const d=await newDoc({name:'Production controls',kind:'post',lang:'en',source:{type:'production',lastWriter:'studio-ai'},slides:[{template:'statement',content:{title:'A real gift'}}]});
+  const id='prod_ui_fixture';
+  const brief={brand:'Goldcom',title:'Test',format:'post',lang:'en',objective:'Explain gifting',audience:'Omani adults',key_message:'A real gift',tone:'Calm',duration_s:0,slide_count:1,must_include:[],app_flows_needed:[],needs_people:false,mentions_prices:false,assumptions:[]};
+  const fixture={id,type:'production',status:'needs-attention',stage:'done',prompt:'Test brief',title:'Production controls',message:'Needs attention',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),docId:d.id,brief,blockers:['Reviewer has not approved this version.'],reviews:[],log:[],storyboard:{title:'Test',scenes:[],notes:[],caption:{text:'',hashtags:[]}},options:{autoExport:false}};
+  fs.mkdirSync(path.join(process.env.GOLDCOM_STUDIO_DATA,'jobs'),{recursive:true});fs.writeFileSync(path.join(process.env.GOLDCOM_STUDIO_DATA,'jobs',id+'.json'),JSON.stringify(fixture));
+  await page.goto(`${BASE}/#/p/${id}`);await page.getByRole('alert').getByText('One more thing before finishing',{exact:true}).waitFor();
+  expect(await page.getByRole('button',{name:'Rebuild with recordings',exact:true}).count()===1,'rebuild button exists');
+  expect(await page.getByRole('link',{name:'Download MP4'}).count()===0,'no final download shown');
+  await page.locator('.production-details .tabs button',{hasText:'Brief'}).click();
+  await page.locator('.field').filter({has:page.locator('label',{hasText:'Objective'})}).locator('textarea').fill('Explain gifts clearly');
+  await page.getByRole('button',{name:'Save brief',exact:true}).click();
+  await page.getByText('Brief saved. Rebuild when ready.',{exact:true}).waitFor();
+  expect((await api('/api/jobs/'+id)).brief.objective==='Explain gifts clearly','edited brief persisted');
+  expect(await page.getByRole('button',{name:'Rebuild with recordings',exact:true}).count()===1,'edited brief remains rebuildable');
+  if(process.env.GOLDCOM_QA_OUT){await wait(500);await page.locator('.workspace-content').evaluate(e=>e.scrollTo({top:0,behavior:'instant'}));fs.mkdirSync(process.env.GOLDCOM_QA_OUT,{recursive:true});await page.screenshot({path:path.join(process.env.GOLDCOM_QA_OUT,'production-controls.png'),fullPage:true});}
+});
 // ---------- Clean up ----------
 for (const id of created) await api(`/api/documents/${id}`, 'DELETE').catch(() => {});
 for (const id of [base.id, stress.id, reel.id, story.id]) await api(`/api/documents/${id}`, 'DELETE').catch(() => {});

@@ -5,6 +5,7 @@ import { TYPE, ARABIC_LH, DISCLAIMER, THEMES, SAFE_ZONES } from './brand.js';
 
 import { ctxHelpers, estimateText, L, anim, textLayer, logoLayer, pagerLayers, disclaimerLayer, deviceLayer, visualLayer } from './layout.js';
 import { SCENES } from './scenes.js';
+import { CREATIVE_TEMPLATES } from './creative.js';
 export { estimateText };
 
 // ---------- 3D scene registry ----------
@@ -19,7 +20,7 @@ export const sceneList = () => Object.values(SCENE_MODULES);
 export const TEMPLATES = {
   scene: {
     name: '3D visual',
-    description: 'Visual-first: one full-bleed 3D scene shows the idea, with at most one short line. Pick a scene module (see list_scenes / studio_guide) and set its params. Use this for most posts, Reels and Stories.',
+    description: 'Optional 3D medium. Use only when the brief benefits from a physical object or spatial explanation. Choose 2D art directions, illustration or real footage for other ideas.',
     fields: [
       { key: 'scene', label: 'Scene', type: 'scene' },
       { key: 'params', label: 'Scene settings', type: 'scene-params' },
@@ -914,7 +915,7 @@ function listLayout(c, ctx, bullet) {
 }
 
 // Production scenes (shared/scenes.js) live alongside the classic templates.
-Object.assign(TEMPLATES, SCENES);
+Object.assign(TEMPLATES, SCENES, CREATIVE_TEMPLATES);
 
 export const TEMPLATE_IDS = Object.keys(TEMPLATES);
 
@@ -999,7 +1000,7 @@ export function applyTemplate(slide, doc, index, total, band = 0) {
     const l = { ...base, ...e, id: uid('l'), x: rel(e.x ?? 0, W), y: rel(e.y ?? 0, H), w: rel(e.w ?? 1, W), h: rel(e.h ?? 1, H), extra: true };
     if (e.under) layers.unshift(l); else layers.push(l);
   }
-  return { ...slide, layers, camera: camera || null, custom: false };
+  return { ...slide, layers: layers.filter(l => l.type !== 'sparkles'), camera: camera || null, custom: false };
 }
 
 /** Re-apply templates to every template-based slide that has not been hand-edited. */

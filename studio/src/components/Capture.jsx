@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { Icon } from './ui.jsx';
+import { SelectControl, Icon } from './ui.jsx';
+import { LoadingSurface } from './ProductionJourney.jsx';
+import { useGoldcomDialog } from './GoldcomDialogs.jsx';
 
 /** Follow one job's progress from the server's live events. */
 function useJob(onDone) {
@@ -21,9 +23,9 @@ function useJob(onDone) {
 
 function JobLine({ job }) {
   if (!job) return null;
+  if ((job.status || 'running') === 'running') return <div className="capture-progress"><LoadingSurface compact title={job.message || 'Preparing your recording'} />{job.progress > 0 && <div className="bar"><div style={{ width:`${Math.min(100, Math.max(0, Math.round(job.progress * 100)))}%` }} /></div>}</div>;
   return (
     <div className={`job-line ${job.status || 'running'}`}>
-      {(job.status || 'running') === 'running' && <i className="spin" />}
       <span>{job.message}{job.status === 'running' && job.progress > 0.02 ? ` · ${Math.round(job.progress * 100)}%` : ''}</span>
     </div>
   );
@@ -105,6 +107,7 @@ function CrashDetails({ crash, toast }) {
 
 // ---------- phone emulator on this computer ----------
 function EmulatorSource({ toast }) {
+  const { confirmAction } = useGoldcomDialog();
   const [st, setSt] = useState(null);
   const [accept, setAccept] = useState(false);
   const [headless, setHeadless] = useState(false);
@@ -148,12 +151,12 @@ function EmulatorSource({ toast }) {
           <button className="btn primary" disabled={running} onClick={() => act(async () => { setJob(null); const { jobId } = await api.emulatorStart(headless); setJob({ id: jobId, status: 'running', message: 'Starting the phone…' }); })}><Icon name="phone" />Start the phone</button>
           {!st.headless && <label className="check"><input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} />Run in the background (no phone window)</label>}
           <div className="field"><label>Mode (changes by itself if the phone crashes)</label>
-            <select className="input" value={st.level ?? 0} onChange={(e) => act(() => api.emulatorMode(Number(e.target.value)))}>
+            <SelectControl className="input" value={st.level ?? 0} onChange={(e) => act(() => api.emulatorMode(Number(e.target.value)))}>
               {(st.levels || []).map((l, i) => <option key={l} value={i}>{l}</option>)}
-            </select>
+            </SelectControl>
           </div>
           {st.lastCrash && (
-            <button className="btn sm ghost" disabled={st.wipePending} onClick={() => { if (confirm('Reset the phone to factory state on the next start? This fixes a damaged phone, but you will need to sign in to Google and Goldcom again.')) act(() => api.emulatorReset(), 'The phone will be reset when it next starts'); }}>{st.wipePending ? 'Reset on next start' : 'Reset the phone (factory state)'}</button>
+            <button className="btn sm ghost" disabled={st.wipePending} onClick={async () => { if (await confirmAction({ title:'Reset the phone?', message:'The phone will return to factory state on its next start. You will need to sign in to Google and Goldcom again.', confirmLabel:'Reset phone' })) act(() => api.emulatorReset(), 'The phone will be reset when it next starts'); }}>{st.wipePending ? 'Reset on next start' : 'Reset the phone (factory state)'}</button>
           )}
         </>
       )}
@@ -176,7 +179,7 @@ function EmulatorSource({ toast }) {
         </>
       )}
       {st.state === 'stopped' && (
-        <button className="btn sm ghost danger" onClick={() => { if (confirm('Remove the phone emulator and everything on it (frees about 10 GB)? You can install it again later.')) act(() => api.emulatorRemove(), 'Emulator removed'); }}>Remove the emulator</button>
+        <button className="btn sm ghost danger" onClick={async () => { if (await confirmAction({ title:'Remove the emulator?',message:'This removes the emulator and everything on it. You can install it again later.',confirmLabel:'Remove emulator' })) act(() => api.emulatorRemove(), 'Emulator removed'); }}>Remove the emulator</button>
       )}
     </>
   );
@@ -218,6 +221,7 @@ const CLOUD_PROVIDERS = [
 ];
 
 function CloudSource({ toast }) {
+  const { confirmAction } = useGoldcomDialog();
   const [data, setData] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ provider: 'geelark', address: '', code: '', name: '' });
@@ -248,7 +252,7 @@ function CloudSource({ toast }) {
             {ph.state === 'device'
               ? <button className="btn sm" disabled={busy} onClick={() => act(() => api.cloudDisconnect(ph.address), 'Disconnected')}>Disconnect</button>
               : <button className="btn sm primary" disabled={busy} onClick={() => act(async () => { const r = await api.cloudConnect(ph.address); if (r.state !== 'device') throw new Error(r.state === 'unauthorized' ? 'Approve this computer on the cloud phone, then press Connect again.' : 'The phone did not come online. Check it is running in your provider’s dashboard.'); }, 'Connected')}>Connect</button>}
-            <button className="btn sm ghost danger" disabled={busy} onClick={() => { if (confirm(`Forget “${ph.name}”?`)) act(() => api.cloudRemove(ph.address), 'Removed'); }}>Forget</button>
+            <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await confirmAction({ title:`Forget “${ph.name}”?`,message:'Remove this cloud phone connection from the studio.',confirmLabel:'Forget phone' })) act(() => api.cloudRemove(ph.address), 'Removed'); }}>Forget</button>
           </div>
         </div>
       ))}
@@ -256,7 +260,7 @@ function CloudSource({ toast }) {
       {!adding ? <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />Add a cloud phone</button> : (
         <div className="setup-steps">
           <div className="field"><label>Provider</label>
-            <select className="input" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}>{CLOUD_PROVIDERS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+            <SelectControl className="input" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}>{CLOUD_PROVIDERS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</SelectControl>
           </div>
           <ol className="howto">{pv.steps.map((t) => <li key={t}>{t}</li>)}</ol>
           {pv.whitelist && <p className="hint small">This computer’s IP address: <code>{ip === null ? '…' : ip || 'unknown (search “what is my IP”)'}</code></p>}

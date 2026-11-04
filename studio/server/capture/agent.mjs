@@ -5,6 +5,7 @@
 //    replayed at a natural pace while the screen records. Every tap is logged so the editor can add tap ripples and
 //    zoom the camera to the right place.
 import fsp from 'node:fs/promises';
+import { assertSafeCaptureStep } from './safety.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { complete } from '../ai/engine.mjs';
@@ -78,6 +79,7 @@ function describeElements(els, W, H) {
 }
 
 async function perform(d, info, step, els) {
+  assertSafeCaptureStep(step, els);
   const W = info.width, H = info.height;
   let x = step.x * W, y = step.y * H;
   if (step.element >= 0 && els[step.element]) { const [x1, y1, x2, y2] = els[step.element].bounds; x = (x1 + x2) / 2; y = (y1 + y2) / 2; }
@@ -98,7 +100,7 @@ async function perform(d, info, step, els) {
  * opts: { serial (adb) or device (driver), goal, pkg, lang, maxSteps, signal, onStep({ index, step, image }), onMessage(text) }
  * Returns the imported footage meta (with steps and tap events).
  */
-export async function captureFlow({ serial, device, goal, pkg, lang = 'en', maxSteps = 22, signal, onStep = () => {}, onMessage = () => {} }) {
+export async function captureFlow({ serial, device, goal, pkg, lang = 'en', maxSteps = 22, signal, onStep = () => {}, onMessage = () => {}, complete: run = complete }) {
   const d = toDriver(device || serial);
   const info = await d.info();
   pkg = pkg || (await d.findPackage());
@@ -115,7 +117,8 @@ export async function captureFlow({ serial, device, goal, pkg, lang = 'en', maxS
     const els = await d.elements();
     const img = await shrink(shot);
     const prompt = `Goal: ${goal}\nCaption language: ${lang === 'ar' ? 'Arabic (Modern Standard Arabic)' : 'English'}\n\nSteps so far:\n${history.length ? history.map((h, k) => `${k + 1}. [${h.screen}] ${h.action}${h.label ? ` → ${h.label}` : ''}`).join('\n') : '(none, the app just opened)'}\n\nOn-screen elements:\n${describeElements(els, info.width, info.height)}\n\nDecide the next single action.`;
-    const step = await complete({ system: SYSTEM, prompt, images: [{ data: img.toString('base64'), mediaType: 'image/jpeg', label: 'current screen' }], schema: STEP_SCHEMA, effort: 'medium', signal });
+    const step = await run({ system: SYSTEM, prompt, images: [{ data: img.toString('base64'), mediaType: 'image/jpeg', label: 'current screen' }], schema: STEP_SCHEMA, effort: 'medium', signal });
+    assertSafeCaptureStep(step, els);
     onStep({ index: i, step, image: img });
     if (step.action === 'abort') throw new Error(`Stopped: ${step.reason}`);
     const label = step.element >= 0 && els[step.element] ? (els[step.element].text || els[step.element].desc || els[step.element].id) : '';
@@ -124,7 +127,7 @@ export async function captureFlow({ serial, device, goal, pkg, lang = 'en', maxS
     const ev = await perform(d, info, step, els);
     const st = await settle(d, { min: step.action === 'type' ? 500 : 800, max: 6000, signal });
     shot = st.png;
-    plan.push({ ...ev, action: step.action, text: step.text, caption: step.caption, screen: step.screen_name, settleMs: st.ms, sensitive: step.sensitive_regions });
+    plan.push({ ...ev, label, action: step.action, text: step.text, caption: step.caption, screen: step.screen_name, settleMs: st.ms, sensitive: step.sensitive_regions });
   }
   if (!plan.length || plan[plan.length - 1].action !== 'done') onMessage('Reached the step limit; recording what was rehearsed.');
 
@@ -146,7 +149,11 @@ export async function captureFlow({ serial, device, goal, pkg, lang = 'en', maxS
       // Reading pause so viewers can see the screen before the next tap.
       await sleep(650, signal);
       const t = now();
-      if (st.type === 'tap') { await d.tap(st.x * info.width, st.y * info.height); events.push({ t: +t.toFixed(3), type: 'tap', x: st.x, y: st.y }); }
+      if (st.type === 'tap') {
+        const current = await d.elements();
+        const element = current.findIndex(e => e.bounds && st.x*info.width >= e.bounds[0] && st.x*info.width <= e.bounds[2] && st.y*info.height >= e.bounds[1] && st.y*info.height <= e.bounds[3] && (e.text || e.desc || e.id) === st.label);
+        assertSafeCaptureStep({ action: 'tap', element }, current);
+        await d.tap(st.x * info.width, st.y * info.height); events.push({ t: +t.toFixed(3), type: 'tap', x: st.x, y: st.y }); }
       else if (st.type === 'swipe') { await d.swipe(st.x1 * info.width, st.y1 * info.height, st.x2 * info.width, st.y2 * info.height, 520); events.push({ t: +t.toFixed(3), type: 'swipe', x: st.x1, y: st.y1, x2: st.x2, y2: st.y2 }); }
       else if (st.type === 'type') { await d.type(st.text); events.push({ t: +t.toFixed(3), type: 'type', text: st.text }); }
       else if (st.type === 'back') { await d.back(); events.push({ t: +t.toFixed(3), type: 'back' }); }

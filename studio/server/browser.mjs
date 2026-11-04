@@ -1,6 +1,9 @@
 // Optional headless browser (Playwright) for live URL screenshots and server-side slide rendering.
 // Install with: npm i playwright && npx playwright install chromium
 import fs from 'node:fs';
+import { assertCaptureUrl } from './security.mjs';
+import { getSettings } from './settings.mjs';
+import { fetchCaptureResource } from './capture-request.mjs';
 
 let browserPromise = null;
 
@@ -39,12 +42,17 @@ const DEVICES = {
 
 /** Screenshot a live URL (e.g. a Claude Code project's dev server) as a PNG buffer. */
 export async function capturePage({ url, device = 'phone', fullPage = false, waitMs = 800, selector, colorScheme = 'dark' }) {
-  if (!/^https?:\/\//i.test(String(url || ''))) throw Object.assign(new Error('A full http(s) URL is required'), { status: 400 });
+  const allowed = getSettings().captureOrigins || [];
+  await assertCaptureUrl(url, allowed);
   const browser = await getBrowser();
   const ctx = await browser.newContext({ ...(DEVICES[device] || DEVICES.phone), colorScheme });
   try {
     const page = await ctx.newPage();
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => page.waitForLoadState('load'));
+    await ctx.route('**/*', async route => {
+      try { await route.fulfill(await fetchCaptureResource(route.request().url(), route.request().headers(), allowed)); }
+      catch { await route.abort('blockedbyclient'); }
+    });
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     if (waitMs) await page.waitForTimeout(Math.min(Number(waitMs) || 0, 10000));
     if (selector) return await page.locator(selector).first().screenshot();
     return await page.screenshot({ fullPage: !!fullPage });

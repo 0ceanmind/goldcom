@@ -6,6 +6,7 @@ export const SCHEMA_VERSION = 1;
 export const uid = (p = 'l') => `${p}_${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-3)}`;
 
 export const LAYER_TYPES = {
+  artwork: 'Concept illustration',
   text: 'Text',
   list: 'List',
   logo: 'Logo',
@@ -44,6 +45,7 @@ export const LAYER_TYPES = {
 export function layerDefaults(type) {
   const base = { id: uid('l'), type, x: 80, y: 80, w: 400, h: 120, rotation: 0, opacity: 1, anim: { in: 'fade-up', delay: 0, dur: 0.6 } };
   switch (type) {
+    case 'artwork': return { ...base, w: 920, h: 600, treatment: 'paper-cut', motif: 'gift', seed: 1 };
     case 'text': return { ...base, w: 920, h: 160, text: 'Real gold, from your phone', role: 'h2', color: 'auto', accent: 'auto', align: 'start', valign: 'top', dir: 'auto', fit: true };
     case 'list': return { ...base, w: 920, h: 360, items: ['Start from one gram', 'Live indicative prices', 'Send gold as a gift'], bullet: 'gem', role: 'body-lg', color: 'auto', dir: 'auto' };
     case 'logo': return { ...base, w: 320, h: 127, variant: 'horizontal', mode: 'auto', anim: { in: 'fade', delay: 0, dur: 0.6 } };

@@ -1,6 +1,11 @@
 // Brand checks from GOLDCOM_BRAND_GUIDELINES.md §0, §2, §10 and §11, plus Instagram readiness.
 import { SAFE_ZONES } from './brand.js';
+import { visualIssues, hasSubstantiveVisual } from './visual-quality.js';
 const RED = [
+  [/\b(over|more than)\s+[\d,]+\s+(happy )?(customers|users)|أكثر من [\d,]+.*عميل/i, 'Customer-count claims require a current approved source.'],
+  [/gold.*(will|going to|expected to).*\d+\s*%|الذهب.*(بيرتفع|سيرتفع|راح يرتفع).*\d+/i, 'Do not promise a future gold price or return.'],
+  [/no fees|zero fees|fee[- ]free|بدون رسوم|بلا رسوم/i, 'A no-fee claim needs a current approved offer and scope.'],
+  [/مرخص بالكامل|البنك المركزي|central bank.*(licensed|approved)|fully licensed/i, 'Regulatory claims require approved evidence and exact wording.'],
   [/guarantee(d|s)?\b/i, 'Never promise guaranteed returns (§11 red tier).'],
   [/risk[-\s]?free/i, '"Risk-free" is never allowed (§11).'],
   [/safe investment/i, '"Safe investment" is never allowed (§11).'],
@@ -26,22 +31,30 @@ const NEEDS_DISCLAIMER = /OMR\s?\d|\d[\d.,]*\s?ر\.ع|\binvest|\bsav(e|ing)\b|\b
 const HAS_DISCLAIMER = /not financial advice|ليس نصيحة مالية|go down as well as up|قد ترتفع أو تنخفض|ترتفع قيمة مقتنياتك أو تنخفض/i;
 const NAME_ERRORS = [
   [/GoldCom|GOLDCOM|Gold Com|Gold\.com/, 'Write the name as "Goldcom" (§2).'],
-  [/جولد كوم|ذهب كوم|غولدكم/, 'Write the Arabic name as "جولدكم" (§2).'],
+  [/جولد كوم|ذهب كوم|غولدكم|جولدكوم/, 'Write the Arabic name as "جولدكم" (§2).'],
 ];
 
+export function normalizeClaim(text) {
+  return String(text).replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[٠-٩۰-۹]/g, c => String('٠١٢٣٤٥٦٧٨٩'.includes(c) ? '٠١٢٣٤٥٦٧٨٩'.indexOf(c) : '۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
+}
+function copyStrings(value, key = '') {
+  if (typeof value === 'string') return /^(text|title|body|sub|label|question|options|messages|items|caption|ticker|lines|value)$/.test(key) ? [value] : [];
+  if (Array.isArray(value)) return value.flatMap(v => copyStrings(v, key));
+  if (value && typeof value === 'object') return Object.entries(value).flatMap(([k,v]) => copyStrings(v,k));
+  return [];
+}
 function textsOf(slide) {
   const out = [];
   for (const l of slide.layers || []) {
     if (l.hidden) continue;
-    if (l.type === 'text' || l.type === 'button' || l.type === 'badge') out.push({ layer: l, text: l.text || '' });
-    if (l.type === 'list') out.push({ layer: l, text: (l.items || []).join('\n') });
+    out.push({ layer: l, text: normalizeClaim(copyStrings(l).join('\n')) });
   }
   return out;
 }
 
 /** Returns [{ level: 'error'|'warn'|'info', slide, layer, message }] */
 export function lintDocument(doc) {
-  const issues = [];
+  const issues = visualIssues(doc);
   let disclaimerAnywhere = false;
   doc.slides.forEach((slide, si) => {
     const texts = textsOf(slide);
@@ -56,12 +69,12 @@ export function lintDocument(doc) {
       if (/OMR\s?\d+(\.\d{1,2})?(?!\d)/.test(text) && !/OMR\s?\d+\.\d{3}/.test(text)) issues.push({ level: 'warn', slide: si, layer: layer.id, message: 'OMR prices use 3 decimals, e.g. OMR 31.204 (§5.4).' });
       if (/!/.test(text) && layer.type === 'button') issues.push({ level: 'warn', slide: si, layer: layer.id, message: 'No exclamation marks in buttons (§10.5).' });
     }
-    if (needs && !hasDisclaimer) issues.push({ level: 'warn', slide: si, layer: null, message: 'Price, saving or investment wording: add the risk disclaimer on this slide or the last slide (§11.2).' });
+    if (needs && !hasDisclaimer) issues.push({ level: 'error', slide: si, layer: null, message: 'Price, saving or investment wording: add the risk disclaimer on this slide or the last slide (§11.2).' });
     const showsPrice = texts.some((t) => /OMR\s?\d|\d\.\d{3}\s?ر\.ع/.test(t.text)) || (slide.layers || []).some((l) => l.type === 'ticker' && !l.hidden);
     for (const { layer, text } of texts) if (showsPrice && layer.type === 'badge' && /^\s*(live|مباشر)\s*$/i.test(text)) issues.push({ level: 'error', slide: si, layer: layer.id, message: 'A posted price is a snapshot: label it "Indicative" with the date, never "Live" (hard rule 7).' });
     // Visual first (knowledge/lessons.md): a slide should show its idea, not explain it in paragraphs.
     const words = texts.filter(({ layer }) => !['disclaimer', 'caption'].includes(layer.name) && layer.role !== 'caption').reduce((n, t) => n + String(t.text).replace(/\*/g, '').split(/\s+/).filter(Boolean).length, 0);
-    const hasVisual = (slide.layers || []).some((l) => !l.hidden && ['scene3d', 'image', 'phone', 'browser', 'chart', 'goldbar'].includes(l.type)) || slide.bg?.type === 'image';
+    const hasVisual = hasSubstantiveVisual(slide, doc);
     if (words > (hasVisual ? 22 : 16)) issues.push({ level: 'warn', slide: si, layer: null, message: `${words} words on this slide. Show the idea with a visual and keep one short line (≤ 7 words); move the rest to the caption.` });
     for (const l of slide.layers || []) if (l.type === 'sparkles' && !l.hidden) issues.push({ level: 'warn', slide: si, layer: l.id, message: 'Sparkle particles read as AI-template decoration. Give the slide life with motion instead (a 3D scene, a light sweep).' });
     const logos = (slide.layers || []).filter((l) => l.type === 'logo' && !l.hidden);
@@ -84,15 +97,16 @@ export function lintDocument(doc) {
     }
   });
   const cap = doc.caption || {};
-  const capText = String(cap.text || '');
+  const capText = normalizeClaim(cap.text || '');
   const allTags = cap.hashtags || [];
   if (capText.length + allTags.join(' ').length > 2200) issues.push({ level: 'error', slide: 0, layer: null, message: 'Caption is longer than Instagram allows (2,200 characters).' });
   if (allTags.length > 30) issues.push({ level: 'error', slide: 0, layer: null, message: 'Instagram allows at most 30 hashtags.' });
   else if (allTags.length > 6) issues.push({ level: 'info', slide: 0, layer: null, message: 'Keep hashtags to 3–5 relevant ones.' });
   const emoji = (capText.match(/\p{Extended_Pictographic}/gu) || []).length;
   if (emoji > 2) issues.push({ level: 'warn', slide: 0, layer: null, message: 'Caption uses more than one or two emoji (brand §6.5).' });
+  for (const [re, msg] of NAME_ERRORS) if (re.test(capText)) issues.push({ level: 'error', slide: 0, layer: null, message: `Caption: ${msg}` });
   for (const [re, msg] of RED) if (re.test(capText)) issues.push({ level: 'error', slide: 0, layer: null, message: `Caption: ${msg}` });
   if (NEEDS_DISCLAIMER.test(capText) && /OMR|ر\.ع|invest|استثمار/i.test(capText) && !/indicative|استرشادي|go down|تنخفض/i.test(capText)) issues.push({ level: 'warn', slide: 0, layer: null, message: 'Caption mentions prices or investing: add the short price note.' });
   // Collapse per-slide disclaimer warnings when the document carries one somewhere (carousels usually end with it).
-  return disclaimerAnywhere ? issues.filter((i) => !i.message.startsWith('Price, saving')) : issues;
+  return disclaimerAnywhere && doc.kind === 'carousel' ? issues.filter((i) => !i.message.startsWith('Price, saving')) : issues;
 }

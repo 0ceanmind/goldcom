@@ -28,7 +28,7 @@ const SCHEMA = {
   },
 };
 
-export async function labelFootage(id, { signal } = {}) {
+export async function labelFootage(id, { signal, complete: run = complete } = {}) {
   const meta = await getFootage(id);
   if (meta.status !== 'ready') return meta;
   const dir = footageDir(id);
@@ -39,7 +39,7 @@ export async function labelFootage(id, { signal } = {}) {
     mediaType: 'image/jpeg',
     data: fs.readFileSync(path.join(dir, s.kf)).toString('base64'),
   }));
-  const res = await complete({
+  const res = await run({
     system: 'You index screen recordings of the Goldcom mobile app (an Omani app for buying physical gold) for a video editor. Be literal and precise; copy UI labels exactly as shown.',
     prompt: `Footage "${meta.name}" (${meta.kind}${meta.kind === 'video' ? `, ${Number(meta.duration).toFixed(1)} s` : ''}). Each image is one keyframe, in order. Return one entry per image with index = the segment number shown in its label (1-based).`,
     images: loaded, schema: SCHEMA, effort: 'low', signal,

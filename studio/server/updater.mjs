@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { getSettings } from './settings.mjs';
 import { STUDIO_ROOT, DATA_DIR } from './store.mjs';
 import { run, npmInstall, viteBuild, depsHash, writeStamp } from '../scripts/launcher.mjs';
 
@@ -201,8 +202,7 @@ async function update(branch, onProgress) {
     const m = await mode();
     if (m === 'git') res = await gitUpdate(ctx);
     else {
-      assertInstallRoot();
-      res = (await hasGit()) ? await convertToGit(ctx) : await zipUpdate(ctx);
+      throw Object.assign(new Error('Verified updates require a Git checkout.'), { friendly: 'This archive installation cannot update in place safely. Install a Git checkout; keep and select your existing data folder. No program files were changed.' });
     }
     if (res.upToDate) {
       report('done', 'Already up to date.', 100);
@@ -214,6 +214,7 @@ async function update(branch, onProgress) {
       await npmInstall({ onLine: ctx.lines('install', 45) });
       writeStamp();
     }
+    if (res.stashed) { report('restore', 'Restoring your local changes...', 65); await git(['stash', 'apply', res.stashed]); }
     report('build', 'Building the editor...', 75);
     ctx.built = true;
     await viteBuild({ onLine: ctx.lines('build', 75) });
@@ -267,13 +268,14 @@ async function gitUpdate(ctx) {
   const to = await gitFetch(branch);
   if (from === to && fromBranch === branch) return { upToDate: true, from, to };
   await assertHasStudio(to, branch);
+  await verifyUpdate(to);
 
   const stashed = from ? await stashLocalChanges(ctx) : null;
   if (from) {
     ctx.rollback = async () => {
       if (fromBranch === branch) await git(['reset', '--hard', '--quiet', from]);
       else await git(['checkout', '-f', '-q', ...(fromBranch ? [fromBranch] : ['--detach', from])]);
-      if (stashed) await git(['stash', 'pop', '--quiet']).catch(() => {});
+      if (stashed) await git(['stash', 'apply', stashed]);
       if (ctx.npmRan) {
         report('rollback', 'Reinstalling the previous components...');
         await npmInstall({ onLine: ctx.lines('rollback') });
@@ -301,12 +303,12 @@ async function gitUpdate(ctx) {
 /** git stash for edited tracked files (npm's own package-lock.json rewrites are just discarded). */
 async function stashLocalChanges({ report }) {
   const dirty = (await git(['diff', '--name-only', '-z', 'HEAD', '--'])).split('\0').filter(Boolean);
-  if (!dirty.some((f) => f !== 'studio/package-lock.json')) return null;
+  if (!dirty.length) return null;
   report('stash', 'Saving your local file changes (git stash)...', 30);
   const message = `goldcom-studio auto-stash ${new Date().toISOString()}`;
   const ident = (await git(['config', 'user.email']).catch(() => '')) ? [] : ['-c', 'user.name=Goldcom Studio', '-c', 'user.email=studio@goldcom.invalid'];
   await git([...ident, 'stash', 'push', '--quiet', '-m', message]);
-  return message;
+  return git(['rev-parse', 'refs/stash']);
 }
 
 async function convertToGit(ctx) {
@@ -323,6 +325,7 @@ async function convertToGit(ctx) {
     report('download', `Downloading the latest version (${branch})...`, 10);
     to = await gitFetch(branch);
     await assertHasStudio(to, branch);
+  await verifyUpdate(to);
     report('apply', 'Installing the new files...', 30);
     await git(['reset', '--hard', '--quiet', to]);
   } catch (err) {
@@ -513,4 +516,11 @@ export function startAutoCheck({ intervalMs = 6 * 3600e3, onResult, branch, dela
   first.unref?.();
   timer.unref?.();
   return { check: tick, stop: () => { clearTimeout(first); clearInterval(timer); } };
+}
+
+export async function verifyUpdate(sha, runGit = git) {
+  const trusted = getSettings().trustedUpdateSigner;
+  if (!trusted || !fs.existsSync(trusted)) throw Object.assign(new Error('Configure a trusted Git SSH allowed-signers file in Settings before updating.'), { friendly: 'Choose a trusted update signer file in Settings. No program files were changed.' });
+  if (!(await runGit(['cat-file', 'commit', sha])).includes('gpgsig -----BEGIN SSH SIGNATURE-----')) throw new Error('The update has no supported SSH signature');
+  await runGit(['-c', `gpg.ssh.allowedSignersFile=${trusted}`, 'verify-commit', sha]);
 }

@@ -41,7 +41,7 @@ export function NewDocDialog({ onClose, onCreate, images }) {
             <Field label="Type"><Select value={kind} onChange={(v) => { setKind(v); if ((v === 'reel' || v === 'story') && format !== 'story') setFormat('story'); }} options={Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v.label]))} /></Field>
           </div>
           <div className="grid-cards" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${format === 'linkedin' || format === 'video' ? 200 : 120}px, 1fr))` }}>
-            {preview.slides.map((s, i) => <div key={s.id} className="tcard" style={{ cursor: 'default' }}><SlideThumb doc={preview} index={i} width={200} images={images} /></div>)}
+            {preview.slides.map((s, i) => <div key={s.id} className="tcard" style={{ cursor: 'var(--gc-cursor)' }}><SlideThumb doc={preview} index={i} width={200} images={images} /></div>)}
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@ export function TemplatePicker({ doc, onClose, onPick, images, defaultTheme = 'o
     const d = { ...doc, slides: ids.map((id) => createSlide({ template: id, theme, content: { ...exampleFor(id, doc.lang) } })) };
     d.slides = d.slides.map((s, i) => applyTemplate(s, d, i, 3));
     return { d, ids };
-  }, [doc.width, doc.height, doc.lang, doc.kind, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doc.width, doc.height, doc.lang, doc.kind, theme]);
   return (
     <Modal title="Add a slide" onClose={onClose}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>

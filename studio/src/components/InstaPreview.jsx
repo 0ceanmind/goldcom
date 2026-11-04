@@ -38,7 +38,7 @@ function Player({ doc, images, index = 0, mode = 'slide', playing = true, cssWid
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [doc, images, index, mode, playing, cssWidth]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doc, images, index, mode, playing, cssWidth]);
   return <canvas ref={ref} style={{ width: cssWidth, aspectRatio: `${doc.width}/${doc.height}`, objectFit: crop ? 'cover' : undefined }} />;
 }
 

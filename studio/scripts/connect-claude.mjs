@@ -29,15 +29,17 @@ if (!fs.existsSync(path.join(root, 'dist', 'index.html'))) {
 }
 
 const manual = `claude mcp add goldcom-studio --scope ${scope} -- "${node}" "${server}"`;
-const hasClaude = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['claude']).status === 0;
+const { which, commandFor } = await import('../server/cli.mjs');
+const cli = commandFor(which('claude'));
+const hasClaude = !!cli;
 if (printOnly || !hasClaude) {
   if (!hasClaude) say('  • Claude Code CLI not found on PATH. Run this once Claude Code is installed:');
   say(`\n    ${manual}\n`);
   say('  Or add this to your project .mcp.json / ~/.claude.json "mcpServers":');
   say(`    ${JSON.stringify({ 'goldcom-studio': { command: node, args: [server] } })}\n`);
 } else {
-  spawnSync('claude', ['mcp', 'remove', 'goldcom-studio', '--scope', scope], { stdio: 'ignore' });
-  const r = spawnSync('claude', ['mcp', 'add', 'goldcom-studio', '--scope', scope, '--', node, server], { encoding: 'utf8' });
+  spawnSync(cli.cmd, [...cli.prefix, 'mcp', 'remove', 'goldcom-studio', '--scope', scope], { stdio: 'ignore' });
+  const r = spawnSync(cli.cmd, [...cli.prefix, 'mcp', 'add', 'goldcom-studio', '--scope', scope, '--', node, server], { encoding: 'utf8' });
   if (r.status === 0) say(`  ✓ MCP server "goldcom-studio" registered (${scope} scope)`);
   else { say(`  ✕ Could not register automatically:\n${r.stderr || r.stdout}\n  Run manually:\n    ${manual}`); }
 }
