@@ -78,9 +78,11 @@ The classic templates (price board, notifications, stickers, chat, countdown, fa
 
 The library has **64 designs**: 58 new designs across 14 visual directions and six selected optional 3D examples. Filter by format and visual style. The directions include editorial photography, painted Omani stories, paper sculpture, editorial collage, visual explainers, illustrated conversations, tickets, mosaics, orbital systems, technical drawings, calendar stories, woven ribbons, visual contrasts and constructed typography. Headlines and diagram labels remain editable, including RTL Arabic.
 
-The two image-led examples use generated editorial assets stored under `public/artwork`; they depict fictional scenes, not customers or product evidence. The remaining new illustrations render deterministically through native Canvas. 3D modules remain available in the editor and renderer.
+The two image-led examples use generated editorial assets stored under `public/artwork`; they depict fictional scenes, not customers or product evidence. The remaining new illustrations render deterministically through native Canvas. New productions also compile bespoke scene ideas into bounded, declarative shapes and separately editable labels. Art-direction prose is never presented as a rendered capability: the renderer draws the compiled geometry. Reusing the same geometry with new colours is caught by the final originality check. 3D modules remain available in the editor and renderer.
 
 **Known-work checks.** The director supplies saved designs, library hooks and reserved creative signatures to ChatGPT. Three candidate concepts must differ in visual family. Deterministic checks reject matching or close hooks and repeated combinations of metaphor, framing, motion and narrative; rejected candidates are regenerated up to three times. A file lock prevents concurrent jobs reserving identical concepts. History persists under the data directory. The final production is also checked for a repeated opening or narrative.
+
+Explicit client format and slide-count requests take precedence over house recommendations in both planning and review.
 
 These checks cover known local work and provide heuristic similarity detection. They cannot prove worldwide novelty or compare with projects that have never been supplied to the studio. The system must not claim that it can.
 

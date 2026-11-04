@@ -6,6 +6,7 @@ import { complete } from './engine.mjs';
 import { completeCopy } from './copy.mjs';
 import { BILINGUAL_COPY, copyInput, applyCopy } from './copy-contract.mjs';
 import { creativeHistory, historyPrompt, reserveConcepts, finalOriginalityIssues } from './originality.mjs';
+import { realizeIllustrations } from './illustrate.mjs';
 import { productionReadiness, reviewFingerprint } from '../../shared/readiness.js';
 import { constraintsFor, constraintIssues } from '../constraints.mjs';
 import { directorSystem, footageIndex, DIRECTOR_SCENES } from './knowledge.mjs';
@@ -151,7 +152,7 @@ function fieldsToContent(fields = []) {
   for (const { key, value } of fields) {
     if (!key) continue;
     if (key === 'params') { try { c[key] = JSON.parse(value); } catch { throw new Error('3D parameters must be valid JSON'); } }
-    else c[key] = ['items','messages','products','rows','before','after','ticker','lines','labels'].includes(key) ? String(value).split('\n').map((x) => x.trim()).filter(Boolean) : value;
+    else c[key] = ['items','messages','products','rows','before','after','ticker','lines','labels','options'].includes(key) ? String(value).split('\n').map((x) => x.trim()).filter(Boolean) : value;
   }
   return c;
 }
@@ -176,7 +177,7 @@ async function footageContent(scene) {
   let meta;
   try { meta = await getFootage(f.footage_id); } catch { return {}; }
   if (meta.status !== 'ready' || meta.labels?.sensitive || meta.steps?.some(s => s.sensitive?.length)) return {};
-  if (meta.kind === 'image') return { footage: `/footage/${meta.id}/image${meta.ext || '.png'}`, screenshot: `/footage/${meta.id}/image${meta.ext || '.png'}` };
+  if (meta.kind === 'image') return { footage: `/footage/${meta.id}/image${meta.ext || '.png'}`, screenshot: `/footage/${meta.id}/image${meta.ext || '.png'}`, image:`/footage/${meta.id}/image${meta.ext || '.png'}` };
   const from = Math.max(0, Math.min(meta.duration - 0.3, Number(f.from) || 0));
   const to = Math.max(from + 0.4, Math.min(meta.duration, Number(f.to) || from + 3));
   const taps = (meta.events || []).filter((e) => e.type === 'tap').map((e) => ({ t: e.t, x: e.x, y: e.y }));
@@ -189,7 +190,7 @@ export async function buildDoc(sb, brief, { docId = null, source, preservedSlide
   for (const s of sb.scenes) {
     const content = { ...fieldsToContent(s.fields), ...(await footageContent(s)) };
     if (s.scene === 'outro' && brief.mentions_prices && !content.disclaimer) content.disclaimer = 'yes';
-    slides.push({ template: s.scene, theme: s.theme, duration: s.duration, transition: s.transition, content });
+    slides.push({ template: s.scene, theme: s.theme, duration: s.duration, transition: s.transition, pattern:'none', content });
   }
   const doc = await createFromSpec({ name: sb.title || brief.title || 'Goldcom production', format, kind, lang: brief.lang, slides, source, persist: false });
   doc.caption = { text: sb.caption?.text || '', hashtags: sb.caption?.hashtags || [] };
@@ -215,6 +216,7 @@ export function applyReview(sb, review) {
     if (e.remove) { removed.add(e.scene - 1); continue; }
     if (e.replace_scene && TEMPLATES[e.replace_scene] && DIRECTOR_SCENES.includes(e.replace_scene)) {
       s.scene = e.replace_scene;
+      s.realized = false;
       const allowed = new Set(TEMPLATES[s.scene].fields.map(f => f.key));
       s.fields = s.fields.filter(f => allowed.has(f.key));
     }
@@ -404,6 +406,19 @@ export async function runProduction(job, { base, startExport, deviceCapture, com
     updateJob(job, { storyboard: job.storyboard });
   }
   // 6. Build
+  const illustrate = async () => {
+    if(!job.illustrationsDone) {
+      step('illustrate',.46,'Claude is drawing the custom scene artwork…');
+      for(const scene of job.storyboard.scenes)if(['photo-story','painted-story'].includes(scene.scene)&&scene.footage?.footage_id){
+        const media=await footageContent(scene);
+        if(media.image){scene.fields=scene.fields.filter(f=>f.key!=='image');scene.fields.push({key:'image',value:media.image});}
+      }
+      job.storyboard=await realizeIllustrations(job.storyboard,{call,brief,request:job.prompt});
+      job.illustrationsDone=true;
+      updateJob(job,{storyboard:job.storyboard,illustrationsDone:true});
+    }
+  };
+  await illustrate();
   const polishCopy = async () => {
     const fingerprint=JSON.stringify(copyInput(job.storyboard));
     if(job.copyFingerprint===fingerprint)return;
@@ -437,13 +452,15 @@ export async function runProduction(job, { base, startExport, deviceCapture, com
     }
     const lint = lintDocument(doc).map((i) => `[${i.level}] scene ${i.slide + 1}: ${i.message}`);
     const images = frames.map((f) => ({ data: f.buf.toString('base64'), mediaType: 'image/jpeg', label: f.label }));
-    const prompt = `You are reviewing the rendered ${brief.format} "${job.storyboard.title}" (${brief.lang === 'ar' ? 'Arabic' : 'English'}). The images are frames in order, labelled by scene.\n\nStoryboard (scene numbers are 1-based):\n${J(job.storyboard.scenes.map((s, i) => ({ n: i + 1, scene: s.scene, duration: s.duration, theme: s.theme, fields: s.fields, footage: s.footage })))}\n\nCaption: ${job.storyboard.caption?.text}\n\nAutomatic brand check:\n${lint.join('\n') || 'no issues'}\n\nReview like a demanding art director and brand guardian: hook strength, legibility on a phone, hierarchy, overlaps/clipping, Instagram safe zones, footage relevance (does the screen match the instruction?), pacing, story clarity, brand voice, claims and disclaimers, Arabic quality, AI-sounding copy. Then give precise edits (field values in final form). Verdict "ship" only if it is genuinely ready to post (score ≥ 8).`;
-    const review = await call({ prompt, images, schema: REVIEW });
+    const prompt = `You are reviewing the rendered ${brief.format} "${job.storyboard.title}" (${brief.lang === 'ar' ? 'Arabic' : 'English'}). The images are frames in order, labelled by scene.\n\nStoryboard (scene numbers are 1-based):\n${J(job.storyboard.scenes.map((s, i) => ({ n: i + 1, scene: s.scene, duration: s.duration, theme: s.theme, fields: s.fields, footage: s.footage })))}\n\nCaption and hashtags: ${J(job.storyboard.caption)}\n\nAutomatic brand check:\n${lint.join('\n') || 'no issues'}\n\nReview like a demanding art director and brand guardian: hook strength, legibility on a phone, hierarchy, overlaps/clipping, Instagram safe zones, footage relevance (does the screen match the instruction?), pacing, story clarity, brand voice, claims and disclaimers, Arabic quality, AI-sounding copy. Then give precise edits (field values in final form). Verdict "ship" only if it is genuinely ready to post (score ≥ 8).`;
+    const review = await call({ prompt:`Client request (binding): ${job.prompt}\nBrief (requested count overrides house defaults): ${J(brief)}\nFinal copy has ALREADY been authored by ChatGPT. Judge its actual Omani dialect, clarity and visual fit. Do not demand another copywriter pass when it has already happened. No fixed carousel minimum overrides an explicit count. A comment/education objective does not require app-store lines or a download CTA. The cover brand mark meets document branding; do not demand a logo on every slide.\nFor illustrated-scene, the drawing field is REAL executable declarative art. If the picture needs correction, edit drawing using valid JSON shapes and matching label positions; changing art_note prose alone changes no picture. Never replace a bespoke scene with a missing photo or library demo image.\n${prompt}`, images, schema: REVIEW,maxTokens:16000 });
     job.reviews.push({ round: round + 1, ...review });
     updateJob(job, { reviews: job.reviews, reviewedFingerprint: reviewFingerprint(doc) }, `Review ${round + 1}: ${review.score}/10 — ${review.summary}`);
     if ((review.verdict === 'ship' && review.score >= 8 && !review.issues.some(i => i.severity === 'blocker')) || round === finalRound || (!review.edits?.length && !review.caption_fix && !review.hashtags_fix?.length)) { finalReviewed = true; break; }
     // Apply the fixes; the last round's fixes are applied too, they just are not reviewed again.
     job.storyboard = cleanStoryboard(applyReview(job.storyboard, review), brief);
+    job.illustrationsDone=false;
+    await illustrate();
     await polishCopy();
     step('build', 0.6 + round * 0.12, `Applying ${review.edits.length} fix${review.edits.length > 1 ? 'es' : ''}…`);
     for (const e of review.edits) { const sc = job.storyboard.scenes[e.scene - 1]; if (sc && e.set?.some((x) => ['callout', 'from'].includes(x.key))) sc.located = false; }
@@ -490,6 +507,7 @@ export function prepareRevision(job, note) {
   job.blockers = [];
   job.revisionOf = job.storyboard || null;
   job.storyboard = null;
+  job.illustrationsDone = false;
   job.copyFingerprint = null;
   job.copyVariants = null;
   job.footageDone = false;
@@ -499,5 +517,5 @@ export function prepareRevision(job, note) {
 }
 
 export const PIPELINE_STAGES = [
-  ['brief', 'Brief'], ['concepts', 'ChatGPT ideas'], ['pick', 'Claude direction'], ['storyboard', 'Storyboard'], ['footage', 'Footage'], ['copy', 'Bilingual copy'], ['build', 'Build'], ['review', 'Review'], ['export', 'Video'], ['done', 'Ready'],
+  ['brief', 'Brief'], ['concepts', 'ChatGPT ideas'], ['pick', 'Claude direction'], ['storyboard', 'Storyboard'], ['footage', 'Footage'], ['illustrate','Custom artwork'], ['copy', 'Bilingual copy'], ['build', 'Build'], ['review', 'Review'], ['export', 'Video'], ['done', 'Ready'],
 ];

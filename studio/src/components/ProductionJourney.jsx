@@ -3,7 +3,7 @@ import { Icon, useDialogFocus } from './ui.jsx';
 import { useStudio } from './StudioContext.jsx';
 
 export const JOURNEY_STAGES = ['brief', 'ideas', 'storyboard', 'footage', 'build', 'review', 'export'];
-export const journeyStage = stage => ({ concepts: 'ideas', pick: 'ideas', choose: 'ideas', copy:'storyboard', capture: 'footage', 'footage-index': 'brief', done: 'export' })[stage] || (JOURNEY_STAGES.includes(stage) ? stage : 'brief');
+export const journeyStage = stage => ({ concepts: 'ideas', pick: 'ideas', choose: 'ideas', illustrate:'build', copy:'build', capture: 'footage', 'footage-index': 'brief', done: 'export' })[stage] || (JOURNEY_STAGES.includes(stage) ? stage : 'brief');
 const icons = { brief: 'text', ideas: 'claude', storyboard: 'copy', footage: 'film', build: 'cube', review: 'check', export: 'download' };
 const value = (scene, key) => scene?.fields?.find(field => field.key === key)?.value || '';
 

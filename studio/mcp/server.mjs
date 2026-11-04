@@ -186,6 +186,7 @@ server.registerTool('studio_guide', {
     '## Visual first (the standard)',
     '- Claude directs every operation. First call creative_directions so ChatGPT develops original ideas against known history. After constructing the storyboard, call write_bilingual_copy for all final wording (and again after text revisions). Arabic is natural Omani dialect, English is fluent native copy; legal wording and real UI labels remain exact. This current owner direction supersedes older MSA/3D preferences in reference material.',
     '- Show the idea with substantive art on EVERY slide: paper-cut, editorial, diagram, comic, ticket, mosaic, orbit, blueprint, calendar, weave, contrast, construct, illustration, real imagery or verified footage. 3D is optional. Text plus a logo, border or gradient fails the export gate.',
+    '- For a new bespoke illustration, use illustrated-scene. content.drawing is JSON {shapes:[...],labels:[{x,y,w}]}, on a 1000 x 1000 artboard. Shapes: rect/ellipse use x,y,w,h; line uses x,y,x2,y2; path uses SVG path data d. Paint: fill, stroke (brand token or hex, or none), width (0–40), opacity (0–1). Use 3–120 meaningful shapes, no executable code or text in paths. Visible labels go in content.labels, with one matching drawing.labels position each. Main title stays separately editable. Art-note prose alone draws NOTHING; compile the actual geometry. Never reuse a demo image for a new idea.',
     '- If no scene shows the idea, build one: get_scene_source on a similar scene, write a new module with create_scene_module, check it with test_scene (Read the PNGs), iterate. Or make an image with generate_image (it picks the best provider and learns from ratings).',
     '- Never: kicker + headline + subline stacks, sparkle particles, flat yellow gold, clip-art phones, pattern wallpaper behind text, more than one accent colour, bouncy easing on metal.',
     '',
@@ -561,7 +562,11 @@ server.registerTool('generate_image', {
     attach_to: z.object({ design_id: z.string(), slide: z.number().int().min(0).default(0), as: z.enum(['layer', 'background']).default('background') }).optional(),
   },
 }, async ({ prompt, intent, aspect, provider, references, transparent, attach_to }) => {
-  if (process.env.GOLDCOM_AGENT_RESTRICTED === '1') { if (provider && provider !== 'auto' && provider !== 'scene') return fail('Paid image generation must be started explicitly from the editor.'); provider = 'scene'; }
+  if (process.env.GOLDCOM_AGENT_RESTRICTED === '1') {
+    if (provider && !['auto','scene','codex'].includes(provider)) return fail('Paid image generation must be started explicitly from the editor.');
+    // Binding provider choice: a subscription failure must never trigger a paid API fallback.
+    if (!provider || provider === 'auto') provider='codex';
+  }
   try {
     const r = await studioJson('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, intent, aspect, provider, references, transparent, attach: attach_to ? { docId: attach_to.design_id, slide: attach_to.slide, as: attach_to.as } : undefined }) });
     const content = [{ type: 'text', text: JSON.stringify({ url: r.asset.url, svg: r.asset.svg, provider: r.provider, model: r.model, intent: r.intent, attempts: r.attempts, degraded: r.degraded, attached: r.attached }, null, 2) }];

@@ -1,11 +1,12 @@
 import { ART_DIRECTIONS } from './creative.js';
+import { parseDrawing } from './drawing.js';
 
 export function hasSubstantiveVisual(slide, doc = {}) {
   if (slide.bg?.type === 'image' && slide.bg.src) return true;
   return (slide.layers || []).some(l => {
     if(l.hidden || l.opacity === 0 || l.w <= 0 || l.h <= 0)return false;
     if(doc.width && doc.height && l.w*l.h < doc.width*doc.height*.035)return false;
-    if(l.type === 'artwork')return !!ART_DIRECTIONS[l.treatment] && !!l.motif;
+    if(l.type === 'artwork') {if(l.treatment==='illustrated-scene'){try{return parseDrawing(l.drawing).shapes.length>=3;}catch{return false;}}return !!ART_DIRECTIONS[l.treatment] && !!l.motif;}
     if(['image','phone','browser'].includes(l.type))return !!l.src;
     if(l.type === 'scene3d')return !!l.scene;
     if(l.type === 'chart')return l.points?.length>=3;

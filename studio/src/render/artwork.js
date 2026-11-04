@@ -1,11 +1,29 @@
 // Deterministic, native Canvas illustration. No WebGL, generated fake UI, or flattened copy.
 import { ICONS } from '../../shared/icons.js';
+import { COLORS } from '../../shared/brand.js';
+import { parseDrawing } from '../../shared/drawing.js';
 
 const SYMBOLS = { gift: 'gift', weight: 'layers', purity: 'scan', process: 'cart', conversation: 'user', time: 'calendar', choice: 'arrow', risk: 'chart', connection: 'heart', layers: 'layers', scale: 'layers' };
 
 export function drawArtwork(c, layer, ctx) {
   const { x, y, w, h } = layer;
   if (w <= 0 || h <= 0) return;
+  if(layer.treatment==='illustrated-scene') {
+    let drawing;try{drawing=parseDrawing(layer.drawing);}catch{return;}
+    const unit=Math.min(w,h)/1000;
+    c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.translate(x+(w-1000*unit)/2,y+(h-1000*unit)/2);c.scale(unit,unit);
+    for(const shape of drawing.shapes){
+      c.save();c.globalAlpha*=shape.opacity??1;c.lineWidth=shape.width||2;c.lineJoin='round';c.lineCap='round';
+      c.fillStyle=COLORS[shape.fill]||shape.fill||'transparent';c.strokeStyle=COLORS[shape.stroke]||shape.stroke||'transparent';
+      let p;
+      if(shape.type==='path')p=new Path2D(shape.d);
+      else {p=new Path2D();if(shape.type==='rect')p.roundRect(shape.x,shape.y,shape.w,shape.h,Math.min(12,shape.w/8,shape.h/8));else if(shape.type==='ellipse')p.ellipse(shape.x+shape.w/2,shape.y+shape.h/2,shape.w/2,shape.h/2,0,0,Math.PI*2);else{p.moveTo(shape.x,shape.y);p.lineTo(shape.x2,shape.y2);}}
+      if(shape.fill&&shape.fill!=='none'&&shape.type!=='line')c.fill(p);
+      if(shape.stroke&&shape.stroke!=='none')c.stroke(p);
+      c.restore();
+    }
+    c.restore();return;
+  }
   const light = ['cream', 'bullion'].includes(ctx.theme);
   const ink = light ? '#3B2A1C' : '#FFF8EA';
   const gold = light ? '#8A5A2B' : '#DBA761';
@@ -15,14 +33,15 @@ export function drawArtwork(c, layer, ctx) {
   const p = Math.min(1, Math.max(0, t / 1.2));
   const phase=Number.isFinite(ctx.t)?t/Math.max(1,ctx.dur||6)*Math.PI*2:0;
   c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
-  const unit=Math.min(w/1000,h/700);
-  c.translate(x+(w-1000*unit)/2,y+(h-700*unit)/2); c.scale(unit,unit);
+  // Shape fields may fill a tall editorial column; subjects and glyphs retain their real aspect ratio.
+  const glyphAspect=(w/1000)/(h/700);
+  c.translate(x,y); c.scale(w/1000,h/700);
   c.lineJoin = 'round'; c.lineCap = 'round';
   const rect = (a, b, d, e, fill, r = 0) => { c.fillStyle = fill; c.beginPath(); c.roundRect(a, b, d, e, r); c.fill(); };
   const line = (a, b, d, e, color = gold, width = 4) => { c.strokeStyle = color; c.lineWidth = width; c.beginPath(); c.moveTo(a,b); c.lineTo(d,e); c.stroke(); };
   const circle = (a,b,r,fill,stroke) => { c.beginPath(); c.arc(a,b,r,0,Math.PI*2); if(fill){c.fillStyle=fill;c.fill();} if(stroke){c.strokeStyle=stroke;c.lineWidth=3;c.stroke();} };
   const subject = (a,b,size,color=ink) => {
-    c.save();c.translate(a,b);c.scale(size/240,size/240);
+    c.save();c.translate(a,b);c.scale(size/240,size/240*glyphAspect);
     c.strokeStyle=color;c.fillStyle=color;c.lineWidth=6;
     const motif=layer.motif;
     if(motif==='gift') {
@@ -64,7 +83,7 @@ export function drawArtwork(c, layer, ctx) {
   };
   const icon = (a,b,size,name,color = ink) => {
     if(!name){subject(a,b,size,color);return;}
-    c.save(); c.translate(a-size/2,b-size/2); c.scale(size/24,size/24); c.strokeStyle=color; c.lineWidth=1.15;
+    c.save(); c.translate(a-size/2,b-size*glyphAspect/2); c.scale(size/24,size/24*glyphAspect); c.strokeStyle=color; c.lineWidth=1.15;
     for(const path of ICONS[name] || ICONS.layers) c.stroke(new Path2D(path)); c.restore();
   };
   switch(layer.treatment) {

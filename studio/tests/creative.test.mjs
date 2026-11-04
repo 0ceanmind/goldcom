@@ -16,13 +16,18 @@ const {copyCliArgs,responseText,completeCopy}=await import('../server/ai/copy.mj
 const {updateSettings}=await import('../server/settings.mjs');
 const {runProduction}=await import('../server/ai/pipeline.mjs');
 const {getDocument}=await import('../server/store.mjs');
+const {parseDrawing,EXAMPLE_DRAWING}=await import('../shared/drawing.js');
+const {applyIllustrations,realizeIllustrations}=await import('../server/ai/illustrate.mjs');
+const {drawingSignature}=await import('../server/ai/originality.mjs');
+const {createDocument,createSlide}=await import('../shared/schema.js');
+const {applyAllTemplates}=await import('../shared/templates.js');
 const approved={score:9,verdict:'ship',issues:[],edits:[],caption_fix:'',hashtags_fix:[],summary:'Approved'};
 const concepts=(suffix='')=>['paper-cut','blueprint','orbit'].map((family,i)=>({id:['A','B','C'][i],family,hook:[`A handwritten invitation across generations ${suffix}`,`Unfold the anatomy of a choice ${suffix}`,`Three decisions with room to reconsider ${suffix}`][i],angle:`specific angle ${i}${suffix}`,metaphor:['folded invitation','architectural measurement','solar system'][i]+suffix,framing:['overhead desk closeup','side elevation detail','circular overhead map'][i]+suffix,motion:['paper unfolds into envelope','ruler draws dimensions','satellites revolve sequentially'][i]+suffix,narrative:['recipient remembers a personal message','a scale resolves a measurement question','options branch into different destinations'][i]+suffix}));
-const storyboard=()=>({title:'A different premise',scenes:[{scene:'paper-cut',purpose:'Explain',duration:4,theme:'cream',transition:'fade',fields:[{key:'title',value:'Provisional Claude wording'},{key:'motif',value:'gift'}],footage:{use:false,footage_id:''},art_note:'Folded paper carries a message'}],caption:{text:'A draft caption',hashtags:[]},music:'none',notes:[]});
+const storyboard=()=>({title:'A different premise',scenes:[{scene:'paper-cut',realized:true,purpose:'Explain',duration:4,theme:'cream',transition:'fade',fields:[{key:'title',value:'Provisional Claude wording'},{key:'motif',value:'gift'}],footage:{use:false,footage_id:''},art_note:'Folded paper carries a message'}],caption:{text:'A draft caption',hashtags:[]},music:'none',notes:[]});
 
 test('catalog spans 14 visual styles and all formats, with optional 3D in a small minority',()=>{
  assert.equal(LIBRARY.length,64);assert.equal(new Set(LIBRARY.map(i=>i.medium)).size,15);
- assert.equal(Object.keys(ART_DIRECTIONS).length,14);
+ assert.equal(Object.keys(ART_DIRECTIONS).length,15);
  assert.ok(LIBRARY.filter(i=>i.medium==='3d').length/LIBRARY.length<.15);
  assert.equal(new Set(LIBRARY.map(i=>i.kind)).size,6);
  assert.equal(new Set(LIBRARY.map(i=>i.id)).size,LIBRARY.length);
@@ -33,6 +38,38 @@ test('a ship verdict cannot approve text plus a logo and decorative shapes',()=>
  const doc={width:1080,height:1350,slides:[{layers:[{type:'text',text:'Looks approved'},{type:'logo',w:500,h:500},{type:'shape',w:1080,h:1350}]}]};
  assert.equal(productionReadiness(doc,approved).ready,false);
  assert.match(productionReadiness(doc,approved).blockers.join(' '),/Text-only/);
+});
+
+test('bespoke intent compiles into actual drawable geometry and editable positioned labels',()=>{
+ const sb=storyboard();sb.scenes[0].art_note='A loupe reveals the point';
+ const next=applyIllustrations(sb,{scenes:[{number:1,composition:'bottom',drawing:EXAMPLE_DRAWING,labels:['Look closer']}]},[1]);
+ assert.equal(next.scenes[0].scene,'illustrated-scene');assert.equal(next.scenes[0].realized,true);
+ assert.ok(parseDrawing(next.scenes[0].fields.find(f=>f.key==='drawing').value).shapes.some(s=>s.type==='ellipse'));
+ assert.equal(next.scenes[0].fields.find(f=>f.key==='labels').value,'Look closer');
+ assert.throws(()=>applyIllustrations(sb,{scenes:[{number:1,drawing:EXAMPLE_DRAWING,labels:[]}]},[1]),/position/);
+});
+
+test('drawing rejects executable content, invisible art and unknown paint',()=>{
+ const code=structuredClone(EXAMPLE_DRAWING);code.shapes[0]={type:'path',d:'<script>alert(1)</script>',fill:'gold'};assert.throws(()=>parseDrawing(code),/SVG path/);
+ const empty=structuredClone(EXAMPLE_DRAWING);empty.shapes.forEach(s=>s.opacity=0);assert.throws(()=>parseDrawing(empty),/visible shapes/);
+ const paint=structuredClone(EXAMPLE_DRAWING);paint.shapes[0].fill='constructor';assert.throws(()=>parseDrawing(paint),/colours/);
+});
+
+test('partial illustration JSON remains editable but cannot pass export readiness',()=>{
+ let doc;assert.doesNotThrow(()=>{doc=applyAllTemplates(createDocument({lang:'en',kind:'post',slides:[createSlide({template:'illustrated-scene',content:{title:'A work in progress',drawing:'{"shapes":['}})]}));});
+ assert.equal(productionReadiness(doc,approved).ready,false);
+});
+
+test('an explicitly requested photograph is not silently replaced with a vector drawing',async()=>{
+ const sb=storyboard();sb.scenes[0].scene='photo-story';let called=false;
+ await assert.rejects(realizeIllustrations(sb,{brief:{},request:'Make a photoreal editorial photograph',call:async()=>{called=true;}}),/photographic asset/);
+ assert.equal(called,false);
+});
+
+test('recolouring a saved drawing does not bypass final visual originality checks',()=>{
+ const changed=structuredClone(EXAMPLE_DRAWING);changed.shapes[0].fill='cream';assert.equal(drawingSignature(changed),drawingSignature(EXAMPLE_DRAWING));
+ const sb=storyboard();sb.scenes[0].fields.push({key:'drawing',value:JSON.stringify(changed)});
+ assert.ok(finalOriginalityIssues(sb,[{visuals:[drawingSignature(EXAMPLE_DRAWING)]}]).some(x=>x.includes('geometry')));
 });
 
 test('novelty rejects a repeated Arabic hook and a recoloured identical construction',()=>{

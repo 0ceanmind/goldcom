@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { which, commandFor } from './cli.mjs';
-import { findClaudeCli } from './ai/engine.mjs';
+import { findClaudeCli, cliEnvironment } from './ai/engine.mjs';
 import { DATA_DIR, saveAsset } from './store.mjs';
 import { recordGeneration, providerStats, readLessons, readKnowledge } from './memory.mjs';
 import { getSettings, updateSettings } from './settings.mjs';
@@ -387,13 +387,14 @@ const providers = {
 };
 
 async function codexOnce(req) {
+  const { copyPreflight } = await import('./ai/copy.mjs');
+  await copyPreflight({subscriptionOnly:true}); // Verify the subscription route independently of text API settings.
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'goldcom-codex-'));
-  const env = { ...process.env };
-  delete env.OPENAI_API_KEY; delete env.CODEX_API_KEY; // bill the ChatGPT plan, not an API key
+  const env = cliEnvironment();
   const refNames = [];
   for (const [i, r] of (req.references || []).entries()) { const n = `ref-${i + 1}.png`; fs.writeFileSync(path.join(work, n), r.buffer); refNames.push(n); }
   const ask = `Use $imagegen to create one image. ${req.aspect} vertical frame. ${refNames.length ? `Use these reference images in this folder: ${refNames.join(', ')}. ` : ''}Save the final PNG as ./out.png and print its path.\n\n${req.prompt}`;
-  const { out } = await runCli(which('codex'), ['exec', '--skip-git-repo-check', '--sandbox', 'workspace-write', '--json', ask], { cwd: work, env, timeoutMs: 300000 });
+  const { out } = await runCli(which('codex'), ['exec', '--ignore-user-config', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'workspace-write', '-c', 'approval_policy="never"', '-c', 'features.apps=false', '--json', ask], { cwd: work, env, timeoutMs: 300000 });
   const first = out.split('\n').find((l) => l.includes('thread.started'));
   let thread = null;
   try { thread = JSON.parse(first).thread_id; } catch { /* fall back to ./out.png */ }

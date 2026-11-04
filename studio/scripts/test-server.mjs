@@ -18,7 +18,7 @@ server.stdout.on('data',d=>process.stdout.write(d));server.stderr.on('data',d=>p
 try{
  let ready=false;for(let i=0;i<100;i++){try{const r=await fetch(origin+'/api/health');if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}
  if(!ready)throw new Error('Isolated test server did not start');
- const args=process.argv[2]==='http'?['--test',path.join(root,'tests','http.test.mjs')]:[path.join(root,'scripts',process.argv[2]==='creative'?'creative-scenarios.mjs':process.argv[2]==='ui'?'ui-scenarios.mjs':process.argv[2]==='workspace'?'workspace-scenarios.mjs':process.argv[2]==='motion'?'motion-scenarios.mjs':'smoke-test.mjs')];
+ const args=process.argv[2]==='http'?['--test',path.join(root,'tests','http.test.mjs')]:[path.join(root,'scripts',process.argv[2]==='creative-live'?'creative-live.mjs':process.argv[2]==='creative'?'creative-scenarios.mjs':process.argv[2]==='ui'?'ui-scenarios.mjs':process.argv[2]==='workspace'?'workspace-scenarios.mjs':process.argv[2]==='motion'?'motion-scenarios.mjs':'smoke-test.mjs')];
  const child=spawn(process.execPath,args,{cwd:root,env,windowsHide:true,stdio:'inherit'});
  process.exitCode=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',code=>resolve(code??1));});
 }finally{

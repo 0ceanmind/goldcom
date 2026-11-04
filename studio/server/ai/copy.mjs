@@ -10,7 +10,7 @@ import { parseJsonLoose, validateReply, cliEnvironment } from './engine.mjs';
 export const COPY_RULES = `You are Goldcom's bilingual creative strategist and copywriter, working under Claude's direction.
 Develop a specific, fresh idea before writing. English must sound written by a fluent human copywriter.
 Arabic MUST be natural conversational Omani Arabic (لهجة عمانية بيضاء), never stiff MSA or translated English.
-Examples of register: وش، الحين، باكر، على راحتك، ما يحتاج، خلّنا، ربيعك. Use only where natural; never force slang into every sentence.
+Use a natural, broadly understood Omani/Muscat register. Examples: إيش، شو، الحين، باكر، على راحتك، ما يحتاج، خلّنا، ربيعك. Choose phrasing for the sentence; never force slang into every line or claim one marker represents every Omani region.
 Avoid Saudi/Egyptian/Levantine stock dialect, invented dialect words, exaggerated phonetic spelling and generic advertising slogans.
 Keep جولدكم as the brand name, جرام as the weight word and Western digits. Preserve exact legal text and real app labels.
 Arabic is joined script: no letter spacing, reversed text or per-letter animation. AR and EN are separate language versions.
@@ -21,6 +21,7 @@ Never invent prices, customer quotes, performance numbers or product capabilitie
 Reject recycled hooks and narratives. Changing the palette, synonyms, object colour or character name does not make an idea original.`;
 
 export function findCopyCli() { return whichAll('codex').map(commandFor).find(Boolean) || null; }
+let verifiedLogin=null;
 export function copyStatus() {
   const s = getSettings(), cli = findCopyCli();
   // Subscription is the default; paid API use must be an explicit setting.
@@ -28,19 +29,24 @@ export function copyStatus() {
   return { selected, configured: selected === 'api' ? !!(s.keys?.OPENAI_API_KEY || process.env.OPENAI_API_KEY) && !!s.copyModel && s.copyRates?.input > 0 && s.copyRates?.output > 0 : !!selected, model: s.copyModel || 'Codex account default', verified: false };
 }
 
-export async function copyPreflight() {
-  const st = copyStatus();
+export async function copyPreflight({subscriptionOnly=false}={}) {
+  const st = subscriptionOnly ? {selected:'codex',configured:!!findCopyCli(),verified:false} : copyStatus();
   if (!st.configured) throw Object.assign(new Error('Connect ChatGPT for ideas and Omani Arabic/English copy: install and sign in to Codex, or explicitly configure the OpenAI text API model, key and rates in Settings. Claude remains the director.'), { status: 412 });
   if (st.selected === 'codex') {
     const cli = findCopyCli();
+    if(verifiedLogin?.cmd===cli.cmd&&Date.now()-verifiedLogin.at<30000)return {...st,verified:true};
     await new Promise((resolve,reject) => {
-      const child = spawn(cli.cmd,[...cli.prefix,'login','status'],{windowsHide:true,env:cliEnvironment(),stdio:'ignore'});
+      const child = spawn(cli.cmd,[...cli.prefix,'login','status'],{windowsHide:true,env:cliEnvironment(),stdio:['ignore','pipe','pipe']});
+      let status='';
+      const capture=d=>{status=(status+d).slice(-4000);};
+      child.stdout.on('data',capture);child.stderr.on('data',capture);
       const timer=setTimeout(()=>{child.kill();reject(new Error('ChatGPT connection check timed out'));},10000);
       child.once('error',e=>{clearTimeout(timer);reject(e);});
-      child.once('close',code=>{clearTimeout(timer);code===0?resolve():reject(Object.assign(new Error('Sign in to Codex with your ChatGPT account before creating content.'),{status:412}));});
+      child.once('close',code=>{clearTimeout(timer);code===0&&/ChatGPT/i.test(status)&&!/API key/i.test(status)?resolve():reject(Object.assign(new Error('Sign in to Codex with ChatGPT for subscription writing. For API-key billing, select the text API and configure its model and rates.'),{status:412}));});
     });
+    verifiedLogin={cmd:cli.cmd,at:Date.now()};
   }
-  return st;
+  return {...st,verified:st.selected==='codex'};
 }
 
 export function copyCliArgs({ schemaFile, outputFile, model }) {
@@ -49,7 +55,15 @@ export function copyCliArgs({ schemaFile, outputFile, model }) {
     '--output-schema',schemaFile,'--output-last-message',outputFile,'--json',...(model?['--model',model]:[]),'-'];
 }
 
+function stopCopyProcess(child) {
+  if(process.platform==='win32') {
+    const killer=spawn('taskkill',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+    killer.on('error',()=>child.kill());
+  } else child.kill('SIGTERM');
+}
+
 async function codexCopy({ system, prompt, schema, signal, onUsage, timeoutMs = 300000 }) {
+  await copyPreflight();
   const cli = findCopyCli();
   if (!cli) throw Object.assign(new Error('ChatGPT copywriter is not connected. Sign in to Codex or configure the text API in Settings.'),{status:412});
   const work = await fs.mkdtemp(path.join(os.tmpdir(),'goldcom-copy-'));
@@ -60,8 +74,8 @@ async function codexCopy({ system, prompt, schema, signal, onUsage, timeoutMs = 
       if(signal?.aborted){reject(new Error('Cancelled'));return;}
       const child=spawn(cli.cmd,[...cli.prefix,...copyCliArgs({schemaFile,outputFile,model:getSettings().copyModel})],{cwd:work,env:cliEnvironment(),windowsHide:true,stdio:['pipe','pipe','pipe']});
       let events='',stderr='',settled=false;
-      const stop=()=>{child.kill();finish(new Error('Cancelled'));};
-      const timer=setTimeout(()=>{child.kill();finish(new Error('ChatGPT copywriter timed out. Resume to retry.'));},timeoutMs);
+      const stop=()=>{stopCopyProcess(child);finish(new Error('Cancelled'));};
+      const timer=setTimeout(()=>{stopCopyProcess(child);finish(new Error('ChatGPT copywriter timed out. Resume to retry.'));},timeoutMs);
       function finish(error,value){if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',stop);error?reject(error):resolve(value);}
       signal?.addEventListener('abort',stop,{once:true});
       child.stdout.on('data',d=>{events=(events+d).slice(-2e6);});

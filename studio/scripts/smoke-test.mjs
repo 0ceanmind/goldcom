@@ -41,6 +41,10 @@ check(created.id && created.slides.length === 4, `create_design → ${created.id
 const edited = json(await call('edit_slide', { id: created.id, index: 1, content: { body: 'Guaranteed returns!' } }));
 check(edited.brand_check.some((m) => m.includes('guaranteed')), 'brand check flags red-tier claim');
 await call('edit_slide', { id: created.id, index: 1, content: { body: 'Every slide follows the Goldcom guidelines.' } });
+// The new export contract requires meaningful art on every slide, including the ending.
+await call('edit_slide', { id: created.id, index: 1, template:'editorial', content:{title:'A visual idea',motif:'connection'} });
+await call('edit_slide', { id: created.id, index: 2, template:'diagram', content:{title:'Connected tools',motif:'process'} });
+await call('edit_slide', { id: created.id, index: 3, template:'paper-cut', content:{title:'Make it yours',motif:'gift'} });
 
 const shot = json(await call('capture_screenshot', { url: process.env.GOLDCOM_STUDIO_URL || 'http://localhost:5177/', device: 'desktop', attach_to: { id: created.id, index: 0 } }));
 check(shot.url?.startsWith('/assets/') && shot.attached, 'capture_screenshot attaches a live screenshot');
@@ -54,7 +58,7 @@ const saved = json(await call('export_pngs', { id: created.id, out_dir: out }));
 check(saved.saved.length === 4 && fs.statSync(saved.saved[0]).size > 10000, 'export_pngs writes full-size PNGs');
 
 const moved = json(await call('update_design', { id: created.id, lang: 'ar', order: [0, 2, 1, 3] }));
-check(moved.lang === 'ar' && moved.slides[1].template === 'list', 'update_design reorders and switches language');
+check(moved.lang === 'ar' && moved.slides[1].template === 'diagram', 'update_design reorders and switches language');
 
 // Instagram kinds, captions and the library
 const reel = json(await call('create_design', {

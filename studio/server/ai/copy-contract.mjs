@@ -4,7 +4,8 @@ const deck={type:'object',additionalProperties:false,required:['scenes','caption
   caption:{type:'object',additionalProperties:false,required:['text','hashtags'],properties:{text:str,hashtags:{type:'array',items:str}}},
 }};
 export const BILINGUAL_COPY={type:'object',additionalProperties:false,required:['ar','en'],properties:{ar:deck,en:deck}};
-export const COPY_FIELDS=new Set(['title','subtitle','kicker','body','caption','detail','label','callout','button','question','answer','items','messages','lines','labels','before','after']);
+export const COPY_FIELDS=new Set(['title','subtitle','kicker','body','caption','detail','label','callout','button','question','answer','items','messages','lines','labels','before','after',
+  'a_label','a_text','b_label','b_text','a_name','a_note','b_name','b_note','bubble','big','notifTitle','notifBody','live','time','ticker','beforeLabel','afterLabel','myth','fact','source','rows','sub','options','note','tagline']);
 export function copyInput(sb) {
   return {scenes:sb.scenes.map((s,i)=>({number:i+1,scene:s.scene,purpose:s.purpose,art_note:s.art_note,fields:s.fields.filter(f=>COPY_FIELDS.has(f.key))})),caption:sb.caption};
 }

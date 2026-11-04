@@ -5,6 +5,9 @@ import { chromium } from 'playwright';
 import { LIBRARY, buildLibraryDoc } from '../shared/library.js';
 import { lintDocument } from '../shared/lint.js';
 import { contactSheet } from '../server/render/review.mjs';
+import { createDocument,createSlide } from '../shared/schema.js';
+import { applyAllTemplates } from '../shared/templates.js';
+import { EXAMPLE_DRAWING } from '../shared/drawing.js';
 
 const base=process.env.STUDIO_URL;
 if(!base||!process.env.GOLDCOM_STUDIO_DATA)throw new Error('Run through scripts/test-server.mjs creative');
@@ -38,6 +41,14 @@ try {
         }
       }
     }
+  }
+  for(const lang of ['en','ar']){
+    current=applyAllTemplates(createDocument({lang,kind:'post',slides:[createSlide({template:'illustrated-scene',theme:'onyx',pattern:'none',content:{title:lang==='ar'?'سؤالك يخلّي الصورة أوضح':'Your question brings it into focus',labels:[lang==='ar'?'خلّنا نقرّب شوي':'Look a little closer'],drawing:JSON.stringify(EXAMPLE_DRAWING)}})]}));
+    await page.goto(`${base}/render.html?doc=creative-preview&scale=.3&mode=frames`);
+    await page.waitForFunction(()=>window.__READY||window.__ERROR,{},{timeout:30000});
+    const error=await page.evaluate(()=>window.__ERROR);if(error)throw new Error(error);
+    const buf=Buffer.from(await page.evaluate(()=>window.__frame(2.5,0,'png')),'base64');
+    await fs.writeFile(path.join(out,`illustrated-scene-${lang}.png`),buf);if(lang==='ar')frames.push({buf});rendered++;
   }
   // Check style filtering and editing a new direction in the actual workspace.
   await page.goto(base+'/#/designs');

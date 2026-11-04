@@ -31,7 +31,7 @@ const {reviewTimes}=await import('../server/render/review.mjs');
 const {startExport}=await import('../server/routes/exports.mjs');
 const {validateOptions}=await import('../server/routes/production.mjs');
 const brief={brand:'Goldcom',title:'Test',format:'post',lang:'en',mentions_prices:false};
-const sb=()=>({title:'Test',scenes:[{scene:'paper-cut',duration:4,theme:'onyx',transition:'fade',fields:[{key:'title',value:'A real gift'}],footage:{use:false,footage_id:''}}],caption:{text:'',hashtags:[]},notes:[],music:'none'});
+const sb=()=>({title:'Test',scenes:[{scene:'paper-cut',realized:true,duration:4,theme:'onyx',transition:'fade',fields:[{key:'title',value:'A real gift'}],footage:{use:false,footage_id:''}}],caption:{text:'',hashtags:[]},notes:[],music:'none'});
 const review=(patch={})=>({score:9,verdict:'ship',summary:'Test',issues:[],edits:[],caption_fix:'',hashtags_fix:[],...patch});
 const job=(patch={})=>({id:'test_'+Math.random().toString(36).slice(2),type:'test',prompt:'Make a Goldcom post',options:{autoExport:false,reviewRounds:1},controller:new AbortController(),log:[],brief:{...brief},concepts:[{id:'A',name:'A'}],pick:{winner:'A'},chosen:'A',storyboard:sb(),footageDone:true,...patch});
 const copyFor=async({prompt})=>{const input=JSON.parse(prompt.split("Claude's storyboard for copywriting:\n")[1].split('\nBrief:')[0]);const deck={scenes:input.scenes.map(({number,fields})=>({number,fields})),caption:input.caption};return {ar:deck,en:deck};};

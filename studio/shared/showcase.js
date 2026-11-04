@@ -25,7 +25,7 @@ const stills = [
   ['slow-down','comic','Take another look','تمهّل وشيّك مرة ثانية','process','There is time to read before confirming.','عندك وقت تقرأ قبل لا تأكّد.'],
   ['keep-the-receipt','ticket','Keep the details together','خلّ التفاصيل عندك','layers','A simple habit for any purchase.','عادة بسيطة لأي شي تشتريه.'],
   ['twenty-four','mosaic','Purity has a name','النقاء له عيار','purity','24K describes the gold’s karat.','24K يعني عيار الذهب.'],
-  ['more-than-packaging','paper-cut','The thought outlasts the wrapping','المعنى يبقى بعد التغليف','gift','A visual metaphor for a thoughtful gift.','الهدية بمعناها، مب بس شكلها.'],
+  ['more-than-packaging','paper-cut','The thought outlasts the wrapping','المعنى يبقى بعد التغليف','gift','For someone you know by heart.','الهدية بمعناها، مب بس شكلها.'],
   ['read-the-label','blueprint','Read what is on the bar','اقرأ اللي على السبيكة','weight','Weight and purity describe different things.','الوزن والنقاء، كل واحد يخبرك شي.'],
   ['no-rush','calendar','Not everything needs deciding today','مب كل شي لازم اليوم','time','Make room to understand.','عط نفسك وقت تفهم.'],
   ['questions-to-save','diagram','Keep these questions handy','خلّ هالأسئلة معك','conversation','What weight? What fees? What next?','كم الوزن؟ كم الرسوم؟ وبعدين؟',['Weight?','Fees?','Next?'],['الوزن؟','الرسوم؟','بعدين؟']],
@@ -82,7 +82,7 @@ function item({ id, kind='post', family, motif, name, beats, detail, labels }) {
           template: i % 2 ? paired[family] : family,
           theme: moods[family], pattern: 'none', duration: kind === 'motion' ? 6 : 4,
           transition: i ? 'push' : 'fade',
-          content: { title: pick(lang,beat), detail: i === 0 && detail ? pick(lang,detail) : '', motif, seed: [...id].reduce((n,c)=>n+c.charCodeAt(0),0)+i, labels: i === 0 && labels ? pick(lang,labels) : [], disclaimer: motif === 'risk' || /budget|before-buy/.test(id) ? 'yes' : 'no' },
+          content: { title: pick(lang,beat), detail: i === 0 && detail ? pick(lang,detail) : '', image:ART_DIRECTIONS[family]?.image||'', motif, seed: [...id].reduce((n,c)=>n+c.charCodeAt(0),0)+i, labels: i === 0 && labels ? pick(lang,labels) : [], disclaimer: motif === 'risk' || /budget|before-buy/.test(id) ? 'yes' : 'no' },
         })),
         caption: { text: `${pick(lang,name)}${detail ? `\n${pick(lang,detail)}` : ''}`, hashtags: lang === 'ar' ? ['#جولدكم','#عمان','#ذهب'] : ['#Goldcom','#Oman','#Gold'] },
       };
@@ -98,4 +98,4 @@ export const SHOWCASE_LIBRARY = [
   ...loops.map(([id,family,en,ar,motif]) => item({id,kind:'motion',family,motif,name:[en,ar],beats:[[en,ar]]})),
 ];
 
-export const LIBRARY_MEDIA = { all:{en:'All visual styles',ar:'كل الأساليب'}, ...ART_DIRECTIONS, '3d':{en:'3D studio',ar:'استوديو ثلاثي الأبعاد'} };
+export const LIBRARY_MEDIA = { all:{en:'All visual styles',ar:'كل الأساليب'}, ...Object.fromEntries(Object.entries(ART_DIRECTIONS).filter(([id])=>SHOWCASE_LIBRARY.some(i=>i.medium===id))), '3d':{en:'3D studio',ar:'استوديو ثلاثي الأبعاد'} };

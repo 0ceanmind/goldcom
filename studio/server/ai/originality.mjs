@@ -4,11 +4,15 @@ import path from 'node:path';
 import { DATA_DIR, listDocuments, getDocument } from '../store.mjs';
 import { atomicWrite, withFileLock } from '../files.mjs';
 import { LIBRARY } from '../../shared/library.js';
+import { createHash } from 'node:crypto';
 
 const FILE=path.join(DATA_DIR,'creative-history.json');
 const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[\u064b-\u065f\u0670*]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
 const words=s=>new Set(normalize(s).split(' ').filter(w=>w.length>1&&!['the','and','for','your','with','from','this','that','في','من','على','لك','مع'].includes(w)));
 const overlap=(a,b)=>{const x=words(a),y=words(b);if(!x.size||!y.size)return 0;return [...x].filter(w=>y.has(w)).length/Math.min(x.size,y.size);};
+export function drawingSignature(value) {
+  try {const d=typeof value==='string'?JSON.parse(value):value;if(!d?.shapes?.length)return '';const geometry=d.shapes.map(s=>Object.fromEntries((s.type==='path'?['type','d']:s.type==='line'?['type','x','y','x2','y2']:['type','x','y','w','h']).map(k=>[k,s[k]])));return createHash('sha256').update(JSON.stringify(geometry)).digest('hex');}catch{return '';}
+}
 export const signatureOf=c=>({hook:c.hook||'',angle:c.angle||'',metaphor:c.metaphor||'',family:c.family||c.visual_style||'',framing:c.framing||'',motion:c.motion||'',narrative:c.narrative||(c.beats||[]).join(' | ')});
 
 export function originalityIssues(concepts, history=[]) {
@@ -33,9 +37,9 @@ export async function creativeHistory({excludeJob,excludeDoc}={}) {
   const docs=(await listDocuments()).filter(d=>d.id!==excludeDoc);
   const entries=await Promise.all(docs.map(async d=>{
     const doc=await getDocument(d.id);
-    return {hook:doc.slides[0]?.content?.title||(doc.slides[0]?.layers||[]).find(l=>l.name==='title')?.text||doc.name,family:doc.slides.map(s=>s.template).join(' | '),narrative:doc.slides.map(s=>s.content?.title||'').join(' | '),name:doc.name};
+    return {hook:doc.slides[0]?.content?.title||(doc.slides[0]?.layers||[]).find(l=>l.name==='title')?.text||doc.name,family:doc.slides.map(s=>s.template).join(' | '),narrative:doc.slides.map(s=>s.content?.title||'').join(' | '),visuals:doc.slides.flatMap(s=>(s.layers||[]).filter(l=>l.type==='artwork'&&l.drawing).map(l=>drawingSignature(l.drawing))).filter(Boolean),name:doc.name};
   }));
-  return [...saved,...entries,...LIBRARY.flatMap(i=>['ar','en'].map(lang=>({hook:i.build(lang).slides[0]?.content?.title||i.name[lang],family:i.medium||'3d',name:i.name[lang]})))];
+  return [...LIBRARY.flatMap(i=>['ar','en'].map(lang=>({hook:i.build(lang).slides[0]?.content?.title||i.name[lang],family:i.medium||'3d',name:i.name[lang]}))),...entries.reverse(),...saved];
 }
 
 export async function reserveConcepts(jobId,concepts,{excludeDoc}={}) {
@@ -58,6 +62,10 @@ export function historyPrompt(history) {
 export function finalOriginalityIssues(sb,history) {
   const hook=sb.scenes?.[0]?.fields?.find(f=>f.key==='title')?.value||'';
   const narrative=(sb.scenes||[]).map(s=>s.fields.find(f=>f.key==='title')?.value||'').join(' | ');
-  return history.some(h=>(normalize(hook).length>8&&normalize(hook)===normalize(h.hook)) || (words(narrative).size>=5&&h.narrative&&overlap(narrative,h.narrative)>.92))
+  const issues=history.some(h=>(normalize(hook).length>8&&normalize(hook)===normalize(h.hook)) || (words(narrative).size>=5&&h.narrative&&overlap(narrative,h.narrative)>.92))
     ? ['The final opening or narrative repeats known work. Develop a new premise and visual construction before exporting.'] : [];
+  const drawings=(sb.scenes||[]).map(s=>drawingSignature(s.fields.find(f=>f.key==='drawing')?.value)).filter(Boolean);
+  if(drawings.some(d=>history.some(h=>h.visuals?.includes(d))))issues.push('The illustration geometry repeats a saved design. A recolour is not a new visual construction.');
+  if(new Set(drawings).size<drawings.length)issues.push('Repeated illustration across slides: vary the composition and visual action.');
+  return issues;
 }

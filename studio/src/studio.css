@@ -390,3 +390,4 @@ kbd { font:10px var(--latin); color:var(--white); padding:5px 8px; border:1px so
 @media (prefers-reduced-transparency:reduce) { .modal-bg,.export-overlay { backdrop-filter:none; background:var(--onyx); } }
 
 .library-directions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;align-items:center}.library-directions .hint{margin-inline-start:auto}.copywriter-settings{border-block-start:1px solid var(--border, #383832);padding-block:24px}.copywriter-settings h3{margin-bottom:10px}
+.copy-variants{padding:18px 0;border-block-start:1px solid var(--border, #383832)}.copy-variants summary{cursor:pointer;font-weight:600}.copy-variants section{padding-block:14px}.copy-variants section+section{border-block-start:1px solid var(--border, #383832)}.copy-variants p{white-space:pre-wrap;line-height:1.7}

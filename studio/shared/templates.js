@@ -1071,4 +1071,5 @@ export const EXAMPLES_AR = {
   cta: { title: 'ابدأ قصتك مع الذهب اليوم', subtitle: 'حمّل جولدكم من App Store و Google Play.', button: 'حمّل التطبيق', link: 'goldcom.om', disclaimer: 'yes' },
 };
 
+for(const [id,t] of Object.entries(CREATIVE_TEMPLATES)) EXAMPLES_AR[id]={...t.example,title:id==='illustrated-scene'?'خلّنا *نقرّب* شوي':'لحد *غالي* عليك',labels:id==='illustrated-scene'?['خلّنا نشوف التفاصيل']:['اختار','فكّر','قرّر']};
 export const exampleFor = (id, lang) => (lang === 'ar' ? EXAMPLES_AR[id] : null) || TEMPLATES[id]?.example || {};
