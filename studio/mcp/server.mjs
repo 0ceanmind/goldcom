@@ -102,7 +102,7 @@ const slideSchema = z.object({
 const captionSchema = z.object({ text: z.string().describe('Instagram caption. First line is the hook. Natural, specific, no hype. Max 2,200 chars incl. hashtags.'), hashtags: z.array(z.string()).max(30).optional().describe('3–5 relevant hashtags, e.g. ["#Goldcom", "#ذهب"]') });
 
 function buildSlides(specs) {
-  return specs.map((s) => createSlide({ template: s.template, theme: s.theme || 'onyx', content: s.content || {}, duration: s.duration || 4, transition: s.transition || 'fade', bgMotion: s.bgMotion || 'none', pattern: 'top', layers: [] }));
+  return specs.map((s) => createSlide({ template: s.template, theme: s.theme || 'onyx', content: s.content || {}, duration: s.duration || 4, transition: s.transition || 'fade', bgMotion: s.bgMotion || 'none', pattern: 'none', layers: [] }));
 }
 
 // ---------- server ----------
@@ -284,7 +284,7 @@ server.registerTool('create_design', {
   },
 }, async ({ name, format, kind, lang, slides, project: proj, open = true, caption, notes }) => {
   if ((kind === 'reel' || kind === 'story') && format !== 'story') format = 'story';
-  let doc = await createFromSpec({ name, format, kind, lang, slides: slides.map((s) => ({ ...s, pattern: 'top' })), source: { type: 'claude-code', project: proj || project(), cwd: process.cwd(), lastWriter: 'claude-code', createdAt: new Date().toISOString() } });
+  let doc = await createFromSpec({ name, format, kind, lang, slides: slides.map((s) => ({ ...s, pattern: 'none' })), source: { type: 'claude-code', project: proj || project(), cwd: process.cwd(), lastWriter: 'claude-code', createdAt: new Date().toISOString() } });
   if (caption || notes) doc = await saveDocument({ ...doc, caption: caption ? { text: caption.text, hashtags: caption.hashtags || [] } : doc.caption, notes: notes || doc.notes });
   const up = await ensureStudio();
   if (up && open) openBrowser(designUrl(doc.id));
