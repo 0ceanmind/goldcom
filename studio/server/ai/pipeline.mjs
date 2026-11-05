@@ -423,10 +423,21 @@ export async function runProduction(job, { base, startExport, deviceCapture, com
     const fingerprint=JSON.stringify(copyInput(job.storyboard));
     if(job.copyFingerprint===fingerprint)return;
     step('copy',.48,'ChatGPT is writing and checking Omani Arabic and English…');
-    const packet=await copyCall({schema:BILINGUAL_COPY,prompt:`Claude's storyboard for copywriting:\n${J(copyInput(job.storyboard))}\nBrief: ${J(brief)}\nClient request: ${job.prompt}\nFeedback: ${job.feedback||''}\nRequired exact wording: ${J(constraints)}\nWrite BOTH versions: ar in natural Omani dialect, en in polished English. Keep scene numbers and the exact set of supplied field keys for every scene, including empty fields. Finalise every word in those fields and the caption. Preserve all numbers, approved facts, legal text and literal real app button labels. No invented claims. Keep titles short (about 6 Arabic / 7 English words). Do not add technical fields, URLs or change the visual plan. Preserve required exact wording in the requested output language version.`});
-    job.storyboard=applyCopy(job.storyboard,packet,brief.lang);
-    job.copyVariants=packet;job.copyFingerprint=JSON.stringify(copyInput(job.storyboard));
-    updateJob(job,{storyboard:job.storyboard,copyVariants:packet,copyFingerprint:job.copyFingerprint,copywriter:'ChatGPT'});
+    let copyError = '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const packet = await copyCall({ schema: BILINGUAL_COPY, prompt: `Claude's storyboard for copywriting:\n${J(copyInput(job.storyboard))}\nBrief: ${J(brief)}\nClient request: ${job.prompt}\nFeedback: ${job.feedback||''}\nLatest director review (binding revision direction): ${J(job.reviews?.at(-1)||job.copyDirection||null)}\nPrevious validation error: ${copyError}\nPreserve accepted meaning and every marked emphasis span. Resolve the director's latest issues instead of rewriting everything back to a generic hook.\nRequired exact wording: ${J(constraints)}\nWrite BOTH versions: ar in natural Omani dialect, en in polished English. Keep scene numbers and the exact set of supplied field keys for every scene, including empty fields. Finalise every word in those fields and the caption. Preserve all numbers, approved facts, legal text and literal real app button labels. No invented claims. Keep titles short (about 6 Arabic / 7 English words). Do not add technical fields, URLs or change the visual plan. Preserve required exact wording in the requested output language version.`});
+      try {
+        job.storyboard = applyCopy(job.storyboard, packet, brief.lang);
+      } catch (error) {
+        copyError = error.message;
+        if (attempt === 1) throw error;
+        continue;
+      }
+      job.copyVariants = packet;
+      job.copyFingerprint = JSON.stringify(copyInput(job.storyboard));
+      updateJob(job, { storyboard: job.storyboard, copyVariants: packet, copyFingerprint: job.copyFingerprint, copywriter: 'ChatGPT' });
+      return;
+    }
   };
   await polishCopy();
   const source = { type: 'production', jobId: job.id, prompt: job.prompt, lastWriter: 'studio-ai', copywriter: 'ChatGPT', director: 'Claude' };

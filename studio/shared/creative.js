@@ -1,6 +1,6 @@
 // Art directions are independent of format. Copy stays editable and never lives in a bitmap.
 import { ctxHelpers, L, anim, textLayer, pagerLayers, disclaimerLayer } from './layout.js';
-import { parseDrawing, EXAMPLE_DRAWING } from './drawing.js';
+import { parseDrawing, EXAMPLE_DRAWING, drawingPlacement } from './drawing.js';
 
 export const ART_DIRECTIONS = {
   'illustrated-scene': { en: 'Bespoke illustration', ar: 'رسم خاص بالفكرة', layout: 'top', motif: 'custom' },
@@ -85,12 +85,12 @@ export const CREATIVE_TEMPLATES = Object.fromEntries(Object.entries(ART_DIRECTIO
       // Partial JSON while editing must not crash the workspace. The readiness gate rejects it.
       let drawing;try{drawing=parseDrawing(c.drawing);}catch{drawing={shapes:[],labels:[]};}
       layers[0].drawing=drawing;
-      const unit=Math.min(box.w,box.h)/1000,dx=box.x+(box.w-unit*1000)/2,dy=box.y+(box.h-unit*1000)/2;
+      const {unit,x:dx,y:dy}=drawingPlacement(drawing,box);
       const allLabels=(Array.isArray(c.labels)?c.labels:String(c.labels||'').split('\n')).filter(Boolean);
       allLabels.slice(0,6).forEach((text,i)=>{
         const pos=drawing.labels[i];if(!pos)return;
-        const d=textLayer(h,{name:`diagram-label-${i}`,text,role:'body',x:0,y:dy+pos.y*unit,w:pos.w*unit,align:'center',lang:ctx.lang,delay:.4+i*.1});
-        d.x=dx+pos.x*unit;d.h=Math.min(d.h,110*s);layers.push(d);
+        const d=textLayer(h,{name:`diagram-label-${i}`,text,role:'body-lg',x:0,y:dy+pos.y*unit,w:pos.w*unit,align:'center',lang:ctx.lang,delay:.4+i*.1});
+        d.x=dx+pos.x*unit;layers.push(d);
       });
     }
     if(id==='comic') {

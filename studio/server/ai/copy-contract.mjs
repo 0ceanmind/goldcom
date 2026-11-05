@@ -21,6 +21,11 @@ export function applyCopy(sb,packet,lang) {
       seen.add(scene.number);
       const keys=source.fields.filter(f=>COPY_FIELDS.has(f.key)).map(f=>f.key);
       if(scene.fields.length!==keys.length||new Set(scene.fields.map(f=>f.key)).size!==keys.length||scene.fields.some(f=>!keys.includes(f.key)))throw new Error('ChatGPT copy changed the allowed fields');
+      for(const field of scene.fields){
+        const original=source.fields.find(f=>f.key===field.key)?.value||'';
+        const required=(original.match(/\*[^*]+\*/g)||[]).length;
+        if((field.value.match(/\*[^*]+\*/g)||[]).length<required)throw new Error('ChatGPT copy dropped directed emphasis; preserve all marked concepts in both languages');
+      }
     }
   }
   const deck=packet[lang];

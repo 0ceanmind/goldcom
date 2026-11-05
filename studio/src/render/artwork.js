@@ -1,7 +1,7 @@
 // Deterministic, native Canvas illustration. No WebGL, generated fake UI, or flattened copy.
 import { ICONS } from '../../shared/icons.js';
 import { COLORS } from '../../shared/brand.js';
-import { parseDrawing } from '../../shared/drawing.js';
+import { parseDrawing, drawingPlacement } from '../../shared/drawing.js';
 
 const SYMBOLS = { gift: 'gift', weight: 'layers', purity: 'scan', process: 'cart', conversation: 'user', time: 'calendar', choice: 'arrow', risk: 'chart', connection: 'heart', layers: 'layers', scale: 'layers' };
 
@@ -10,8 +10,8 @@ export function drawArtwork(c, layer, ctx) {
   if (w <= 0 || h <= 0) return;
   if(layer.treatment==='illustrated-scene') {
     let drawing;try{drawing=parseDrawing(layer.drawing);}catch{return;}
-    const unit=Math.min(w,h)/1000;
-    c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.translate(x+(w-1000*unit)/2,y+(h-1000*unit)/2);c.scale(unit,unit);
+    const placement=drawingPlacement(drawing,{x,y,w,h}),unit=placement.unit;
+    c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.translate(placement.x,placement.y);c.scale(unit,unit);
     for(const shape of drawing.shapes){
       c.save();c.globalAlpha*=shape.opacity??1;c.lineWidth=shape.width||2;c.lineJoin='round';c.lineCap='round';
       c.fillStyle=COLORS[shape.fill]||shape.fill||'transparent';c.strokeStyle=COLORS[shape.stroke]||shape.stroke||'transparent';

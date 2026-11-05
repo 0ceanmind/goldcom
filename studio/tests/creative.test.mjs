@@ -16,7 +16,7 @@ const {copyCliArgs,responseText,completeCopy}=await import('../server/ai/copy.mj
 const {updateSettings}=await import('../server/settings.mjs');
 const {runProduction}=await import('../server/ai/pipeline.mjs');
 const {getDocument}=await import('../server/store.mjs');
-const {parseDrawing,EXAMPLE_DRAWING}=await import('../shared/drawing.js');
+const {parseDrawing,EXAMPLE_DRAWING,drawingBounds,drawingPlacement}=await import('../shared/drawing.js');
 const {applyIllustrations,realizeIllustrations}=await import('../server/ai/illustrate.mjs');
 const {drawingSignature}=await import('../server/ai/originality.mjs');
 const {createDocument,createSlide}=await import('../shared/schema.js');
@@ -60,6 +60,19 @@ test('partial illustration JSON remains editable but cannot pass export readines
  assert.equal(productionReadiness(doc,approved).ready,false);
 });
 
+test('illustration fits real geometry and callouts instead of unused artboard space',()=>{
+ const d=structuredClone(EXAMPLE_DRAWING);d.labels[0].y=1132;
+ assert.doesNotThrow(()=>parseDrawing(d));
+ const b=drawingBounds(d),box={x:80,y:400,w:920,h:800},p=drawingPlacement(d,box);
+ assert.ok(p.x+b.x*p.unit>=box.x&&p.y+b.y*p.unit>=box.y);
+ assert.ok(p.x+(b.x+b.w)*p.unit<=box.x+box.w&&p.y+(b.y+b.h)*p.unit<=box.y+box.h);
+ const compact={shapes:[{type:'path',d:'M200 300 l100 0 v100 h-100 z'},{type:'rect',x:250,y:350,w:25,h:25},{type:'ellipse',x:220,y:320,w:20,h:20}],labels:[]};
+ assert.deepEqual(drawingBounds(compact),{x:200,y:300,w:100,h:100});
+ assert.ok(drawingPlacement(compact,box).unit>1);
+ const smooth={shapes:[{type:'path',d:'M0 0 C0 0 -100 0 100 100 S100 100 100 200'}],labels:[]};
+ assert.ok(drawingBounds(smooth).w>=400);
+});
+
 test('an explicitly requested photograph is not silently replaced with a vector drawing',async()=>{
  const sb=storyboard();sb.scenes[0].scene='photo-story';let called=false;
  await assert.rejects(realizeIllustrations(sb,{brief:{},request:'Make a photoreal editorial photograph',call:async()=>{called=true;}}),/photographic asset/);
@@ -95,6 +108,14 @@ test('bilingual copy preserves layout/media and rejects inserted technical field
  assert.equal(next.scenes[0].fields[0].value,'خلّ الهدية بكلامك');assert.equal(sb.scenes[0].fields[0].value,'Provisional Claude wording');
  const malicious=structuredClone(packet);malicious.en.scenes[0].fields.push({key:'footage',value:'https://outside.example'});assert.throws(()=>applyCopy(sb,malicious,'ar'),/allowed fields/);
  const missing=structuredClone(packet);missing.ar.scenes=[];assert.throws(()=>applyCopy(sb,missing,'ar'),/every scene/);
+});
+
+test('bilingual rewriting cannot undo a directed pair of emphasized concepts',()=>{
+ const sb=storyboard();sb.scenes[0].fields[0].value='Gram is *weight*. Karat is *purity*.';
+ const deck=value=>({scenes:[{number:1,fields:[{key:'title',value}]}],caption:sb.caption});
+ assert.throws(()=>applyCopy(sb,{ar:deck('الجرام *وزن* والعيار نقاء'),en:deck('*Weight* and *purity*')},'ar'),/directed emphasis/);
+ const next=applyCopy(sb,{ar:deck('الجرام *وزن* والعيار *نقاء*'),en:deck('*Weight* and *purity*')},'ar');
+ assert.equal((next.scenes[0].fields[0].value.match(/\*[^*]+\*/g)||[]).length,2);
 });
 
 test('writing CLI isolates user tool configuration and uses schema output without a shell',()=>{
